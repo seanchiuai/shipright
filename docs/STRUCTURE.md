@@ -14,7 +14,6 @@ Claude Code configuration and domain-specific knowledge.
 
 - `settings.json` - Claude Code settings (hooks, permissions)
 - `update-phase.sh` - Script to update development phase
-- `PHASE-TRACKING.md` - Phase transition documentation
 - `skills/` - Domain-specific knowledge modules
   - `interview-flow/` - AI-guided interview logic
   - `template-matching/` - Template scoring algorithm
