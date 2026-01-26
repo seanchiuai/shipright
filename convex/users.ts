@@ -1,4 +1,4 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const getByEmail = query({
@@ -21,50 +21,6 @@ export const getByClerkId = query({
   },
 });
 
-export const upsertFromClerk = internalMutation({
-  args: {
-    clerkUserId: v.string(),
-    email: v.string(),
-    name: v.optional(v.string()),
-    image: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", args.clerkUserId))
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        name: args.name,
-        image: args.image,
-        email: args.email,
-      });
-      return existing._id;
-    }
-
-    return await ctx.db.insert("users", {
-      clerkUserId: args.clerkUserId,
-      email: args.email,
-      name: args.name,
-      image: args.image,
-    });
-  },
-});
-
-export const deleteByClerkId = internalMutation({
-  args: { clerkUserId: v.string() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", args.clerkUserId))
-      .first();
-    if (user) {
-      await ctx.db.delete(user._id);
-    }
-  },
-});
-
 // JWT-verified: uses ctx.auth.getUserIdentity()
 export const current = query({
   args: {},
@@ -72,7 +28,6 @@ export const current = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    // Clerk's subject is the user ID
     const clerkUserId = identity.subject;
 
     return await ctx.db
