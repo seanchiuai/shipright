@@ -2,19 +2,12 @@
 
 ## Active
 
-- [ ] Initialize Next.js 14 + TypeScript + Tailwind project
-- [ ] Set up Convex and Convex Auth with Google OAuth
+- [ ] Build interview Step 1: App idea input (500 char textarea)
+- [ ] Integrate Claude API for question generation
 
 ## Backlog
 
-### Phase 1: UI + Authentication
-- [ ] Create landing page with value prop + Google sign in CTA
-- [ ] Implement protected dashboard route
-- [ ] Implement logout functionality
-- [ ] Add user avatar dropdown in header
-
 ### Phase 2: Interview Flow
-- [ ] Build Step 1: App idea input (500 char textarea)
 - [ ] Build Step 2: AI follow-up questions (Claude API integration)
 - [ ] Build Step 3: Requirements summary + inline edit
 - [ ] Store interview sessions in Convex
@@ -54,6 +47,15 @@
 - [ ] Set up error monitoring
 
 ## Complete
+
+### Phase 1: UI + Authentication (2026-01-26)
+- [x] Initialize Next.js 14 + TypeScript + Tailwind project
+- [x] Set up Convex database
+- [x] Integrate Clerk authentication with JWT verification
+- [x] Create landing page with value prop + Google sign in CTA
+- [x] Implement protected dashboard route
+- [x] Add user avatar dropdown in header (Clerk UserButton)
+- [x] Create project details page
 
 ### Planning (2026-01-25)
 - [x] Define MVP scope and architecture

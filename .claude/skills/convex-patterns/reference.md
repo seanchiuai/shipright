@@ -8,17 +8,17 @@ Detailed schemas, code examples, and implementation patterns for Convex in Shipr
 // convex/schema.ts
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
-  // Auth tables (required for Convex Auth)
-  ...authTables,
-
   users: defineTable({
-    email: v.string(),
-    name: v.string(),
-    githubToken: v.optional(v.string()), // encrypted
-  }).index("by_email", ["email"]),
+    clerkUserId: v.string(),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    githubToken: v.optional(v.string()),
+  })
+    .index("by_clerk_id", ["clerkUserId"])
+    .index("email", ["email"]),
 
   projects: defineTable({
     userId: v.id("users"),
@@ -48,6 +48,94 @@ export default defineSchema({
 ```
 
 **Important**: Every document automatically gets `_id` (Id<"tableName">) and `_creationTime` fields.
+
+## Auth Config for Clerk JWT Verification
+
+```typescript
+// convex/auth.config.ts
+export default {
+  providers: [
+    {
+      domain: process.env.CLERK_JWT_ISSUER_DOMAIN,
+      applicationID: "convex",
+    },
+  ],
+};
+```
+
+Set the env var in Convex:
+```bash
+npx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-app.clerk.accounts.dev
+```
+
+## User Functions (JWT-Verified)
+
+```typescript
+// convex/users.ts
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+// Get current user from verified JWT
+export const current = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    return await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+  },
+});
+
+// Sync user from verified JWT identity
+export const syncUser = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const clerkUserId = identity.subject;
+    const email = identity.email || "";
+    const name = identity.name;
+    const image = identity.pictureUrl;
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", clerkUserId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { name, image, email });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("users", { clerkUserId, email, name, image });
+  },
+});
+
+// Lookup helpers
+export const getByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .first();
+  },
+});
+
+export const getByClerkId = query({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .first();
+  },
+});
+```
 
 ## Query Pattern
 
@@ -103,13 +191,6 @@ export const updateStatus = mutation({
     await ctx.db.patch(args.projectId, { status: args.status });
   },
 });
-
-export const deleteProject = mutation({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, args) => {
-    await ctx.db.delete(args.projectId);
-  },
-});
 ```
 
 ## Action Pattern (External APIs)
@@ -126,7 +207,6 @@ import { api } from "./_generated/api";
 export const generateQuestions = action({
   args: { userInput: v.string() },
   handler: async (ctx, args) => {
-    // Call external API (Claude)
     const client = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
     });
@@ -150,87 +230,26 @@ export const generateQuestions = action({
 
 **Key Point**: Actions use `ctx.runQuery()` and `ctx.runMutation()` to access database.
 
-## Authentication Setup
-
-### Install Convex Auth
-
-```bash
-npm install @convex-dev/auth @auth/core@0.37.0
-```
-
-### Configure Auth Provider
-
-```typescript
-// convex/auth.ts
-import { convexAuth } from "@convex-dev/auth/server";
-import Google from "@auth/core/providers/google";
-
-export const { auth, signIn, signOut, store } = convexAuth({
-  providers: [Google],
-});
-```
-
-### Add Auth Tables to Schema
-
-Already included in schema above via `...authTables`.
-
-### Protect Routes with Middleware
-
-```typescript
-// middleware.ts
-import {
-  convexAuthNextjsMiddleware,
-  createRouteMatcher,
-  nextjsMiddlewareRedirect,
-} from "@convex-dev/auth/nextjs/server";
-
-const isSignInPage = createRouteMatcher(["/signin"]);
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
-
-export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
-  if (isSignInPage(request) && (await convexAuth.isAuthenticated())) {
-    return nextjsMiddlewareRedirect(request, "/dashboard");
-  }
-  if (isProtectedRoute(request) && !(await convexAuth.isAuthenticated())) {
-    return nextjsMiddlewareRedirect(request, "/signin");
-  }
-});
-
-export const config = {
-  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
-};
-```
-
 ## React Client Setup
 
-### Setup ConvexProvider
+### ConvexClientProvider with Clerk
 
 ```typescript
 // app/ConvexClientProvider.tsx
 "use client";
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+
+import { useAuth } from "@clerk/nextjs";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexReactClient } from "convex/react";
 import { ReactNode } from "react";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
-  return <ConvexProvider client={convex}>{children}</ConvexProvider>;
-}
-```
-
-### Wrap Your App
-
-```typescript
-// app/layout.tsx
-import { ConvexClientProvider } from "./ConvexClientProvider";
-
-export default function RootLayout({ children }) {
   return (
-    <html>
-      <body>
-        <ConvexClientProvider>{children}</ConvexClientProvider>
-      </body>
-    </html>
+    <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+      {children}
+    </ConvexProviderWithClerk>
   );
 }
 ```
@@ -243,13 +262,17 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 export function ProjectsList() {
-  // Query - reactive, rerenders on change
-  const projects = useQuery(api.projects.list, { userId: "..." });
+  // Query - reactive, JWT provides auth
+  const user = useQuery(api.users.current);
+  const projects = useQuery(
+    api.projects.list,
+    user ? { userId: user._id } : "skip"
+  );
 
-  // Mutation - async function
+  // Mutation
   const createProject = useMutation(api.projects.create);
 
-  // Action - async function
+  // Action
   const generateQuestions = useAction(api.ai.generateQuestions);
 
   if (projects === undefined) {
@@ -261,9 +284,6 @@ export function ProjectsList() {
       {projects.map((p) => (
         <div key={p._id}>{p.name}</div>
       ))}
-      <button onClick={() => createProject({ userId: "...", name: "New" })}>
-        Create
-      </button>
     </div>
   );
 }
@@ -271,19 +291,19 @@ export function ProjectsList() {
 
 **Key Points**:
 - `useQuery` returns `undefined` while loading
-- `useMutation` and `useAction` return async functions
-- Queries are reactive and trigger rerenders automatically
+- JWT automatically passed via `ConvexProviderWithClerk`
+- `ctx.auth.getUserIdentity()` available in all functions
 
 ## Environment Variables
 
 ```bash
-# Development (.env.local)
+# .env.local (Next.js)
 CONVEX_DEPLOYMENT=dev:your-dev-deployment
 NEXT_PUBLIC_CONVEX_URL=https://your-dev.convex.cloud
 
-# Auth provider (Google OAuth)
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
+# Convex Dashboard (set via `npx convex env set`)
+CLERK_JWT_ISSUER_DOMAIN=https://your-app.clerk.accounts.dev
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 ## Common Patterns for Shipright
@@ -295,7 +315,7 @@ export const saveQuestions = mutation({
   args: {
     projectId: v.id("projects"),
     round: v.number(),
-    questions: v.array(v.any()),
+    questions: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("interviewSessions", {
@@ -308,34 +328,27 @@ export const saveQuestions = mutation({
 });
 ```
 
-### Getting User Projects
+### Getting User Projects (with auth check)
 
 ```typescript
-export const getUserProjects = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+export const listMyProjects = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+
+    if (!user) return [];
+
     return await ctx.db
       .query("projects")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .order("desc") // newest first
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
       .collect();
-  },
-});
-```
-
-### Updating Project Requirements
-
-```typescript
-export const updateRequirements = mutation({
-  args: {
-    projectId: v.id("projects"),
-    requirements: v.any(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.projectId, {
-      requirements: args.requirements,
-      status: "matching", // move to next phase
-    });
   },
 });
 ```

@@ -13,11 +13,13 @@ Convex is our reactive database and serverless backend. It provides:
 - Real-time database with automatic subscriptions
 - TypeScript-first with end-to-end type safety
 - Serverless functions (queries, mutations, actions)
-- Built-in authentication support
+- JWT verification for secure authentication
+
+**Note:** Authentication is handled by Clerk with JWT verification.
 
 ## Where It's Used in Shipright
 
-- **Phase 1**: Authentication with Convex Auth (Google OAuth)
+- **Phase 1**: User storage (synced via JWT-verified mutation)
 - **Phase 2**: Store interview sessions and questions
 - **Phase 3**: Store templates and match scores
 - **Phase 4**: Store GitHub tokens and repo URLs
@@ -33,20 +35,35 @@ Convex is our reactive database and serverless backend. It provides:
 
 **Key Rule**: Actions can't access database directly - they call queries/mutations.
 
+## Authentication Pattern
+
+Convex verifies Clerk JWTs via `auth.config.ts`. In any query or mutation:
+
+```typescript
+const identity = await ctx.auth.getUserIdentity();
+if (!identity) return null; // or throw error
+
+const clerkUserId = identity.subject; // Clerk user ID
+```
+
+**No client-provided IDs** - identity comes from verified JWT token.
+
 ## Our Convex Schema
 
 See [reference.md](reference.md) for complete schema with tables:
-- `users` - User accounts
+- `users` - User accounts (synced from Clerk)
 - `projects` - User projects
 - `interviewSessions` - Interview rounds and questions
 - `templates` - Template library
 
-## Authentication Setup
+## User Storage
 
-We use Convex Auth with Google OAuth. See [reference.md](reference.md) for:
-- Auth configuration
-- Middleware setup
-- Protected routes
+Users are created/updated via the `syncUser` mutation when they access the app:
+- JWT provides verified Clerk user ID
+- Mutation extracts profile info from identity
+- Creates user if new, updates if existing
+
+See [clerk-auth skill](../clerk-auth/SKILL.md) for authentication patterns.
 
 ## Client Usage in React
 
@@ -55,7 +72,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 // Reactive query - rerenders on data change
-const projects = useQuery(api.projects.list, { userId });
+const user = useQuery(api.users.current); // No args needed, uses JWT
 
 // Mutation - async function to call
 const createProject = useMutation(api.projects.create);
@@ -68,4 +85,5 @@ const createProject = useMutation(api.projects.create);
 ## External Documentation
 
 - [Convex Docs](https://docs.convex.dev) - Official documentation
+- [Convex + Clerk](https://docs.convex.dev/auth/clerk) - Auth integration
 - Use Context7 MCP to fetch current Convex docs on-demand
