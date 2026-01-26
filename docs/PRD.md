@@ -27,7 +27,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 
 **Acceptance Criteria:**
 - [x] Google OAuth login button on landing page
-- [ ] User redirected to Google consent screen
+- [x] User redirected to Google consent screen
 - [ ] On success, user is redirected to dashboard
 - [ ] User's Google profile (name, email, avatar) stored in Convex
 - [ ] Session persists across browser refreshes
