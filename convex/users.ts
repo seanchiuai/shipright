@@ -21,35 +21,6 @@ export const getByClerkId = query({
   },
 });
 
-export const upsert = mutation({
-  args: {
-    email: v.string(),
-    name: v.string(),
-    image: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("email", (q) => q.eq("email", args.email))
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        name: args.name,
-        image: args.image,
-      });
-      return existing._id;
-    }
-
-    return await ctx.db.insert("users", {
-      clerkUserId: "",
-      email: args.email,
-      name: args.name,
-      image: args.image,
-    });
-  },
-});
-
 export const upsertFromClerk = internalMutation({
   args: {
     clerkUserId: v.string(),
@@ -94,11 +65,15 @@ export const deleteByClerkId = internalMutation({
   },
 });
 
+// JWT-verified: uses ctx.auth.getUserIdentity()
 export const current = query({
-  args: { clerkUserId: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    const { clerkUserId } = args;
-    if (!clerkUserId) return null;
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    // Clerk's subject is the user ID
+    const clerkUserId = identity.subject;
 
     return await ctx.db
       .query("users")
@@ -107,33 +82,37 @@ export const current = query({
   },
 });
 
-export const syncFromClient = mutation({
-  args: {
-    clerkUserId: v.string(),
-    email: v.string(),
-    name: v.optional(v.string()),
-    image: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
+// JWT-verified: syncs user data from verified identity
+export const syncUser = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const clerkUserId = identity.subject;
+    const email = identity.email || "";
+    const name = identity.name;
+    const image = identity.pictureUrl;
+
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", args.clerkUserId))
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", clerkUserId))
       .first();
 
     if (existing) {
       await ctx.db.patch(existing._id, {
-        name: args.name,
-        image: args.image,
-        email: args.email,
+        name,
+        image,
+        email,
       });
       return existing._id;
     }
 
     return await ctx.db.insert("users", {
-      clerkUserId: args.clerkUserId,
-      email: args.email,
-      name: args.name,
-      image: args.image,
+      clerkUserId,
+      email,
+      name,
+      image,
     });
   },
 });
