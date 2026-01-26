@@ -14,6 +14,7 @@ Shipright helps non-technical founders turn app ideas into GitHub repos. Users c
 - GitHub API (repo creation via OAuth)
 - Daytona SDK (sandboxed environments for template customization)
 - Vercel (production deployment)
+- agent-browser (E2E testing for phase verification)
 
 ## Commands
 
@@ -23,6 +24,7 @@ npm run dev              # Next.js dev server
 npx convex dev           # Convex dev server (separate terminal)
 npm run type-check       # TypeScript check
 npm run lint             # Linting
+npx agent-browser --help # E2E browser automation
 ```
 
 ## Development Phases
@@ -51,6 +53,7 @@ Domain-specific knowledge lives in `.claude/skills/`. See individual skills for 
 - Convex patterns
 - UI components
 - Production deployment
+- E2E testing with agent-browser
 
 ## Planning Docs
 
