@@ -388,10 +388,18 @@ try {
 
 ```bash
 # .env.local
+# Primary: Claude Code OAuth token
+CLAUDE_CODE_OAUTH_TOKEN=...
+
+# Fallback: API key (rare cases when OAuth unavailable)
 ANTHROPIC_API_KEY=sk-ant-api03-...
 ```
 
 Set in Convex:
 ```bash
-npx convex env set ANTHROPIC_API_KEY <your-key>
+# Set OAuth token (primary - used by Claude Code sessions)
+npx convex env set CLAUDE_CODE_OAUTH_TOKEN <your-oauth-token>
+
+# Or set API key (fallback for rare cases)
+npx convex env set ANTHROPIC_API_KEY <your-api-key>
 ```

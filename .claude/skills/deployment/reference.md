@@ -24,6 +24,9 @@ Set these in Convex dashboard or via CLI:
 npx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-app.clerk.accounts.dev
 
 # Claude API (for interview questions)
+# Set OAuth token (primary - used by Claude Code sessions)
+npx convex env set CLAUDE_CODE_OAUTH_TOKEN <your-oauth-token>
+# Or set API key (fallback for rare cases)
 npx convex env set ANTHROPIC_API_KEY sk-ant-...
 
 # Daytona (for template customization)
@@ -100,7 +103,8 @@ vercel --prod
 | `CLERK_JWT_ISSUER_DOMAIN` | **Convex** | JWT verification |
 | `NEXT_PUBLIC_CONVEX_URL` | Vercel | Convex client |
 | `CONVEX_DEPLOYMENT` | Vercel | Convex deployment ID |
-| `ANTHROPIC_API_KEY` | **Convex** | Claude API |
+| `CLAUDE_CODE_OAUTH_TOKEN` | **Convex** | Claude Code OAuth (primary) |
+| `ANTHROPIC_API_KEY` | **Convex** | Claude API (fallback) |
 | `GITHUB_CLIENT_ID` | Vercel | GitHub OAuth |
 | `GITHUB_CLIENT_SECRET` | Vercel | GitHub OAuth |
 | `DAYTONA_API_KEY` | **Convex** | Daytona sandbox |

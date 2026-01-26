@@ -30,7 +30,8 @@ export const createCustomizationSandbox = action({
       language: "typescript", // or "python", "javascript"
       name: `shipright-${args.projectId}`,
       envVars: {
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+        // Claude Code OAuth primary, API key fallback
+        ANTHROPIC_API_KEY: process.env.CLAUDE_CODE_OAUTH_TOKEN || process.env.ANTHROPIC_API_KEY,
         GITHUB_TOKEN: args.githubToken,
       },
       autoStopInterval: 30, // Stop after 30 min inactivity
@@ -372,11 +373,17 @@ try {
 ```bash
 # .env.local or Convex environment
 DAYTONA_API_KEY=dtn_...
-ANTHROPIC_API_KEY=sk-ant-...
+CLAUDE_CODE_OAUTH_TOKEN=...   # Primary (Claude Code OAuth)
+ANTHROPIC_API_KEY=sk-ant-...  # Fallback (rare cases)
 ```
 
 Set in Convex:
 ```bash
 npx convex env set DAYTONA_API_KEY <value>
-npx convex env set ANTHROPIC_API_KEY <value>
+
+# Set OAuth token (primary - used by Claude Code sessions)
+npx convex env set CLAUDE_CODE_OAUTH_TOKEN <your-oauth-token>
+
+# Or set API key (fallback for rare cases)
+npx convex env set ANTHROPIC_API_KEY <your-api-key>
 ```

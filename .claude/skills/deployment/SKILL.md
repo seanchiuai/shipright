@@ -36,7 +36,8 @@ Before deploying:
 
 **Server-only** (no prefix):
 ```bash
-ANTHROPIC_API_KEY=sk-ant-...
+CLAUDE_CODE_OAUTH_TOKEN=...   # Primary (Claude Code OAuth)
+ANTHROPIC_API_KEY=sk-ant-...  # Fallback (rare cases)
 GITHUB_CLIENT_SECRET=...
 ENCRYPTION_KEY=...
 ```

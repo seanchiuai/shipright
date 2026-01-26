@@ -207,8 +207,9 @@ import { api } from "./_generated/api";
 export const generateQuestions = action({
   args: { userInput: v.string() },
   handler: async (ctx, args) => {
+    // Claude Code OAuth primary, API key fallback
     const client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
+      apiKey: process.env.CLAUDE_CODE_OAUTH_TOKEN || process.env.ANTHROPIC_API_KEY,
     });
 
     const response = await client.messages.create({
@@ -303,7 +304,8 @@ NEXT_PUBLIC_CONVEX_URL=https://your-dev.convex.cloud
 
 # Convex Dashboard (set via `npx convex env set`)
 CLERK_JWT_ISSUER_DOMAIN=https://your-app.clerk.accounts.dev
-ANTHROPIC_API_KEY=sk-ant-...
+CLAUDE_CODE_OAUTH_TOKEN=...   # Primary (Claude Code OAuth)
+ANTHROPIC_API_KEY=sk-ant-...  # Fallback (rare cases)
 ```
 
 ## Common Patterns for Shipright
