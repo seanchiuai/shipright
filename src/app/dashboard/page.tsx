@@ -2,6 +2,7 @@
 
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,10 +19,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 
 export default function DashboardPage() {
   const { signOut } = useAuthActions();
+  const router = useRouter();
   const user = useQuery(api.users.current);
   const projects = useQuery(
     api.projects.list,
@@ -99,7 +100,11 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
-              <Card key={project._id}>
+              <Card
+                key={project._id}
+                className="cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => router.push(`/project/${project._id}`)}
+              >
                 <CardHeader>
                   <CardTitle>{project.name}</CardTitle>
                   <CardDescription>
@@ -109,7 +114,12 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardFooter className="flex gap-2">
                   {project.githubRepoUrl && (
-                    <Button variant="outline" size="sm" asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <a
                         href={project.githubRepoUrl}
                         target="_blank"
