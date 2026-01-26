@@ -1,11 +1,11 @@
 # Interview Flow Reference
 
-Complete Claude API integration, system prompts, and requirements extraction for Shipright's interview flow.
+Complete Vercel AI SDK integration, system prompts, and requirements extraction for Shipright's interview flow.
 
 ## Installation
 
 ```bash
-npm install @anthropic-ai/sdk
+npm install ai @ai-sdk/anthropic
 ```
 
 ## Requirements Schema
@@ -48,7 +48,8 @@ interface Requirements {
 // convex/ai.ts
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import Anthropic from "@anthropic-ai/sdk";
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateText } from "ai";
 import { api } from "./_generated/api";
 
 export const generateInterviewQuestions = action({
@@ -58,12 +59,6 @@ export const generateInterviewQuestions = action({
     previousAnswers: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    const client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
-
-    const conversationHistory = buildHistory(args.previousAnswers);
-
     const systemPrompt = `You are an expert product manager helping non-technical founders clarify their app ideas.
 
 Your job is to ask 3-5 targeted questions to understand:
@@ -97,67 +92,48 @@ Return questions as a JSON array:
   }
 ]`;
 
-    try {
-      const response = await client.messages.create({
-        model: "claude-sonnet-4-5-20250929",
-        max_tokens: 2048,
-        system: systemPrompt,
-        messages: [
-          ...conversationHistory,
-          {
-            role: "user",
-            content: `Round ${args.round} - User's idea: "${args.userInput}"\n\nGenerate interview questions.`,
-          },
-        ],
-      });
+    const conversationHistory = buildHistory(args.previousAnswers);
+    const prompt = `${conversationHistory}
 
-      const textContent = response.content.find(block => block.type === "text");
-      if (!textContent || textContent.type !== "text") {
-        throw new Error("No text content in response");
-      }
+Round ${args.round} - User's idea: "${args.userInput}"
 
-      const questions = JSON.parse(textContent.text);
+Generate interview questions as JSON array.`;
 
-      await ctx.runMutation(api.interviews.saveQuestions, {
-        round: args.round,
-        questions,
-      });
+    const { text, usage } = await generateText({
+      model: anthropic("claude-sonnet-4"),
+      system: systemPrompt,
+      prompt,
+    });
 
-      return {
-        questions,
-        usage: response.usage,
-      };
-    } catch (error: any) {
-      if (error instanceof Anthropic.APIError) {
-        console.error("Anthropic API error:", error.status, error.message);
-        throw new Error(`AI question generation failed: ${error.message}`);
-      }
-      throw error;
-    }
+    const questions = JSON.parse(text);
+
+    await ctx.runMutation(api.interviews.saveQuestions, {
+      round: args.round,
+      questions,
+    });
+
+    return { questions, usage };
   },
 });
 
-function buildHistory(previousAnswers?: any): Anthropic.MessageParam[] {
-  if (!previousAnswers || previousAnswers.length === 0) return [];
+function buildHistory(previousAnswers?: any): string {
+  if (!previousAnswers || previousAnswers.length === 0) return "";
 
-  const messages: Anthropic.MessageParam[] = [];
+  let history = "Previous rounds:\n";
   for (const round of previousAnswers) {
-    messages.push({
-      role: "user",
-      content: JSON.stringify(round.questions),
-    });
-    messages.push({
-      role: "assistant",
-      content: JSON.stringify(round.answers),
-    });
+    history += `Questions: ${JSON.stringify(round.questions)}\n`;
+    history += `Answers: ${JSON.stringify(round.answers)}\n\n`;
   }
-  return messages;
+  return history;
 }
 ```
 
 ## Extracting Requirements (Convex Action)
 
 ```typescript
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateText } from "ai";
+
 export const extractRequirements = action({
   args: {
     projectId: v.id("projects"),
@@ -165,10 +141,6 @@ export const extractRequirements = action({
   handler: async (ctx, args) => {
     const rounds = await ctx.runQuery(api.interviews.getRounds, {
       projectId: args.projectId,
-    });
-
-    const client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
     });
 
     const systemPrompt = `Extract structured requirements from interview responses.
@@ -204,24 +176,13 @@ Output valid JSON matching this schema:
   "integrations": ["stripe", "sendgrid", "twilio"]
 }`;
 
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-5-20250929",
-      max_tokens: 3000,
+    const { text } = await generateText({
+      model: anthropic("claude-sonnet-4"),
       system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: `Interview data:\n${JSON.stringify(rounds, null, 2)}\n\nExtract requirements as JSON.`,
-        },
-      ],
+      prompt: `Interview data:\n${JSON.stringify(rounds, null, 2)}\n\nExtract requirements as JSON.`,
     });
 
-    const textContent = response.content.find(block => block.type === "text");
-    if (!textContent || textContent.type !== "text") {
-      throw new Error("No text content in response");
-    }
-
-    const requirements = JSON.parse(textContent.text);
+    const requirements = JSON.parse(text);
 
     await ctx.runMutation(api.projects.updateRequirements, {
       projectId: args.projectId,
@@ -233,6 +194,28 @@ Output valid JSON matching this schema:
 });
 ```
 
+## Streaming Questions (Optional)
+
+For real-time streaming in Next.js API route:
+
+```typescript
+// app/api/interview/questions/route.ts
+import { anthropic } from "@ai-sdk/anthropic";
+import { streamText } from "ai";
+
+export async function POST(req: Request) {
+  const { userInput, round, previousAnswers } = await req.json();
+
+  const result = streamText({
+    model: anthropic("claude-sonnet-4"),
+    system: systemPrompt,
+    prompt: `Round ${round} - User's idea: "${userInput}"\n\nGenerate interview questions.`,
+  });
+
+  return result.toTextStreamResponse();
+}
+```
+
 ## Client-Side React Component
 
 ```tsx
@@ -241,74 +224,129 @@ import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function InterviewForm({ projectId }: { projectId: string }) {
   const [round, setRound] = useState(0);
   const [userInput, setUserInput] = useState("");
-  const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
   const generateQuestions = useAction(api.ai.generateInterviewQuestions);
   const extractRequirements = useAction(api.ai.extractRequirements);
 
   async function handleSubmitIdea() {
-    const result = await generateQuestions({
-      userInput,
-      round: 1,
-    });
-    setQuestions(result.questions);
-    setRound(1);
+    setLoading(true);
+    try {
+      const result = await generateQuestions({
+        userInput,
+        round: 1,
+      });
+      setQuestions(result.questions);
+      setRound(1);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSubmitAnswers() {
-    if (round < 3) {
-      const result = await generateQuestions({
-        userInput,
-        round: round + 1,
-        previousAnswers: answers,
-      });
-      setQuestions(result.questions);
-      setRound(round + 1);
-    } else {
-      const requirements = await extractRequirements({ projectId });
-      // Show requirements summary
+    setLoading(true);
+    try {
+      if (round < 3) {
+        const result = await generateQuestions({
+          userInput,
+          round: round + 1,
+          previousAnswers: [{ questions, answers }],
+        });
+        setQuestions(result.questions);
+        setRound(round + 1);
+        setAnswers({});
+      } else {
+        await extractRequirements({ projectId });
+        // Navigate to requirements summary
+      }
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-2xl mx-auto">
       {round === 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Describe your app idea</CardTitle>
+            <CardTitle>What do you want to build?</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="idea">What do you want to build?</Label>
-              <Input
+              <Label htmlFor="idea">Describe your app idea</Label>
+              <Textarea
                 id="idea"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                placeholder="I want to build..."
+                placeholder="I want to build an app where..."
                 maxLength={500}
+                rows={4}
               />
+              <p className="text-sm text-muted-foreground mt-1">
+                {userInput.length}/500
+              </p>
             </div>
-            <Button onClick={handleSubmitIdea}>Start Interview</Button>
+            <Button onClick={handleSubmitIdea} disabled={loading || !userInput}>
+              {loading ? "Generating questions..." : "Next"}
+            </Button>
           </CardContent>
         </Card>
       )}
 
       {round > 0 && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">Round {round} of 3</p>
-          {/* Render questions */}
-          <Button onClick={handleSubmitAnswers}>
-            {round < 3 ? "Next" : "Finish Interview"}
-          </Button>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>A few questions (Round {round}/3)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {questions.map((q) => (
+              <div key={q.id} className="space-y-2">
+                <Label>{q.question}</Label>
+                {q.type === "text" ? (
+                  <Textarea
+                    value={answers[q.id] || ""}
+                    onChange={(e) =>
+                      setAnswers({ ...answers, [q.id]: e.target.value })
+                    }
+                  />
+                ) : (
+                  <div className="space-y-2">
+                    {q.options?.map((opt: string) => (
+                      <label key={opt} className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name={q.id}
+                          value={opt}
+                          checked={answers[q.id] === opt}
+                          onChange={() =>
+                            setAnswers({ ...answers, [q.id]: opt })
+                          }
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            <Button onClick={handleSubmitAnswers} disabled={loading}>
+              {loading
+                ? "Processing..."
+                : round < 3
+                  ? "Next"
+                  : "Finish Interview"}
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -318,48 +356,31 @@ export function InterviewForm({ projectId }: { projectId: string }) {
 ## Error Handling
 
 ```typescript
-try {
-  const response = await client.messages.create({...});
-} catch (error: any) {
-  if (error instanceof Anthropic.APIError) {
-    console.error("API Error:", {
-      status: error.status,
-      message: error.message,
-      type: error.type,
-    });
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateText, APICallError } from "ai";
 
-    if (error.status === 429) {
-      throw new Error("Rate limited. Please try again in a moment.");
-    } else if (error.status === 401) {
+try {
+  const { text } = await generateText({
+    model: anthropic("claude-sonnet-4"),
+    prompt: "...",
+  });
+} catch (error) {
+  if (error instanceof APICallError) {
+    if (error.statusCode === 429) {
+      // Rate limited - wait and retry
+      const retryAfter = error.responseHeaders?.get("retry-after");
+      throw new Error(`Rate limited. Retry after ${retryAfter} seconds.`);
+    } else if (error.statusCode === 401) {
       throw new Error("Invalid API key");
-    } else if (error.status === 400) {
-      throw new Error("Invalid request. Check your prompt format.");
     }
   }
   throw error;
 }
 ```
 
-## Token Management
+## Cost Estimation
 
-```typescript
-// Count tokens before sending
-const tokenCount = await client.messages.countTokens({
-  model: "claude-sonnet-4-5-20250929",
-  messages: [
-    { role: "user", content: "Your prompt here" },
-  ],
-});
-
-console.log("Estimated input tokens:", tokenCount.input_tokens);
-
-// After response
-console.log("Actual usage:", response.usage);
-// { input_tokens: 123, output_tokens: 456 }
-```
-
-**Cost Estimation**:
-- Claude Sonnet 4.5: ~$3/million input tokens, ~$15/million output tokens
+- Claude Sonnet 4: ~$3/million input tokens, ~$15/million output tokens
 - Typical interview: ~1000 input + 2000 output tokens per round
 - 3 rounds ≈ $0.03 per interview
 

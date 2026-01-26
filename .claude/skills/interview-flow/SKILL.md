@@ -29,28 +29,43 @@ Questions cover:
 - Core features (what can users do?)
 - Integrations (payments? email? third-party APIs?)
 
-## Requirements Schema
+## Using Vercel AI SDK
 
-See [reference.md](reference.md) for complete `Requirements` interface.
-
-## Using Claude API
+We use the Vercel AI SDK with `@ai-sdk/anthropic` provider for all Claude calls.
 
 ```typescript
-import Anthropic from "@anthropic-ai/sdk";
+import { anthropic } from "@ai-sdk/anthropic";
+import { generateText } from "ai";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+// Generate follow-up questions
+const { text } = await generateText({
+  model: anthropic("claude-sonnet-4"),
+  prompt: `Based on this app idea: "${appIdea}"
+
+Generate 3-5 clarifying questions to understand the requirements.
+Format as JSON array: [{ "question": "...", "type": "text|select|multiselect", "options": [...] }]`,
 });
 
-const response = await client.messages.create({
-  model: "claude-sonnet-4-5-20250929",
-  max_tokens: 2048,
-  messages: [{ role: "user", content: "..." }],
-});
+const questions = JSON.parse(text);
 ```
 
-**Model**: `claude-sonnet-4-5-20250929`
+**Model**: `claude-sonnet-4`
 **Cost**: ~$0.03 per 3-round interview
+
+## Streaming (optional)
+
+For real-time question generation:
+
+```typescript
+import { streamText } from "ai";
+
+const result = streamText({
+  model: anthropic("claude-sonnet-4"),
+  prompt: questionPrompt,
+});
+
+return result.toTextStreamResponse();
+```
 
 ## State Management
 
@@ -58,11 +73,23 @@ const response = await client.messages.create({
 - Store final requirements in `projects.requirements`
 - Use Convex actions for all Claude API calls
 
+## Requirements Schema
+
+See [reference.md](reference.md) for complete `Requirements` interface.
+
+## UX Notes (TBD)
+
+Step 2 interview UX needs detailed planning:
+- Form layout vs conversation style
+- Question types (text, select, multiselect)
+- Back navigation behavior
+- Progress indication
+
 ## Reference Files
 
-- [reference.md](reference.md) - Complete Claude API examples, prompts, schemas
+- [reference.md](reference.md) - Complete prompts, schemas, extraction logic
 
 ## External Documentation
 
-- [Anthropic API](https://docs.anthropic.com)
-- Use Context7 MCP for current SDK docs
+- [Vercel AI SDK](https://sdk.vercel.ai/docs)
+- [@ai-sdk/anthropic](https://sdk.vercel.ai/providers/ai-sdk-providers/anthropic)

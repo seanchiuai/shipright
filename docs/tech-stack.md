@@ -29,7 +29,8 @@ Technologies used in Shipright (the builder platform). Generated apps use whatev
 
 | Technology | Model | Purpose |
 |------------|-------|---------|
-| Claude API | claude-sonnet-4-5-20250929 | Interview questions, requirements extraction |
+| Vercel AI SDK | - | Unified API for AI calls, streaming support |
+| @ai-sdk/anthropic | claude-sonnet-4 | Interview questions, requirements extraction |
 
 ### External APIs
 
@@ -58,7 +59,8 @@ Technologies used in Shipright (the builder platform). Generated apps use whatev
     "react-dom": "^18.3.0",
     "convex": "^1.0.0",
     "@convex-dev/auth": "^0.1.0",
-    "@anthropic-ai/sdk": "^0.34.0",
+    "ai": "^4.0.0",
+    "@ai-sdk/anthropic": "^1.0.0",
     "@daytonaio/sdk": "^1.0.0",
     "octokit": "^4.0.0",
     "tailwindcss": "^3.4.0",
