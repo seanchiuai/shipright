@@ -41,6 +41,31 @@ We build modularly. Each phase must be verified before moving to the next:
 
 **Current Phase:** Check `docs/development-progress.yaml` for the active phase. A hook displays this automatically on session start. When a phase is complete, human confirmation is required to mark completed..
 
+## Development with Ralph Loops
+
+Development uses Ralph loops - iterative prompts that run per-phase until complete.
+
+**Structure:**
+- `TASKS.md` → High-level backlog (entire app)
+- `docs/development-progress.yaml` → Current phase
+- Ralph loop prompt → Phase-specific instructions (fed repeatedly)
+
+**Where coding agents find implementation details:**
+
+| Need | Look At |
+|------|---------|
+| **What to build** | `docs/PRD.md` → User stories, acceptance criteria |
+| **How to build it** | `.claude/skills/*/reference.md` → Code patterns, API examples |
+| **UI/UX specs** | `docs/design.md` → Layouts, components, styling |
+
+**Each Ralph loop iteration:**
+1. Receives phase-specific prompt
+2. Reads PRD.md for acceptance criteria
+3. Reads relevant skill's reference.md for patterns
+4. Builds/improves features
+5. Commits changes
+6. Loop continues until phase complete
+
 ## Skills
 
 Domain-specific knowledge lives in `.claude/skills/`. See individual skills for details on:
