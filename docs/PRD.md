@@ -198,7 +198,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Acceptance Criteria:**
 - [x] List of user's projects with: name, created date, GitHub repo link
 - [x] "New Project" button starts interview flow
-- [ ] Click on project shows project details
+- [x] Click on project shows project details
 - [x] Typecheck passes
 - [ ] Verify in browser
 
