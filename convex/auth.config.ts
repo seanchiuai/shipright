@@ -1,7 +1,7 @@
 export default {
   providers: [
     {
-      domain: "https://main-collie-71.clerk.accounts.dev",
+      domain: process.env.CLERK_JWT_ISSUER_DOMAIN,
       applicationID: "convex",
     },
   ],
