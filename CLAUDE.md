@@ -40,8 +40,9 @@ Each phase runs as one Ralph loop. Per iteration:
 
 **Read:**
 1. `docs/PRD.md` → Acceptance criteria for phase's user stories
-2. `.claude/skills/*/reference.md` → Implementation patterns
-3. `docs/design.md` → UI specs (if building UI)
+2. `.claude/skills/*/SKILL.md` → Overview, when to use
+3. `.claude/skills/*/reference.md` → Code patterns, API examples
+4. `docs/design.md` → UI specs (if building UI)
 
 **Build → Test → Commit:**
 - Build feature
