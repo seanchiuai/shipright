@@ -28,9 +28,9 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Acceptance Criteria:**
 - [x] Google OAuth login button on landing page
 - [x] User redirected to Google consent screen
-- [ ] On success, user is redirected to dashboard
-- [ ] User's Google profile (name, email, avatar) stored in Convex
-- [ ] Session persists across browser refreshes
+- [x] On success, user is redirected to dashboard
+- [x] User's Google profile (name, email, avatar) stored in Convex
+- [x] Session persists across browser refreshes
 - [x] Logout button clears session
 - [x] Typecheck passes
 
@@ -200,7 +200,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] "New Project" button starts interview flow
 - [x] Click on project shows project details
 - [x] Typecheck passes
-- [ ] Verify in browser
+- [x] Verify in browser
 
 ### US-014: Template Index Management (Admin)
 **Description:** As an admin, I need to manage the template index so that users get matched to quality templates.

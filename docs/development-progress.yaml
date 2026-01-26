@@ -2,19 +2,25 @@
 # This file tracks which phase of development is currently active
 
 current_phase:
-  phase: 1
-  name: "UI + Authentication"
-  description: "Landing page, Google OAuth, dashboard shell"
-  started: "2026-01-25"
+  phase: 2
+  name: "Interview Flow"
+  description: "AI-guided questions, interactive experience"
+  started: "2026-01-26"
   status: "in-progress"
   completion_criteria:
-    - "Landing page is live and styled"
-    - "Google OAuth login works"
-    - "Dashboard shell renders after login"
-    - "User can log out"
+    - "Dynamic question generation via Claude API"
+    - "Interview navigation (back/forward)"
+    - "State persistence in Convex"
+    - "Requirements extraction"
 
 # Phase History
-completed_phases: []
+completed_phases:
+  - phase: 1
+    name: "UI + Authentication"
+    description: "Landing page, Google OAuth, dashboard shell"
+    started: "2026-01-25"
+    completed: "2026-01-26"
+    status: "complete"
 
 # All Available Phases
 phases:
