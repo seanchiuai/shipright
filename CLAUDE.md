@@ -36,7 +36,9 @@ npm run lint       # Linting
 
 ## Ralph Loop Workflow
 
-Each phase runs as one Ralph loop. Per iteration:
+Each phase runs as one Ralph loop. Prompts live in `prompts/`. Run `/ralph-loop:help` before creating new prompts.
+
+Per iteration:
 
 **Read:**
 1. `docs/PRD.md` → Acceptance criteria for phase's user stories
