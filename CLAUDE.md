@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Shipright helps non-technical founders turn app ideas into GitHub repos. Users complete an AI-guided interview, get matched to a curated template, and receive a repo with AI-optimized scaffolding files.
+Shipright helps non-technical founders turn app ideas into GitHub repos. Users complete an AI-guided interview, get matched to a curated template, and receive a repo with AI-optimized scaffolding files. You are building the MVP of it.
 
 ## Tech Stack
 
@@ -77,3 +77,5 @@ Domain-specific knowledge lives in `.claude/skills/`. See individual skills for 
 - Mark feature as complete without automated user testing
 - Create GitHub repos without explicit user confirmation
 - Store secrets and keys in files not in `.gitignore`
+
+Important: **Always commit changes after every change (even the smallest bug fixes)**
