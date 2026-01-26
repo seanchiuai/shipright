@@ -1,41 +1,57 @@
 # Tasks — Shipright
 
 ## Active
-- [ ] Set up Next.js + Convex project structure
-- [ ] Implement Google OAuth with Convex Auth
+
+- [ ] Initialize Next.js 14 + TypeScript + Tailwind project
+- [ ] Set up Convex and Convex Auth with Google OAuth
 
 ## Backlog
 
-### Phase 1: Foundation
-- [ ] Create landing page with value prop + sign in CTA
-- [ ] Implement user dashboard (project list)
-- [ ] Set up GitHub OAuth connection flow
+### Phase 1: UI + Authentication
+- [ ] Create landing page with value prop + Google sign in CTA
+- [ ] Implement protected dashboard route
+- [ ] Implement logout functionality
+- [ ] Add user avatar dropdown in header
 
 ### Phase 2: Interview Flow
-- [ ] Build Step 1: App idea input
+- [ ] Build Step 1: App idea input (500 char textarea)
 - [ ] Build Step 2: AI follow-up questions (Claude API integration)
-- [ ] Build Step 3: Requirements summary + edit
-- [ ] Store interview data in Convex
+- [ ] Build Step 3: Requirements summary + inline edit
+- [ ] Store interview sessions in Convex
+- [ ] Extract structured requirements from interview
 
-### Phase 3: Template System
+### Phase 3: Template Matching
 - [ ] Define template index schema in Convex
 - [ ] Populate 10 curated templates with capability tags
-- [ ] Build template matching engine (scoring logic)
-- [ ] Build template confirmation UI
+- [ ] Build template scoring algorithm
+- [ ] Build template confirmation UI (what's included vs what will be built)
 
-### Phase 4: Repo Generation
-- [ ] Implement GitHub repo creation via API
+### Phase 4: GitHub Repo Creation
+- [ ] Implement GitHub OAuth connection flow
+- [ ] Clone template to user's GitHub account
+- [ ] Commit template files to new repo
+- [ ] Handle errors (template unavailable, API failures)
+
+### Phase 5: Template Customization (Daytona)
+- [ ] Integrate Daytona SDK
+- [ ] Detect when template has gaps (AI determines)
+- [ ] Spin up sandbox with user's repo
+- [ ] Run Claude Code to build missing features
+- [ ] Commit changes continuously during build
+- [ ] Destroy sandbox after completion
+
+### Phase 6: Scaffolding Generation
 - [ ] Build CLAUDE.md generator
 - [ ] Build TASKS.md generator
 - [ ] Build PRD.md generator
-- [ ] Clone template + add scaffolding to new repo
-- [ ] Success screen with repo link
+- [ ] Build skills directory generator
+- [ ] Commit all scaffolding in single commit
 
-### Post-MVP (Not in scope)
-- [ ] Plan generation from gaps
-- [ ] Daytona sandbox integration
-- [ ] Ralph loop execution
-- [ ] Template marketplace
+### Phase 7: Production Deployment
+- [ ] Deploy to Vercel
+- [ ] Configure production environment variables
+- [ ] Test full flow end-to-end in production
+- [ ] Set up error monitoring
 
 ## Complete
 
@@ -45,14 +61,7 @@
 - [x] Research Claude Code context engineering best practices
 - [x] Define template capability taxonomy
 - [x] Categorize templates (1 per capability type)
-- [x] Write MVP PRD (`tasks/prd-mvp.md`)
-- [x] Update project docs
-
-### v1 (Archived)
-- [x] Lock plan/execution spec for phases 1-4 (2026-01-14)
-- [x] Document tech stack in shipright repo docs (2026-01-14)
-- [x] Gemini CLI vs Codex CLI research (2026-01-14)
-- [x] Agent planning research (2026-01-14)
-- [x] Plan spec format decided (JSON + MD mirrors) (2026-01-14)
-- [x] Build engine decided (Gemini CLI) (2026-01-14)
-- [x] PRD + ralph tasks created (2026-01-14)
+- [x] Write MVP PRD
+- [x] Create development phase tracking
+- [x] Set up skills directory
+- [x] Review and fix planning docs for consistency

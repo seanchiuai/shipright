@@ -2,54 +2,49 @@
 
 ## Overview
 
-This document describes the system design and component architecture for Shipright.
+UI design for Shipright MVP. User flow is linear: Landing → Auth → Interview → Match → Auto-build → Done.
 
 ---
 
-## UI Layout
+## User Flow
 
-### Main Application Layout
+```
+Landing Page → Google Auth → Dashboard → New Project → Interview (3 steps) → Template Match → Auto-build → Success
+```
+
+After interview completes, everything is automatic until scaffolding is done.
+
+---
+
+## Page Layouts
+
+### Landing Page
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│  HEADER                                                            │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │  [Logo] Shipright          [Projects ▼]    [User Avatar ▼]   │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-├────────────────────────────────────────────────────────────────────┤
 │                                                                    │
-│  ┌─────────────────────────┬──────────────────────────────────┐   │
-│  │     CHAT PANEL          │        PREVIEW PANEL             │   │
-│  │     (40% width)         │        (60% width)               │   │
-│  │                         │                                  │   │
-│  │  ┌───────────────────┐  │  ┌────────────────────────────┐  │   │
-│  │  │ Chat messages     │  │  │                            │  │   │
-│  │  │ scrollable        │  │  │     Live Preview           │  │   │
-│  │  │                   │  │  │     (iframe)               │  │   │
-│  │  │                   │  │  │                            │  │   │
-│  │  │                   │  │  │                            │  │   │
-│  │  │                   │  │  │                            │  │   │
-│  │  └───────────────────┘  │  │                            │  │   │
-│  │                         │  │                            │  │   │
-│  │  ┌───────────────────┐  │  └────────────────────────────┘  │   │
-│  │  │ Status bar        │  │                                  │   │
-│  │  │ Phase: Building   │  │  ┌────────────────────────────┐  │   │
-│  │  └───────────────────┘  │  │ [Refresh] [Open] [Download]│  │   │
-│  │                         │  └────────────────────────────┘  │   │
-│  │  ┌───────────────────┐  │                                  │   │
-│  │  │ [Type message...] │  │                                  │   │
-│  │  └───────────────────┘  │                                  │   │
-│  │                         │                                  │   │
-│  └─────────────────────────┴──────────────────────────────────┘   │
+│                         [Logo] Shipright                           │
+│                                                                    │
+│              Describe your app. Get a production-ready             │
+│                         codebase.                                  │
+│                                                                    │
+│                    [Sign in with Google]                           │
+│                                                                    │
+│              ─────────────────────────────────────                 │
+│                                                                    │
+│              How it works:                                         │
+│              1. Describe → Tell us your app idea                   │
+│              2. Match → We find the best template                  │
+│              3. Build → Get a GitHub repo ready to go              │
 │                                                                    │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-### Dashboard Layout
+### Dashboard
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│  HEADER                                                            │
+│  [Logo] Shipright                              [User Avatar ▼]     │
 ├────────────────────────────────────────────────────────────────────┤
 │                                                                    │
 │    Your Projects                              [+ New Project]      │
@@ -57,19 +52,27 @@ This document describes the system design and component architecture for Shiprig
 │    ┌──────────────────┐  ┌──────────────────┐  ┌────────────────┐  │
 │    │  Book Sharing    │  │  Task Manager    │  │  Recipe App    │  │
 │    │                  │  │                  │  │                │  │
-│    │  Status: Ready   │  │  Status: Build   │  │  Status: Sleep │  │
-│    │  Updated: 2h ago │  │  Updated: 5m ago │  │  Updated: 3d   │  │
+│    │  Created: Today  │  │  Created: 2d ago │  │  Created: 1w   │  │
 │    │                  │  │                  │  │                │  │
-│    │  [Open] [Delete] │  │  [Open] [Delete] │  │  [Wake][Delete]│  │
+│    │  [View on GitHub]│  │  [View on GitHub]│  │  [View on GitHub]│ │
 │    └──────────────────┘  └──────────────────┘  └────────────────┘  │
+│                                                                    │
+│    ┌────────────────────────────────────────────────────────────┐  │
+│    │  Empty state: "No projects yet. Create your first one!"   │  │
+│    └────────────────────────────────────────────────────────────┘  │
 │                                                                    │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-### New Project Modal
+### Interview - Step 1 (App Idea)
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
+│  [Logo] Shipright                              [User Avatar ▼]     │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│    Step 1 of 3                                                     │
+│    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │
 │                                                                    │
 │    What do you want to build?                                      │
 │                                                                    │
@@ -78,14 +81,164 @@ This document describes the system design and component architecture for Shiprig
 │    │  I want to build an app where...                          │  │
 │    │                                                            │  │
 │    │                                                            │  │
+│    │                                                            │  │
 │    └────────────────────────────────────────────────────────────┘  │
+│                                                        450/500     │
 │                                                                    │
 │    Examples:                                                       │
 │    • "...people can share and discover book recommendations"       │
 │    • "...freelancers can track their time and invoices"           │
-│    • "...friends can plan trips together"                         │
 │                                                                    │
-│                                    [Cancel]  [Start Building →]    │
+│                                              [Next →]              │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### Interview - Step 2 (AI Questions)
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  [Logo] Shipright                              [User Avatar ▼]     │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│    Step 2 of 3                                    Round 1 of 3     │
+│    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━░░░░░░░░░░░░░░░░░   │
+│                                                                    │
+│    A few questions to understand your app better:                  │
+│                                                                    │
+│    1. Who will use this app?                                       │
+│    ┌────────────────────────────────────────────────────────────┐  │
+│    │  [Text input]                                              │  │
+│    └────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│    2. Do users need to create accounts?                            │
+│    ( ) No, anyone can use it                                       │
+│    (•) Yes, with email/password                                    │
+│    ( ) Yes, with Google login                                      │
+│    ( ) Yes, with multiple options                                  │
+│                                                                    │
+│    3. What's the main thing users will do?                         │
+│    ┌────────────────────────────────────────────────────────────┐  │
+│    │  [Text input]                                              │  │
+│    └────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│                                    [← Back]     [Next →]           │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+Note: Step 2 UX needs more detailed planning. Form vs chat, question types, back navigation behavior TBD.
+
+### Interview - Step 3 (Requirements Summary)
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  [Logo] Shipright                              [User Avatar ▼]     │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│    Step 3 of 3                                                     │
+│    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   │
+│                                                                    │
+│    Here's what we understood. Edit anything that's wrong:          │
+│                                                                    │
+│    ┌────────────────────────────────────────────────────────────┐  │
+│    │  App Name: BookShare                              [Edit]   │  │
+│    ├────────────────────────────────────────────────────────────┤  │
+│    │  Problem: People want to share book recs          [Edit]   │  │
+│    ├────────────────────────────────────────────────────────────┤  │
+│    │  Users: Readers, Book clubs                       [Edit]   │  │
+│    ├────────────────────────────────────────────────────────────┤  │
+│    │  Auth: Google login                               [Edit]   │  │
+│    ├────────────────────────────────────────────────────────────┤  │
+│    │  Features:                                        [Edit]   │  │
+│    │  • Add books to reading list                               │  │
+│    │  • Share recommendations                                   │  │
+│    │  • Follow other readers                                    │  │
+│    ├────────────────────────────────────────────────────────────┤  │
+│    │  Payments: None                                   [Edit]   │  │
+│    └────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│                      [Start Over]     [Confirm & Build →]          │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### Building Progress (Autonomous)
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  [Logo] Shipright                              [User Avatar ▼]     │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│                    Building your app...                            │
+│                                                                    │
+│    ┌────────────────────────────────────────────────────────────┐  │
+│    │                                                            │  │
+│    │  ✓ Found matching template: SaaS Starter                   │  │
+│    │  ✓ Connected to GitHub                                     │  │
+│    │  ✓ Created repository: bookshare-app                       │  │
+│    │  → Customizing for your requirements...                    │  │
+│    │  ○ Generating project documentation                        │  │
+│    │                                                            │  │
+│    │  ████████████████████░░░░░░░░░░  65%                       │  │
+│    │                                                            │  │
+│    └────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│    This usually takes 2-5 minutes. You can close this page        │
+│    and we'll email you when it's ready.                           │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### Success Page
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  [Logo] Shipright                              [User Avatar ▼]     │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│                         Your app is ready!                         │
+│                                                                    │
+│    ┌────────────────────────────────────────────────────────────┐  │
+│    │                                                            │  │
+│    │  BookShare                                                 │  │
+│    │  github.com/username/bookshare-app                         │  │
+│    │                                                            │  │
+│    │  Template: SaaS Starter                                    │  │
+│    │  Stack: Next.js, Convex, Tailwind, shadcn/ui               │  │
+│    │                                                            │  │
+│    │  Files generated:                                          │  │
+│    │  • CLAUDE.md - AI development guide                        │  │
+│    │  • TASKS.md - Feature backlog                              │  │
+│    │  • PRD.md - Product requirements                           │  │
+│    │                                                            │  │
+│    └────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│         [View on GitHub]          [Back to Dashboard]              │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### GitHub Connection (Before First Build)
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  [Logo] Shipright                              [User Avatar ▼]     │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│    Connect your GitHub account                                     │
+│                                                                    │
+│    We need access to create repositories for your projects.        │
+│                                                                    │
+│                    [Connect GitHub]                                │
+│                                                                    │
+│    We will:                                                        │
+│    ✓ Create private repositories for your apps                     │
+│    ✓ Commit code and documentation                                 │
+│                                                                    │
+│    We will NOT:                                                    │
+│    ✗ Access your existing repositories                             │
+│    ✗ Read your private code                                        │
 │                                                                    │
 └────────────────────────────────────────────────────────────────────┘
 ```
@@ -96,186 +249,32 @@ This document describes the system design and component architecture for Shiprig
 
 ```
 App
-├── AuthProvider (Clerk)
-├── ConvexProvider
+├── ConvexProvider + ConvexAuthProvider
 └── Router
-    ├── /login → LoginPage
-    ├── /signup → SignupPage
-    ├── /dashboard → DashboardPage
+    ├── / → LandingPage
+    │   └── GoogleSignInButton
+    ├── /dashboard → DashboardPage (protected)
     │   ├── Header
     │   ├── ProjectGrid
     │   │   └── ProjectCard (repeat)
-    │   └── NewProjectModal
-    └── /project/:id → ProjectPage
+    │   └── NewProjectButton
+    ├── /interview/:projectId → InterviewPage (protected)
+    │   ├── Header
+    │   ├── ProgressBar
+    │   ├── Step1AppIdea | Step2Questions | Step3Summary
+    │   └── NavigationButtons
+    ├── /building/:projectId → BuildingPage (protected)
+    │   ├── Header
+    │   ├── ProgressSteps
+    │   └── ProgressBar
+    ├── /success/:projectId → SuccessPage (protected)
+    │   ├── Header
+    │   ├── ProjectSummary
+    │   └── ActionButtons
+    └── /connect-github → GitHubConnectPage (protected)
         ├── Header
-        ├── ChatPanel
-        │   ├── MessageList
-        │   │   └── Message (repeat)
-        │   ├── StatusBar
-        │   └── InputBox
-        └── PreviewPanel
-            ├── PreviewFrame (iframe)
-            └── PreviewControls
+        └── ConnectButton
 ```
-
----
-
-## State Management
-
-### Convex Queries
-
-```typescript
-// Get all projects for current user
-useQuery(api.projects.list)
-
-// Get single project
-useQuery(api.projects.get, { projectId })
-
-// Get messages for project
-useQuery(api.messages.list, { projectId })
-
-// Get build progress
-useQuery(api.buildProgress.get, { projectId })
-```
-
-### Convex Mutations
-
-```typescript
-// Create new project
-useMutation(api.projects.create)
-
-// Update project status
-useMutation(api.projects.updateStatus)
-
-// Add message
-useMutation(api.messages.create)
-
-// Delete project
-useMutation(api.projects.delete)
-```
-
-### Local State (React)
-
-```typescript
-interface LocalState {
-  // UI state
-  isNewProjectModalOpen: boolean
-  isSidebarCollapsed: boolean
-
-  // Input state
-  messageInput: string
-
-  // Loading states
-  isSendingMessage: boolean
-  isDownloading: boolean
-}
-```
-
----
-
-## API Routes
-
-### POST /api/projects
-Create new project.
-
-**Request:**
-```json
-{
-  "idea": "I want to build an app where..."
-}
-```
-
-**Response:**
-```json
-{
-  "projectId": "abc123",
-  "status": "discovery"
-}
-```
-
-### POST /api/chat
-Send message to project chat.
-
-**Request:**
-```json
-{
-  "projectId": "abc123",
-  "message": "User's message"
-}
-```
-
-**Response:**
-```json
-{
-  "messageId": "msg123",
-  "status": "processing"
-}
-```
-
-### POST /api/sandbox/create
-Create Daytona sandbox for project.
-
-**Request:**
-```json
-{
-  "projectId": "abc123"
-}
-```
-
-**Response:**
-```json
-{
-  "sandboxId": "dtn-xyz",
-  "status": "creating"
-}
-```
-
-### POST /api/sandbox/wake
-Wake sleeping sandbox.
-
-**Request:**
-```json
-{
-  "projectId": "abc123"
-}
-```
-
-**Response:**
-```json
-{
-  "sandboxId": "dtn-xyz",
-  "previewUrl": "https://..."
-}
-```
-
-### GET /api/download/:projectId
-Download project as zip.
-
-**Response:** Binary zip file
-
----
-
-## Real-time Updates
-
-Convex provides real-time sync automatically. When data changes:
-
-1. **Build progress updates:**
-   - Claude completes a step
-   - Server updates `buildProgress` in Convex
-   - Frontend automatically receives update
-   - UI shows new status
-
-2. **Chat messages:**
-   - Claude responds
-   - Server adds message to Convex
-   - Frontend automatically receives message
-   - UI shows new message
-
-3. **Preview URL:**
-   - Dev server starts
-   - Server updates project with previewUrl
-   - Frontend receives update
-   - UI loads preview iframe
 
 ---
 
@@ -284,9 +283,8 @@ Convex provides real-time sync automatically. When data changes:
 ### Design Tokens
 
 ```css
-/* Colors */
+/* Colors - Dark theme */
 --color-primary: #6366f1;      /* Indigo */
---color-secondary: #8b5cf6;    /* Purple */
 --color-success: #22c55e;      /* Green */
 --color-warning: #f59e0b;      /* Amber */
 --color-error: #ef4444;        /* Red */
@@ -297,149 +295,53 @@ Convex provides real-time sync automatically. When data changes:
 
 --color-text: #fafafa;         /* White */
 --color-text-muted: #a1a1aa;   /* Gray text */
-
-/* Spacing */
---space-1: 0.25rem;
---space-2: 0.5rem;
---space-3: 0.75rem;
---space-4: 1rem;
---space-6: 1.5rem;
---space-8: 2rem;
-
-/* Radii */
---radius-sm: 0.375rem;
---radius-md: 0.5rem;
---radius-lg: 0.75rem;
---radius-xl: 1rem;
 ```
 
-### Component Examples
+### Component Styling
 
-**Message Bubble (User):**
-```
-┌─────────────────────────────────────┐
-│  I want to build an app where      │  bg: primary
-│  people can share books            │  text: white
-└─────────────────────────────────────┘  align: right
-```
-
-**Message Bubble (Assistant):**
-```
-┌─────────────────────────────────────┐
-│  Great! Let me ask you a few       │  bg: surface
-│  questions to understand better... │  text: white
-└─────────────────────────────────────┘  align: left
-```
-
-**Status Bar:**
-```
-┌─────────────────────────────────────┐
-│  ● Building                         │
-│  Setting up authentication...       │  bg: surface
-│  ████████░░░░░░░░  50%             │  border: border
-└─────────────────────────────────────┘
-```
+Using shadcn/ui components with Tailwind. See ui-components skill for patterns.
 
 ---
 
 ## Responsive Behavior
 
 ### Desktop (> 1024px)
-- Side-by-side chat and preview
-- Chat: 40%, Preview: 60%
+- Centered content, max-width container
+- Full form layouts
 
 ### Tablet (768px - 1024px)
-- Side-by-side but compressed
-- Chat: 45%, Preview: 55%
+- Slightly narrower container
+- Same layouts
 
 ### Mobile (< 768px)
-- Stacked layout
-- Toggle between chat and preview
-- Bottom tabs: [Chat] [Preview]
+- Full-width forms
+- Stacked project cards
+- Smaller text
 
 ---
 
 ## Loading States
 
-### Project Loading
-```
-┌────────────────────────────────────┐
-│                                    │
-│        [Spinning loader]           │
-│                                    │
-│        Loading project...          │
-│                                    │
-└────────────────────────────────────┘
-```
-
-### Build In Progress
-```
-┌────────────────────────────────────┐
-│  ● Building your app               │
-│                                    │
-│  ✓ Project initialized             │
-│  ✓ Dependencies installed          │
-│  → Setting up database...          │
-│  ○ Creating pages                  │
-│  ○ Starting preview                │
-│                                    │
-└────────────────────────────────────┘
-```
-
-### Sandbox Waking
-```
-┌────────────────────────────────────┐
-│                                    │
-│        [Spinning loader]           │
-│                                    │
-│        Waking up sandbox...        │
-│        This takes ~30 seconds      │
-│                                    │
-└────────────────────────────────────┘
-```
-
----
+- **Page loading**: Skeleton screens
+- **Form submitting**: Button shows spinner, disabled
+- **Building**: Progress steps with checkmarks
 
 ## Error States
 
-### Build Failed
-```
-┌────────────────────────────────────┐
-│  ✗ Build failed                    │
-│                                    │
-│  Something went wrong while        │
-│  setting up your project.          │
-│                                    │
-│  [View Details]  [Try Again]       │
-│                                    │
-└────────────────────────────────────┘
-```
-
-### Sandbox Unavailable
-```
-┌────────────────────────────────────┐
-│  Sandbox unavailable               │
-│                                    │
-│  Your project's environment has    │
-│  expired. Click below to restart.  │
-│                                    │
-│  [Wake Sandbox]                    │
-│                                    │
-└────────────────────────────────────┘
-```
+- **Form errors**: Inline below input, red text
+- **API errors**: Toast notification with retry option
+- **Build failed**: Error message with "Try Again" button
 
 ---
 
-## Accessibility
+## Incomplete / TBD
 
-- All interactive elements have focus states
-- Color contrast meets WCAG AA
-- Screen reader labels on icons
-- Keyboard navigation throughout
-- Loading states announced to screen readers
-- Error messages associated with inputs
+- [ ] Step 2 interview UX - form layout, question types, back navigation
+- [ ] Edit modals for Step 3 summary
+- [ ] Email notification design (when build completes)
+- [ ] Settings page (disconnect GitHub, delete account)
 
 ---
 
-**Document Version:** 1.0
-**Created:** 2026-01-23
+**Document Version:** 2.0 (MVP rewrite)
+**Updated:** 2026-01-25
