@@ -26,24 +26,24 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Description:** As a user, I want to sign in with Google so that I can save my projects and access them later.
 
 **Acceptance Criteria:**
-- [ ] Google OAuth login button on landing page
+- [x] Google OAuth login button on landing page
 - [ ] User redirected to Google consent screen
 - [ ] On success, user is redirected to dashboard
 - [ ] User's Google profile (name, email, avatar) stored in Convex
 - [ ] Session persists across browser refreshes
-- [ ] Logout button clears session
-- [ ] Typecheck passes
+- [x] Logout button clears session
+- [x] Typecheck passes
 
 ### US-002: Landing Page
 **Description:** As a visitor, I want to understand what Shipwright does so that I can decide to sign up.
 
 **Acceptance Criteria:**
-- [ ] Hero section with value proposition: "Describe your app. Get a production-ready codebase."
-- [ ] "Sign in with Google" CTA button
-- [ ] Brief explanation of the 3-step process (Describe → Match → Build)
-- [ ] No pricing or marketplace mentions (out of scope)
-- [ ] Typecheck passes
-- [ ] Verify in browser
+- [x] Hero section with value proposition: "Describe your app. Get a production-ready codebase."
+- [x] "Sign in with Google" CTA button
+- [x] Brief explanation of the 3-step process (Describe → Match → Build)
+- [x] No pricing or marketplace mentions (out of scope)
+- [x] Typecheck passes
+- [x] Verify in browser
 
 ### US-003: Interview Flow - Step 1 (App Idea)
 **Description:** As a user, I want to describe my app idea in plain language so that Shipwright understands what I'm building.
@@ -196,10 +196,10 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Description:** As a user, I want to see my projects so that I can access them later.
 
 **Acceptance Criteria:**
-- [ ] List of user's projects with: name, created date, GitHub repo link
-- [ ] "New Project" button starts interview flow
+- [x] List of user's projects with: name, created date, GitHub repo link
+- [x] "New Project" button starts interview flow
 - [ ] Click on project shows project details
-- [ ] Typecheck passes
+- [x] Typecheck passes
 - [ ] Verify in browser
 
 ### US-014: Template Index Management (Admin)
