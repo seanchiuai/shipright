@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useUser, UserButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
@@ -12,24 +12,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useSyncUser } from "@/hooks/useSyncUser";
 
 export default function DashboardPage() {
-  const { signOut } = useAuthActions();
+  const { user: clerkUser, isLoaded } = useUser();
   const router = useRouter();
-  const user = useQuery(api.users.current);
+
+  const convexUser = useSyncUser();
   const projects = useQuery(
     api.projects.list,
-    user ? { userId: user._id } : "skip"
+    convexUser ? { userId: convexUser._id } : "skip"
   );
 
-  if (user === undefined) {
+  if (!isLoaded || convexUser === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -37,7 +32,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
+  if (!clerkUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Please sign in</p>
@@ -50,27 +45,12 @@ export default function DashboardPage() {
       <header className="border-b border-border">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold">Shipright</h1>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.image} alt={user.name} />
-                  <AvatarFallback>
-                    {user.name?.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="hidden sm:inline">{user.name}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => void signOut()}
-                className="cursor-pointer"
-              >
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline text-sm">
+              {clerkUser.fullName || clerkUser.primaryEmailAddress?.emailAddress}
+            </span>
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </div>
       </header>
 

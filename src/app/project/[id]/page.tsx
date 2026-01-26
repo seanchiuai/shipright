@@ -12,25 +12,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { UserButton, useUser } from "@clerk/nextjs";
+import { useSyncUser } from "@/hooks/useSyncUser";
 
 export default function ProjectDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  const { signOut } = useAuthActions();
+  const { user: clerkUser, isLoaded } = useUser();
   const projectId = params.id as Id<"projects">;
 
-  const user = useQuery(api.users.current);
+  const convexUser = useSyncUser();
   const project = useQuery(api.projects.get, { projectId });
 
-  if (user === undefined || project === undefined) {
+  if (!isLoaded || convexUser === undefined || project === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -38,7 +32,7 @@ export default function ProjectDetailsPage() {
     );
   }
 
-  if (!user) {
+  if (!clerkUser) {
     router.push("/");
     return null;
   }
@@ -83,27 +77,12 @@ export default function ProjectDetailsPage() {
           <Button variant="ghost" onClick={() => router.push("/dashboard")}>
             Shipright
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.image} alt={user.name || ""} />
-                  <AvatarFallback>
-                    {user.name?.charAt(0).toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="hidden sm:inline">{user.name}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => void signOut()}
-                className="cursor-pointer"
-              >
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline text-sm">
+              {clerkUser.fullName || clerkUser.primaryEmailAddress?.emailAddress}
+            </span>
+            <UserButton afterSignOutUrl="/" />
+          </div>
         </div>
       </header>
 

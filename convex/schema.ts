@@ -1,20 +1,16 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
-  ...authTables,
-
-  // Override default users table to add custom fields
   users: defineTable({
+    clerkUserId: v.string(),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
     email: v.optional(v.string()),
-    emailVerificationTime: v.optional(v.number()),
-    isAnonymous: v.optional(v.boolean()),
-    // Custom fields
     githubToken: v.optional(v.string()),
-  }).index("email", ["email"]),
+  })
+    .index("by_clerk_id", ["clerkUserId"])
+    .index("email", ["email"]),
 
   projects: defineTable({
     userId: v.id("users"),
