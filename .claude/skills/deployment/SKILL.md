@@ -21,7 +21,8 @@ Before deploying:
 - [ ] All phases 1-6 complete and verified
 - [ ] Convex production deployment set up
 - [ ] All API keys ready
-- [ ] OAuth apps configured for production URLs
+- [ ] Clerk production instance configured
+- [ ] GitHub OAuth app configured for production URLs
 
 ## Deployment Sequence
 

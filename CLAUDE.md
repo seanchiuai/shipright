@@ -5,7 +5,8 @@ Shipright helps non-technical founders turn app ideas into GitHub repos via AI-g
 ## Tech Stack
 
 - Next.js 14 (App Router) + TypeScript + Tailwind + shadcn/ui
-- Convex (database, serverless functions, auth with Google OAuth)
+- Convex (database, serverless functions)
+- Clerk (authentication with Google OAuth)
 - Vercel AI SDK + @ai-sdk/anthropic (AI calls)
 - GitHub API via Octokit (repo creation)
 - Daytona SDK (template customization)
@@ -59,17 +60,17 @@ Per iteration:
 ## Skills
 
 Implementation patterns live in `.claude/skills/`:
+- `clerk-auth/`, `convex-patterns/`, `ui-components/`
 - `interview-flow/`, `template-matching/`, `github-integration/`
 - `daytona-sandbox/`, `scaffolding-generation/`, `deployment/`
-- `convex-patterns/`, `ui-components/`, `create-skill/`
 
 ## Environment Variables
 
 ```bash
 CONVEX_DEPLOYMENT=...
 NEXT_PUBLIC_CONVEX_URL=...
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
 ANTHROPIC_API_KEY=sk-ant-...
@@ -83,6 +84,7 @@ DAYTONA_API_URL=https://api.daytona.io
 - Test every change before committing
 - Commit after every small change (when tests pass)
 - Sacrifice grammar for conciseness
+- Follow vercel react best practices
 - Only work on current phase
 
 **Never:** Skip tests. Store secrets outside `.gitignore`.

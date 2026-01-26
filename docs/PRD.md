@@ -22,17 +22,17 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 
 ## User Stories
 
-### US-001: Google OAuth Authentication
+### US-001: Authentication via Clerk
 **Description:** As a user, I want to sign in with Google so that I can save my projects and access them later.
 
 **Acceptance Criteria:**
-- [x] Google OAuth login button on landing page
-- [x] User redirected to Google consent screen
-- [x] On success, user is redirected to dashboard
-- [x] User's Google profile (name, email, avatar) stored in Convex
-- [x] Session persists across browser refreshes
-- [x] Logout button clears session
-- [x] Typecheck passes
+- [ ] Sign in button on landing page (Clerk SignInButton)
+- [ ] User redirected to Clerk-managed sign-in page
+- [ ] On success, user is redirected to dashboard
+- [ ] User's profile (name, email, avatar) available via Clerk
+- [ ] Session persists across browser refreshes via Clerk
+- [ ] Logout via Clerk UserButton or signOut
+- [ ] Typecheck passes
 
 ### US-002: Landing Page
 **Description:** As a visitor, I want to understand what Shipwright does so that I can decide to sign up.
@@ -218,9 +218,9 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Acceptance Criteria:**
 - [ ] Shipright deployed to Vercel
 - [ ] Convex deployed to production
-- [ ] All environment variables configured (Claude API, GitHub OAuth, Google OAuth, Daytona)
+- [ ] All environment variables configured (Claude API, GitHub OAuth, Clerk, Daytona)
 - [ ] Landing page accessible at production URL
-- [ ] Google OAuth works in production
+- [ ] Clerk authentication works in production
 - [ ] GitHub OAuth works in production
 - [ ] Full flow tested end-to-end in production
 - [ ] Error monitoring in place (Vercel logs, Convex dashboard)
@@ -230,9 +230,9 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 ## Functional Requirements
 
 ### Authentication
-- FR-1: Users authenticate via Google OAuth
+- FR-1: Users authenticate via Clerk (Google OAuth)
 - FR-2: Users can connect GitHub account for repo creation
-- FR-3: Session persists via Convex auth
+- FR-3: Session persists via Clerk
 
 ### Interview Flow
 - FR-4: Interview begins with single open-ended question
@@ -282,7 +282,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 ### Stack
 - **Framework:** Next.js 14 (App Router)
 - **Database:** Convex (real-time, serverless)
-- **Auth:** Convex Auth with Google OAuth provider
+- **Auth:** Clerk (Google OAuth provider)
 - **UI:** shadcn/ui + Tailwind CSS
 - **AI:** Claude API for interview question generation and requirement extraction
 - **GitHub:** GitHub OAuth + GitHub API for repo creation

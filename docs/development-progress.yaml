@@ -17,7 +17,7 @@ current_phase:
 completed_phases:
   - phase: 1
     name: "UI + Authentication"
-    description: "Landing page, Google OAuth, dashboard shell"
+    description: "Landing page, Clerk auth, dashboard shell"
     started: "2026-01-25"
     completed: "2026-01-26"
     status: "complete"
@@ -26,10 +26,10 @@ completed_phases:
 phases:
   1:
     name: "UI + Authentication"
-    description: "Landing page, Google OAuth, dashboard shell"
+    description: "Landing page, Clerk auth, dashboard shell"
     key_deliverables:
       - "Landing page with hero section"
-      - "Google OAuth integration via Convex"
+      - "Clerk authentication integration"
       - "Protected dashboard route"
       - "Logout functionality"
 

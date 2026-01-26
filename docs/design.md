@@ -2,14 +2,14 @@
 
 ## Overview
 
-UI design for Shipright MVP. User flow is linear: Landing → Auth → Interview → Match → Auto-build → Done.
+UI design for Shipright MVP. User flow is linear: Landing → Clerk Sign-in → Interview → Match → Auto-build → Done.
 
 ---
 
 ## User Flow
 
 ```
-Landing Page → Google Auth → Dashboard → New Project → Interview (3 steps) → Template Match → Auto-build → Success
+Landing Page → Clerk Sign-in → Dashboard → New Project → Interview (3 steps) → Template Match → Auto-build → Success
 ```
 
 After interview completes, everything is automatic until scaffolding is done.
@@ -249,10 +249,10 @@ Note: Step 2 UX needs more detailed planning. Form vs chat, question types, back
 
 ```
 App
-├── ConvexProvider + ConvexAuthProvider
+├── ClerkProvider + ConvexProvider
 └── Router
     ├── / → LandingPage
-    │   └── GoogleSignInButton
+    │   └── SignInButton (Clerk)
     ├── /dashboard → DashboardPage (protected)
     │   ├── Header
     │   ├── ProjectGrid
