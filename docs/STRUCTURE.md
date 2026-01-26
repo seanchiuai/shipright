@@ -13,7 +13,6 @@ This file documents the organization of the Shipright codebase.
 Claude Code configuration and domain-specific knowledge.
 
 - `settings.json` - Claude Code settings (hooks, permissions)
-- `update-phase.sh` - Script to update development phase
 - `skills/` - Domain-specific knowledge modules
   - `interview-flow/` - AI-guided interview logic
   - `template-matching/` - Template scoring algorithm

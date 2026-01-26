@@ -70,7 +70,7 @@ Domain-specific knowledge lives in `.claude/skills/`. See individual skills for 
 - Only work on the current phase
 - Verify features are WORKING, not just built
 - Sacrifise grammar for the sake of conciseness in your responses and documentation
-- Update `docs/development-progress.yaml` when moving to next phase (use `./.claude/update-phase.sh`)
+- Update `docs/development-progress.yaml` when moving to next phase
 - Commit changes after every change (even the smallest bug fixes).
 
 **Never:**
