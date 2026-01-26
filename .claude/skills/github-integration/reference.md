@@ -152,6 +152,98 @@ Add to `.env.local`:
 ENCRYPTION_KEY=your_hex_encoded_key_here
 ```
 
+## Template Cloning
+
+Fetch all files from a public template repo and commit to user's new repo.
+
+```typescript
+// convex/github.ts
+export const cloneTemplate = action({
+  args: {
+    templateRepoFullName: v.string(), // "owner/repo" of template
+    newRepoName: v.string(),
+    userId: v.id("users"),
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.runQuery(api.users.get, { userId: args.userId });
+    const accessToken = decryptToken(user.githubToken);
+    const octokit = new Octokit({ auth: accessToken });
+
+    const [templateOwner, templateRepo] = args.templateRepoFullName.split("/");
+
+    // 1. Get all files from template repo
+    const files = await fetchRepoFiles(octokit, templateOwner, templateRepo);
+
+    // 2. Create new private repo
+    const { data: newRepo } = await octokit.rest.repos.createForAuthenticatedUser({
+      name: args.newRepoName,
+      private: true,
+      auto_init: false,
+    });
+
+    // 3. Commit all template files
+    await commitFiles(octokit, newRepo.owner.login, newRepo.name, files,
+      `Initial commit from Shipright template: ${templateRepo}`);
+
+    // 4. Save to project
+    await ctx.runMutation(api.projects.updateGitHubRepo, {
+      projectId: args.projectId,
+      repoUrl: newRepo.html_url,
+      repoFullName: newRepo.full_name,
+    });
+
+    return { repoUrl: newRepo.html_url };
+  },
+});
+
+// Recursively fetch all files from a repo
+async function fetchRepoFiles(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  path: string = ""
+): Promise<Array<{ path: string; content: string }>> {
+  const { data: contents } = await octokit.rest.repos.getContent({
+    owner,
+    repo,
+    path,
+  });
+
+  const files: Array<{ path: string; content: string }> = [];
+
+  for (const item of Array.isArray(contents) ? contents : [contents]) {
+    if (item.type === "file" && item.download_url) {
+      const response = await fetch(item.download_url);
+      const content = await response.text();
+      files.push({ path: item.path, content });
+    } else if (item.type === "dir") {
+      const subFiles = await fetchRepoFiles(octokit, owner, repo, item.path);
+      files.push(...subFiles);
+    }
+  }
+
+  return files;
+}
+```
+
+**Template Unavailable Handling:**
+
+```typescript
+try {
+  const files = await fetchRepoFiles(octokit, templateOwner, templateRepo);
+} catch (error: any) {
+  if (error.status === 404) {
+    // Template repo not found - trigger re-match
+    await ctx.runMutation(api.templates.markUnavailable, {
+      templateId: args.templateId
+    });
+    throw new Error("TEMPLATE_UNAVAILABLE");
+  }
+  throw error;
+}
+```
+
 ## Repository Creation with Octokit
 
 ```typescript

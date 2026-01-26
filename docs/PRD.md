@@ -105,26 +105,30 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [ ] Verify in browser
 
 ### US-008: GitHub Repository Generation
-**Description:** As a user, I want Shipwright to create a GitHub repository with my template so that I have a codebase to work with.
+**Description:** As a user, I want Shipright to automatically create a GitHub repository with my template so that I have a codebase to work with.
 
 **Acceptance Criteria:**
-- [ ] User must have connected GitHub account (OAuth)
-- [ ] Prompt for repository name (auto-suggested from app name)
-- [ ] Repository created under user's GitHub account
-- [ ] Template files cloned into repository
-- [ ] Agentic scaffolding files (CLAUDE.md, TASKS.md, PRD.md) added to repository
-- [ ] Initial commit with message: "Initial commit from Shipwright"
-- [ ] Success screen with link to new repository
+- [ ] User must have connected GitHub account (OAuth) before build starts
+- [ ] Repository name auto-generated from app name (no user prompt, can rename on GitHub later)
+- [ ] Repository created as **private** by default
+- [ ] Template files fetched via GitHub API and committed to new repo
+- [ ] If template unavailable, re-run matching with next best template
+- [ ] Initial commit with message: "Initial commit from Shipright template: {templateName}"
+- [ ] Flow is autonomous - no user confirmation required for repo creation
+- [ ] Success screen shown after scaffolding complete (Phase 6)
 - [ ] Typecheck passes
 
 ### US-009: GitHub OAuth Connection
-**Description:** As a user, I want to connect my GitHub account so that Shipwright can create repositories on my behalf.
+**Description:** As a user, I want to connect my GitHub account so that Shipright can create repositories on my behalf.
 
 **Acceptance Criteria:**
-- [ ] "Connect GitHub" button in user settings or during repo generation flow
-- [ ] GitHub OAuth flow with repo creation scope
-- [ ] GitHub access token stored securely in Convex
-- [ ] User can disconnect GitHub from settings
+- [ ] "Connect GitHub" button shown before first build (if not already connected)
+- [ ] GitHub OAuth flow requests `repo` + `user:email` scopes
+- [ ] User redirected to GitHub to authorize
+- [ ] GitHub access token encrypted (AES-256-GCM) and stored in Convex
+- [ ] Token validated before any GitHub operations
+- [ ] User can disconnect GitHub from settings/profile
+- [ ] If token expires (401 error), prompt user to reconnect
 - [ ] Typecheck passes
 
 ### US-010: CLAUDE.md Generation
@@ -381,13 +385,27 @@ interface Requirements {
 
 ---
 
+## Resolved Questions
+
+1. **GitHub OAuth scope:** `repo` (for private repo creation) + `user:email` (for identification). Using `repo` instead of `public_repo` because repos are private by default.
+
+2. **Rate limiting:** GitHub allows 5,000 requests/hour per authenticated user. Implement backoff and show wait time to user if rate limited.
+
+3. **Template updates:** Templates are public GitHub repos. If a template becomes unavailable (deleted/private), re-run matching with next best template. Admin gets notified to update template index.
+
+4. **Error handling:**
+   - GitHub API failure: Inform user, offer retry
+   - Daytona timeout: Inform user, offer retry
+   - Claude API rate limit: Wait for reset, continue automatically
+   - Template unavailable: Re-match to different template
+
+5. **Template licensing:** Include attribution in generated README. Most templates use MIT license which permits this use.
+
 ## Open Questions
 
-1. **GitHub OAuth scope:** What exact scopes needed for repo creation? (repo, user:email)
-2. **Rate limiting:** How to handle users creating many repos quickly?
-3. **Template updates:** How to update template index when upstream templates change?
-4. **Error handling:** What happens if GitHub repo creation fails mid-process?
-5. **Template licensing:** How to handle attribution for open-source templates?
+1. **Interview flow UX:** Step 2 form layout, question types, back navigation behavior - needs detailed design.
+
+2. **Daytona trigger conditions:** How to determine if template has gaps. AI-determined based on prompts, refined during development.
 
 ---
 
