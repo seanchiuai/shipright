@@ -63,8 +63,11 @@ Development uses Ralph loops - iterative prompts that run per-phase until comple
 2. Reads PRD.md for acceptance criteria
 3. Reads relevant skill's reference.md for patterns
 4. Builds/improves features
-5. Commits changes
-6. Loop continues until phase complete
+5. **Tests with agent-browser** (verify change works)
+6. Commits changes (only if tests pass)
+7. Loop continues until phase complete
+
+**Testing is mandatory after every change.** Use agent-browser to verify UI and flows work before committing.
 
 ## Skills
 
@@ -93,10 +96,11 @@ Domain-specific knowledge lives in `.claude/skills/`. See individual skills for 
 
 **Always:**
 - Only work on the current phase
+- **Test every change with agent-browser before committing**
 - Verify features are WORKING, not just built
 - Sacrifice grammar for conciseness in responses and documentation
 - Update `docs/development-progress.yaml` when moving to next phase
-- Commit changes after every change (even the smallest bug fixes)
+- Commit only after tests pass
 
 **Never:**
 - Mark feature as complete without automated testing
