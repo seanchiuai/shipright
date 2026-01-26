@@ -77,6 +77,10 @@ DAYTONA_API_URL=https://api.daytona.io
 
 ## Boundaries
 
-**Always:** Test every change before committing. Only work on current phase.
+**Always:**
+- Test every change before committing
+- Commit after every small change (when tests pass)
+- Sacrifice grammar for conciseness
+- Only work on current phase
 
 **Never:** Skip tests. Store secrets outside `.gitignore`.
