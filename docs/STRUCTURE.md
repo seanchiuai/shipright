@@ -2,13 +2,9 @@
 
 This file documents the organization of the Shipright codebase.
 
-## Root Planning Docs
+## Root Files
 
 - `CLAUDE.md` - Guidance for Claude Code when working in this repo
-- `STRUCTURE.md` - This file, documents repo organization
-- `PRD.md` - Current MVP product requirements
-- `tech-stack.md` - Detailed technology choices and rationale
-- `design.md` - UI/UX specifications
 - `TASKS.md` - Development task backlog
 
 ## Directories
@@ -33,6 +29,10 @@ Claude Code configuration and domain-specific knowledge.
 ### `docs/`
 Project documentation and tracking.
 
+- `STRUCTURE.md` - This file, documents repo organization
+- `PRD.md` - Current MVP product requirements
+- `tech-stack.md` - Detailed technology choices and rationale
+- `design.md` - UI/UX specifications
 - `development-progress.yaml` - Current phase tracking (source of truth)
 - `README.md` - Documentation index
 

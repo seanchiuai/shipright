@@ -56,10 +56,10 @@ Domain-specific knowledge lives in `.claude/skills/`. See individual skills for 
 
 ## Planning Docs
 
-- `STRUCTURE.md` - Repository organization and directory layout
-- `PRD.md` - Current MVP PRD
-- `tech-stack.md` - Detailed tech choices
-- `design.md` - UI specs
+- `docs/STRUCTURE.md` - Repository organization and directory layout
+- `docs/PRD.md` - Current MVP PRD
+- `docs/tech-stack.md` - Detailed tech choices
+- `docs/design.md` - UI specs
 - `TASKS.md` - Task backlog
 - `docs/development-progress.yaml` - Current phase tracking (source of truth for which phase is active)
 
