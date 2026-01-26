@@ -82,14 +82,35 @@ Domain-specific knowledge lives in `.claude/skills/`. See individual skills for 
 - UI components
 - Production deployment
 
+## Environment Variables
+
+```bash
+# Convex
+CONVEX_DEPLOYMENT=...
+NEXT_PUBLIC_CONVEX_URL=...
+
+# Google OAuth (for Convex Auth)
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+
+# GitHub OAuth
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+
+# Claude API
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Daytona
+DAYTONA_API_KEY=dtn_...
+DAYTONA_API_URL=https://api.daytona.io
+```
+
 ## Planning Docs
 
-- `docs/STRUCTURE.md` - Repository organization and directory layout
-- `docs/PRD.md` - Current MVP PRD
-- `docs/tech-stack.md` - Detailed tech choices
+- `docs/PRD.md` - User stories, acceptance criteria
 - `docs/design.md` - UI specs
-- `TASKS.md` - Task backlog
-- `docs/development-progress.yaml` - Current phase tracking (source of truth for which phase is active)
+- `docs/development-progress.yaml` - Current phase (source of truth)
+- `TASKS.md` - High-level task backlog
 
 
 ## Boundaries
