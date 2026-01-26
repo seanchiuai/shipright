@@ -53,7 +53,6 @@ Domain-specific knowledge lives in `.claude/skills/`. See individual skills for 
 - Convex patterns
 - UI components
 - Production deployment
-- E2E testing with agent-browser
 
 ## Planning Docs
 

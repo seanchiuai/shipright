@@ -1,8 +1,8 @@
-# Shipright v2 — Tech Stack
+# Shipright — Tech Stack
 
 ## Overview
 
-This document details all technologies used in Shipright v2, both for the builder platform itself and for the apps it generates.
+This document details all technologies used in Shipright, both for the builder platform itself and for the apps it generates.
 
 ---
 

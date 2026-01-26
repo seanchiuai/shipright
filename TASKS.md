@@ -1,4 +1,4 @@
-# Tasks — Shipwright v2
+# Tasks — Shipright
 
 ## Active
 - [ ] Set up Next.js + Convex project structure
@@ -39,13 +39,13 @@
 
 ## Complete
 
-### v2 Planning (2026-01-25)
+### Planning (2026-01-25)
 - [x] Define MVP scope and architecture
 - [x] Research popular boilerplate templates
 - [x] Research Claude Code context engineering best practices
 - [x] Define template capability taxonomy
 - [x] Categorize templates (1 per capability type)
-- [x] Write MVP PRD (`tasks/prd-v2-mvp.md`)
+- [x] Write MVP PRD (`tasks/prd-mvp.md`)
 - [x] Update project docs
 
 ### v1 (Archived)

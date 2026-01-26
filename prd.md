@@ -1,458 +1,427 @@
-# PRD: Shipright v2 — AI-Powered App Foundation Builder
+# PRD: Shipright MVP
 
 ## Introduction
 
-Shipright is a web application that helps developers discover what they truly want to build and generates a solid foundation for their web app. Instead of building the complete app autonomously, Shipright focuses on laying the best possible base — a working MVP with authentication, database, and core features — so developers can continue building with their preferred tools.
+Shipright MVP is a web application that helps non-technical founders build apps by matching their requirements to curated boilerplate templates and generating AI-ready project scaffolding. Users describe their app through a guided interview, Shipwright matches them to the best template, and generates a GitHub repository with the template plus agentic context files (CLAUDE.md, TASKS.md, PRD.md) optimized for AI-assisted development.
 
-**Core Value Proposition:** Turn a single sentence into a production-ready foundation through AI-guided discovery and autonomous building.
+**Target Users:** Non-technical founders and builders who want to create apps without learning technical details.
+
+**Core Value:** Turn "I want to build X" into a production-ready codebase with AI-optimized scaffolding in minutes.
 
 ---
 
 ## Goals
 
-- Help users clarify their app idea through AI-guided conversation
-- Research best practices and optimal architecture for the specific app
-- Generate a working MVP foundation with auth, database, and core pages
-- Provide live preview so users can see and test their app
-- Enable iteration through conversational refinement
-- Deliver downloadable code that developers can continue building
+- Allow non-technical users to describe their app idea through a guided interview
+- Match user requirements to the best-fit curated template from a library of 10 categories
+- Generate a GitHub repository with the selected template + agentic scaffolding files
+- Produce CLAUDE.md, TASKS.md, and PRD.md files that enable effective AI-assisted development
+- Provide clear confirmation flow before any repo creation
 
 ---
 
 ## User Stories
 
-### US-001: User Authentication
-**Description:** As a user, I want to sign up and log in so I can access my projects.
+### US-001: Google OAuth Authentication
+**Description:** As a user, I want to sign in with Google so that I can save my projects and access them later.
 
 **Acceptance Criteria:**
-- [ ] User can sign up with email or OAuth (Google, GitHub)
-- [ ] User can log in to existing account
-- [ ] User sees dashboard with their projects after login
-- [ ] Authentication handled by Clerk
-- [ ] Unauthorized users redirected to login
+- [ ] Google OAuth login button on landing page
+- [ ] User redirected to Google consent screen
+- [ ] On success, user is redirected to dashboard
+- [ ] User's Google profile (name, email, avatar) stored in Convex
+- [ ] Session persists across browser refreshes
+- [ ] Logout button clears session
+- [ ] Typecheck passes
 
-### US-002: Create New Project
-**Description:** As a user, I want to describe my app idea in a single text box so the AI can help me build it.
-
-**Acceptance Criteria:**
-- [ ] Dashboard has "New Project" button
-- [ ] Single text input for app description (no name, no multi-step form)
-- [ ] Example placeholder: "I want to build an app where people can share book recommendations"
-- [ ] Submit starts the Discovery phase
-- [ ] Project created in database with status "discovery"
-
-### US-003: Discovery Phase — Clarifying Questions
-**Description:** As a user, I want the AI to ask me clarifying questions so it understands exactly what I want to build.
+### US-002: Landing Page
+**Description:** As a visitor, I want to understand what Shipwright does so that I can decide to sign up.
 
 **Acceptance Criteria:**
-- [ ] After submitting idea, AI asks clarifying questions one at a time
-- [ ] Questions cover: target users, core features, authentication needs, data relationships
-- [ ] User answers in chat interface
-- [ ] AI summarizes understanding and confirms before proceeding
-- [ ] All Q&A stored in database as chat history
-- [ ] Discovery phase is interactive (user participates)
+- [ ] Hero section with value proposition: "Describe your app. Get a production-ready codebase."
+- [ ] "Sign in with Google" CTA button
+- [ ] Brief explanation of the 3-step process (Describe → Match → Build)
+- [ ] No pricing or marketplace mentions (out of scope)
+- [ ] Typecheck passes
+- [ ] Verify in browser
 
-### US-004: Research Phase — Autonomous Planning
-**Description:** As the system, I need to research best practices and plan the architecture before building.
-
-**Acceptance Criteria:**
-- [ ] Research phase starts automatically after Discovery completes
-- [ ] Uses Gemini 3 Pro Preview API for research
-- [ ] Researches: optimal architecture, database schema, component structure, edge cases
-- [ ] Considers the specific app type and requirements from Discovery
-- [ ] Generates technical plan (not shown to user in detail)
-- [ ] User sees status: "Researching best practices..."
-- [ ] Phase is fully autonomous (no user input needed)
-
-### US-005: Build Phase — Autonomous Construction
-**Description:** As the system, I need to build the MVP foundation inside a Daytona sandbox.
+### US-003: Interview Flow - Step 1 (App Idea)
+**Description:** As a user, I want to describe my app idea in plain language so that Shipwright understands what I'm building.
 
 **Acceptance Criteria:**
-- [ ] Build phase starts automatically after Research completes
-- [ ] Creates Daytona sandbox for this project
-- [ ] Installs Claude Code in sandbox
-- [ ] Claude Code builds the app step by step following the plan
-- [ ] Creates: file structure, database schema, auth setup, core pages, API routes
-- [ ] Connects to shared Supabase project (multi-tenant)
-- [ ] User sees progress updates: "Setting up authentication...", "Creating database tables..."
-- [ ] Phase is fully autonomous (no user input needed)
+- [ ] Single text area with prompt: "Tell me about your app in one sentence"
+- [ ] Character limit indicator (500 chars max)
+- [ ] "Next" button submits and proceeds
+- [ ] Input saved to Convex project record
+- [ ] Typecheck passes
+- [ ] Verify in browser
 
-### US-006: Live Preview
-**Description:** As a user, I want to see a live preview of my app so I can test it while it's being built.
+### US-004: Interview Flow - Step 2 (AI Follow-up Questions)
+**Description:** As a user, I want to answer clarifying questions so that Shipwright fully understands my requirements.
 
 **Acceptance Criteria:**
-- [ ] Dev server starts in Daytona sandbox (npm run dev)
-- [ ] Preview URL exposed and shown to user
-- [ ] Preview embedded in right panel of UI (iframe)
-- [ ] Preview updates as Claude makes changes
-- [ ] URL is public but unguessable (no auth required for preview)
-- [ ] User can share URL if they choose
+- [ ] AI generates 3-5 follow-up questions based on Step 1 input
+- [ ] Questions displayed as form fields (text inputs, dropdowns, or checkboxes as appropriate)
+- [ ] Questions cover: user types, auth needs, data model, core features, integrations
+- [ ] User can submit answers and see next round of questions if AI needs more clarity
+- [ ] Maximum 3 rounds of questions before proceeding
+- [ ] All answers saved to Convex project record
+- [ ] Typecheck passes
+- [ ] Verify in browser
 
-### US-007: Iteration — Request Changes
-**Description:** As a user, I want to request changes to my app after the initial build so I can refine it.
-
-**Acceptance Criteria:**
-- [ ] After build completes, chat remains active
-- [ ] User can type change requests: "Add a dark mode toggle"
-- [ ] New Claude Code session starts in same sandbox
-- [ ] Claude modifies existing files (doesn't rebuild from scratch)
-- [ ] Preview updates to reflect changes
-- [ ] Multiple iterations supported
-
-### US-008: Download Project
-**Description:** As a user, I want to download my project as a zip file so I can continue development locally.
+### US-005: Interview Flow - Step 3 (Requirements Summary)
+**Description:** As a user, I want to see a summary of my requirements before Shipwright matches a template so that I can confirm accuracy.
 
 **Acceptance Criteria:**
-- [ ] "Download" button visible after build completes
-- [ ] Clicking downloads zip of entire project
-- [ ] Zip includes all source files, package.json, README with setup instructions
-- [ ] Zip excludes node_modules
-- [ ] README includes Supabase credentials and setup steps
+- [ ] Display structured summary: app name, problem, user types, features, auth, database, integrations
+- [ ] User can edit any field inline
+- [ ] "Confirm & Find Template" button proceeds to matching
+- [ ] "Start Over" button resets interview
+- [ ] Typecheck passes
+- [ ] Verify in browser
 
-### US-009: Project Management
-**Description:** As a user, I want to manage multiple projects so I can work on different apps.
-
-**Acceptance Criteria:**
-- [ ] Dashboard shows list of all user's projects
-- [ ] Each project shows: name (auto-generated from idea), status, last updated
-- [ ] User can click project to open it
-- [ ] User can delete projects
-- [ ] Deleted projects have their sandbox destroyed
-
-### US-010: Sandbox Lifecycle
-**Description:** As the system, I need to manage sandbox resources efficiently.
+### US-006: Template Matching Engine
+**Description:** As a system, I need to match user requirements to the best-fit template so that users get the most appropriate starting point.
 
 **Acceptance Criteria:**
-- [ ] Sandbox created when build phase starts
-- [ ] Sandbox stays alive while user is active
-- [ ] Sandbox sleeps after 10 minutes of inactivity
-- [ ] User can wake sandbox by opening project
-- [ ] Waking sandbox restores files and restarts dev server
-- [ ] Sandbox destroyed when project deleted
+- [ ] Parse structured requirements from interview
+- [ ] Score each template in index against requirements
+- [ ] Scoring considers: auth type, database type, payments, real-time needs, UI components
+- [ ] Return top match with confidence score
+- [ ] If no good match (score < 50%), fallback to minimal Next.js starter
+- [ ] Matching logic runs as Convex action
+- [ ] Typecheck passes
+
+### US-007: Template Selection Confirmation
+**Description:** As a user, I want to see the matched template and confirm before Shipwright creates my repository.
+
+**Acceptance Criteria:**
+- [ ] Display matched template: name, description, included features
+- [ ] Show "What's included" checklist (auth, database, payments, etc.)
+- [ ] Show "What will be built" list (features from requirements not in template)
+- [ ] "Create My Repository" button proceeds to repo generation
+- [ ] "Try Different Template" button (future: manual selection, for now: restart interview)
+- [ ] Typecheck passes
+- [ ] Verify in browser
+
+### US-008: GitHub Repository Generation
+**Description:** As a user, I want Shipwright to create a GitHub repository with my template so that I have a codebase to work with.
+
+**Acceptance Criteria:**
+- [ ] User must have connected GitHub account (OAuth)
+- [ ] Prompt for repository name (auto-suggested from app name)
+- [ ] Repository created under user's GitHub account
+- [ ] Template files cloned into repository
+- [ ] Agentic scaffolding files (CLAUDE.md, TASKS.md, PRD.md) added to repository
+- [ ] Initial commit with message: "Initial commit from Shipwright"
+- [ ] Success screen with link to new repository
+- [ ] Typecheck passes
+
+### US-009: GitHub OAuth Connection
+**Description:** As a user, I want to connect my GitHub account so that Shipwright can create repositories on my behalf.
+
+**Acceptance Criteria:**
+- [ ] "Connect GitHub" button in user settings or during repo generation flow
+- [ ] GitHub OAuth flow with repo creation scope
+- [ ] GitHub access token stored securely in Convex
+- [ ] User can disconnect GitHub from settings
+- [ ] Typecheck passes
+
+### US-010: CLAUDE.md Generation
+**Description:** As a system, I need to generate a CLAUDE.md file tailored to the user's project so that AI agents can effectively work on the codebase.
+
+**Acceptance Criteria:**
+- [ ] CLAUDE.md includes: overview, tech stack, commands, project structure, code style, boundaries
+- [ ] Overview section uses user's app description
+- [ ] Tech stack section reflects actual template stack
+- [ ] Commands section includes exact npm scripts from template
+- [ ] Project structure is vague (not specific file paths) to remain stable during development
+- [ ] Boundaries section includes "Always do", "Ask first", "Never do" lists
+- [ ] Contains only stable info that won't need frequent updates
+- [ ] Under 100 lines recommended (not a hard limit)
+- [ ] Typecheck passes
+
+### US-011: TASKS.md Generation
+**Description:** As a system, I need to generate a TASKS.md file with the user's feature backlog so that AI agents know what to build.
+
+**Acceptance Criteria:**
+- [ ] TASKS.md includes: Current Sprint, Backlog, Completed sections
+- [ ] Current Sprint populated with first 3-5 features from requirements
+- [ ] Backlog populated with remaining features
+- [ ] Features written as actionable task descriptions
+- [ ] Typecheck passes
+
+### US-012: PRD.md Generation
+**Description:** As a system, I need to generate a PRD.md file documenting the user's requirements so that AI agents understand the product context. This is a kickstart document used for initial planning and implementation plan generation.
+
+**Acceptance Criteria:**
+- [ ] PRD.md includes: Problem, Users, Core Features, Data Model, User Flows
+- [ ] Content derived from interview answers
+- [ ] Written in plain language (user can understand it)
+- [ ] High-level document (not used frequently during development, just to start)
+- [ ] Typecheck passes
+
+### US-012b: Skills Directory Generation
+**Description:** As a system, I need to generate a `.claude/skills/` directory with domain-specific skills so that AI agents have on-demand access to specialized knowledge.
+
+**Acceptance Criteria:**
+- [ ] Skills directory created at `.claude/skills/`
+- [ ] Skills organized by domain (e.g., authentication/, api/, database/) based on requirements
+- [ ] Each skill has a `SKILL.md` file with proper frontmatter and instructions
+- [ ] Skills cover the key domains identified in the interview
+- [ ] Skills load on-demand (progressive disclosure) vs CLAUDE.md which always loads
+- [ ] No MCP server configurations generated (not supported)
+- [ ] No hooks generated (not supported)
+- [ ] Typecheck passes
+
+### US-012c: Template Customization via Daytona
+**Description:** As a system, I need to use Daytona sandboxes with Claude Code to build custom features when the matched template doesn't fully cover user requirements.
+
+**Acceptance Criteria:**
+- [ ] Detect when template has gaps (requirements not covered by template capabilities)
+- [ ] Spin up Daytona sandbox with user's GitHub repo cloned
+- [ ] Run Claude Code in sandbox with customization prompts based on missing features
+- [ ] Claude Code builds the missing features following existing code patterns
+- [ ] Changes committed and pushed to user's GitHub repo
+- [ ] Sandbox destroyed after completion
+- [ ] User notified of what was built
+- [ ] Error handling for sandbox timeout, Claude Code failures, git push failures
+- [ ] Typecheck passes
+
+### US-013: User Dashboard
+**Description:** As a user, I want to see my projects so that I can access them later.
+
+**Acceptance Criteria:**
+- [ ] List of user's projects with: name, created date, GitHub repo link
+- [ ] "New Project" button starts interview flow
+- [ ] Click on project shows project details
+- [ ] Typecheck passes
+- [ ] Verify in browser
+
+### US-014: Template Index Management (Admin)
+**Description:** As an admin, I need to manage the template index so that users get matched to quality templates.
+
+**Acceptance Criteria:**
+- [ ] Template index stored in Convex
+- [ ] Each template has: id, name, source URL, capabilities (tagged), stack, description
+- [ ] Capabilities follow defined taxonomy (auth types, db types, payments, features)
+- [ ] Admin can add/edit/remove templates via Convex dashboard (no UI needed for MVP)
+- [ ] Typecheck passes
+
+### US-015: Production Deployment
+**Description:** As a developer, I need to deploy Shipright to production so that users can access it.
+
+**Acceptance Criteria:**
+- [ ] Shipright deployed to Vercel
+- [ ] Convex deployed to production
+- [ ] All environment variables configured (Claude API, GitHub OAuth, Google OAuth, Daytona)
+- [ ] Landing page accessible at production URL
+- [ ] Google OAuth works in production
+- [ ] GitHub OAuth works in production
+- [ ] Full flow tested end-to-end in production
+- [ ] Error monitoring in place (Vercel logs, Convex dashboard)
 
 ---
 
-## Architecture Overview
-
-### System Components
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         USER BROWSER                             │
-│  ┌─────────────────────────┬─────────────────────────────────┐  │
-│  │      CHAT SIDEBAR       │         PREVIEW PANEL           │  │
-│  │                         │                                 │  │
-│  │  [User input box]       │    ┌─────────────────────┐     │  │
-│  │                         │    │   Live Preview      │     │  │
-│  │  Chat history...        │    │   (iframe)          │     │  │
-│  │                         │    │                     │     │  │
-│  │  Status: Building...    │    └─────────────────────┘     │  │
-│  │  Phase: Database        │                                 │  │
-│  └─────────────────────────┴─────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      SHIPRIGHT SERVER                            │
-│                                                                  │
-│  Next.js API Routes                                              │
-│  ├── /api/projects         (CRUD operations)                    │
-│  ├── /api/chat             (Process user messages)              │
-│  ├── /api/sandbox          (Manage Daytona sandboxes)           │
-│  └── /api/download         (Generate zip files)                 │
-│                                                                  │
-│  Integrations:                                                   │
-│  ├── Clerk (authentication)                                      │
-│  ├── Convex (database for Shipright)                            │
-│  ├── Daytona SDK (sandbox management)                           │
-│  ├── Claude Code (building apps)                                │
-│  └── Gemini API (research phase)                                │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┼───────────────┐
-              ▼               ▼               ▼
-┌─────────────────┐  ┌─────────────┐  ┌─────────────────┐
-│  DAYTONA        │  │   CONVEX    │  │    SUPABASE     │
-│  SANDBOX        │  │             │  │    (shared)     │
-│                 │  │  Projects   │  │                 │
-│  Claude Code    │  │  Chats      │  │  Generated app  │
-│  Generated app  │  │  Users      │  │  databases      │
-│  Dev server     │  │  Sandboxes  │  │  (multi-tenant) │
-│                 │  │             │  │                 │
-└─────────────────┘  └─────────────┘  └─────────────────┘
-```
-
-### Data Flow
-
-**Creating a new project:**
-```
-1. User submits app idea
-2. Server creates project in Convex (status: discovery)
-3. Server sends idea to Claude Code (via prompt)
-4. Claude asks clarifying questions
-5. Server stores Q&A in Convex
-6. User answers, cycle repeats
-7. When discovery complete, status → research
-8. Server calls Gemini API for research
-9. Gemini returns technical plan
-10. Status → build
-11. Server creates Daytona sandbox
-12. Server installs Claude Code in sandbox
-13. Claude builds app following plan
-14. Server creates Supabase tables for this project (in shared instance)
-15. Claude connects app to Supabase
-16. Dev server starts, preview URL returned
-17. Status → complete
-18. User can iterate or download
-```
-
-### Phase Details
-
-**Phase 1: Discovery (Interactive)**
-- Claude Code receives system prompt for discovery mode
-- Prompt instructs Claude to ask clarifying questions
-- Claude asks about: users, features, data, workflows
-- User answers are appended to conversation
-- Claude summarizes and confirms understanding
-- Output: Clear requirements document
-
-**Phase 2: Research (Autonomous)**
-- Gemini 3 Pro Preview receives requirements
-- Gemini researches: architecture patterns, database design, component structure
-- Gemini considers edge cases and best practices
-- Output: Technical plan (internal, not shown to user)
-- User sees: "Researching best practices..."
-
-**Phase 3: Build (Autonomous)**
-- Daytona sandbox created
-- Claude Code installed and authenticated
-- Claude receives technical plan as system prompt
-- Claude builds step by step:
-  1. Initialize Next.js project
-  2. Install dependencies
-  3. Set up Tailwind + shadcn/ui
-  4. Configure Supabase connection
-  5. Create database schema
-  6. Set up Supabase Auth
-  7. Build pages and components
-  8. Create API routes
-  9. Start dev server
-- User sees progress summaries (not raw Claude output)
-
-**Phase 4: Iterate (User-triggered)**
-- User types change request in chat
-- New Claude Code session in same sandbox
-- Claude reads existing files, makes changes
-- Preview updates automatically
-- Can iterate multiple times
-
----
-
-## Database Schema (Convex)
-
-### projects
-```typescript
-{
-  _id: Id<"projects">,
-  userId: string,              // Clerk user ID
-  idea: string,                // Original user input
-  name: string,                // Auto-generated from idea
-  status: "discovery" | "research" | "build" | "complete" | "error",
-  sandboxId: string | null,    // Daytona sandbox ID
-  sandboxStatus: "running" | "sleeping" | "destroyed",
-  previewUrl: string | null,   // Live preview URL
-  supabaseSchema: string,      // Tenant identifier in shared Supabase
-  createdAt: number,
-  updatedAt: number,
-}
-```
-
-### messages
-```typescript
-{
-  _id: Id<"messages">,
-  projectId: Id<"projects">,
-  role: "user" | "assistant" | "system",
-  content: string,
-  phase: "discovery" | "research" | "build" | "iterate",
-  createdAt: number,
-}
-```
-
-### buildProgress
-```typescript
-{
-  _id: Id<"buildProgress">,
-  projectId: Id<"projects">,
-  phase: string,               // "auth", "database", "pages", etc.
-  status: "pending" | "in_progress" | "complete" | "error",
-  message: string,             // Human-readable status
-  updatedAt: number,
-}
-```
-
----
-
-## Integrations
-
-### Clerk (Authentication)
-- Handles user signup/login
-- OAuth providers: Google, GitHub
-- Provides userId for all database operations
-- Webhook for user deletion (cleanup projects)
-
-### Convex (Shipright Database)
-- Real-time sync for chat messages
-- Project state management
-- Build progress updates
-- No need for polling — Convex pushes updates
-
-### Daytona (Sandboxes)
-- Create sandbox: `daytona.create({ language: 'typescript', envVars, autoStopInterval: 10 })`
-- Execute commands: `daytona.exec(sandboxId, command, { stream: true })`
-- Get preview URL: Port forwarding via Daytona API
-- Destroy sandbox: `daytona.destroy(sandboxId)`
-
-### Claude Code (Build AI)
-- Installed in Daytona sandbox
-- Authenticated via `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`
-- Run with: `claude "[prompt]" --dangerously-skip-permissions`
-- Each phase has specific system prompt (stored in /prompts folder)
-
-### Gemini API (Research AI)
-- Model: `gemini-3-pro-preview`
-- Used only in Research phase
-- Input: Requirements from Discovery
-- Output: Technical plan for Build phase
-
-### Supabase (Generated App Database)
-- Shared project with multi-tenancy
-- Each user project gets unique schema prefix
-- Tables: `{projectId}_users`, `{projectId}_posts`, etc.
-- Auth: Supabase Auth configured per tenant
-- Connection string passed to generated app via env vars
-
----
-
-## Prompts
-
-All prompts stored in `/prompts` folder for easy editing.
-
-### discovery.md
-System prompt for Claude during Discovery phase. Instructs Claude to:
-- Ask clarifying questions about the app
-- Cover: target users, core features, data model, workflows
-- Summarize understanding and confirm
-
-### research.md
-Prompt for Gemini during Research phase. Instructs Gemini to:
-- Analyze requirements
-- Research best practices for this app type
-- Design database schema
-- Plan component structure
-- Consider edge cases
-
-### build.md
-System prompt for Claude during Build phase. Instructs Claude to:
-- Follow the technical plan exactly
-- Use Next.js + Tailwind + shadcn/ui + Supabase
-- Build step by step
-- Report progress after each major step
-
-### iterate.md
-System prompt for Claude during Iterate phase. Instructs Claude to:
-- Read existing codebase
-- Make minimal changes to implement request
-- Preserve existing functionality
-- Update tests if applicable
-
----
-
-## Security Considerations
+## Functional Requirements
 
 ### Authentication
-- All API routes protected by Clerk middleware
-- Users can only access their own projects
-- Sandbox operations require project ownership verification
+- FR-1: Users authenticate via Google OAuth
+- FR-2: Users can connect GitHub account for repo creation
+- FR-3: Session persists via Convex auth
 
-### Sandbox Isolation
-- Each project runs in isolated Daytona container
-- No cross-project communication
-- Network policies enforced by Daytona
+### Interview Flow
+- FR-4: Interview begins with single open-ended question
+- FR-5: AI generates follow-up questions based on user input
+- FR-6: Maximum 3 rounds of follow-up questions
+- FR-7: Interview produces structured requirements object
+- FR-8: User can review and edit requirements before matching
 
-### Preview URLs
-- URLs are unguessable (UUID-based)
-- No authentication required (user can share if desired)
-- URLs invalidated when sandbox destroyed
+### Template Matching
+- FR-9: Template index contains 10 curated templates (1 per capability category)
+- FR-10: Matching scores templates against requirements on: auth, database, payments, real-time, features
+- FR-11: Best match is presented to user with confidence score
+- FR-12: Fallback to minimal Next.js starter if no good match
 
-### Supabase Multi-tenancy
-- Row-level security on all tables
-- Tenant ID checked on every query
-- No cross-tenant data access
+### Repository Generation
+- FR-13: Repository created under user's GitHub account
+- FR-14: Template files cloned to repository
+- FR-15: CLAUDE.md generated and added to repository root
+- FR-16: TASKS.md generated and added to repository root
+- FR-17: PRD.md generated and added to repository root
+- FR-18: Initial commit created with all files
 
-### Input Validation
-- User inputs sanitized before sending to AI
-- Prompt injection mitigation in system prompts
-- Command injection prevention in sandbox exec
-
----
-
-## Error Handling (Requires Additional Planning)
-
-**Known error scenarios:**
-- Sandbox creation failure
-- Claude Code installation failure
-- Claude Code authentication failure
-- Build step failure
-- Supabase connection failure
-- Preview server crash
-- Sandbox timeout during build
-
-**Mitigation strategies (to be detailed):**
-- Retry logic with exponential backoff
-- Graceful degradation
-- User-facing error messages
-- Recovery mechanisms
-- Logging and alerting
+### Dashboard
+- FR-19: User can view list of their projects
+- FR-20: User can start new project from dashboard
+- FR-21: User can access GitHub repo from project card
 
 ---
 
 ## Non-Goals (Out of Scope for MVP)
 
-- GitHub integration (push to repo)
-- Custom domain for previews
-- Team collaboration
-- Version control / rollback
-- Deployment to production
-- Custom tech stack selection
-- Mobile app generation
-- API-only generation (no frontend)
-- Billing / subscription management
+- **Marketplace:** No template marketplace or community submissions
+- **Template manual selection:** User cannot browse/pick templates manually (only AI-matched)
+- **Plan generation:** No architecture/implementation plan generation
+- **Payments/billing:** No paid features or subscriptions
+- **Template customization UI:** No UI for tweaking template before generation
+- **Multiple templates per project:** One template per project only
+- **Team collaboration:** Single-user projects only
+- **Deployment:** No deploy-to-Vercel or similar features
+- **MCP servers:** No MCP server configurations in generated scaffolding
+- **Hooks:** No hook configurations in generated scaffolding
+
+---
+
+## Technical Considerations
+
+### Stack
+- **Framework:** Next.js 14 (App Router)
+- **Database:** Convex (real-time, serverless)
+- **Auth:** Convex Auth with Google OAuth provider
+- **UI:** shadcn/ui + Tailwind CSS
+- **AI:** Claude API for interview question generation and requirement extraction
+- **GitHub:** GitHub OAuth + GitHub API for repo creation
+- **Sandboxes:** Daytona SDK for template customization with Claude Code
+- **Deployment:** Vercel for production hosting
+
+### Template Index Schema
+```typescript
+interface Template {
+  id: string;
+  name: string;
+  description: string;
+  sourceUrl: string; // GitHub URL to clone from
+  stack: string[]; // ["nextjs", "typescript", "convex", "clerk"]
+  capabilities: {
+    auth: {
+      present: boolean;
+      providers: ("email" | "google" | "github" | "magic-link")[];
+      hasRoles: boolean;
+      hasOrgs: boolean;
+    };
+    database: {
+      present: boolean;
+      type: "convex" | "supabase" | "prisma-postgres" | "drizzle";
+      realtime: boolean;
+    };
+    payments: {
+      present: boolean;
+      provider?: "stripe" | "lemonsqueezy";
+      models?: ("one-time" | "subscription")[];
+    };
+    ui: {
+      framework: "shadcn" | "tremor" | "tailwind-only";
+      hasAdminDashboard: boolean;
+      hasLandingPage: boolean;
+    };
+    features: {
+      fileUploads: boolean;
+      email: boolean;
+      search: boolean;
+      ai: boolean;
+    };
+  };
+}
+```
+
+### Requirements Schema
+```typescript
+interface Requirements {
+  appName: string;
+  problemStatement: string;
+  userTypes: {
+    name: string;
+    description: string;
+    isAdmin: boolean;
+  }[];
+  auth: {
+    needed: boolean;
+    methods: ("email" | "google" | "github")[];
+    hasRoles: boolean;
+    hasOrgs: boolean;
+  };
+  database: {
+    needed: boolean;
+    realtime: boolean;
+  };
+  payments: {
+    needed: boolean;
+    model?: "one-time" | "subscription";
+  };
+  features: {
+    name: string;
+    description: string;
+    priority: "must" | "should" | "could";
+  }[];
+  integrations: string[];
+}
+```
+
+### Template Categories (10 for MVP)
+1. Minimal Starter (no auth, no db) - `create-next-app`
+2. Simple Auth Only - `next-auth-example`
+3. Simple DB Only - `prisma-examples/nextjs`
+4. Auth + DB (Basic Stack) - `create-t3-app`
+5. Auth + DB + Payments (SaaS) - `next-forge`
+6. Real-time + Auth - `convex-saas-starter`
+7. AI Chat - `vercel/ai-chatbot`
+8. E-commerce - `vercel/commerce`
+9. Admin Dashboard - `next-shadcn-dashboard-starter`
+10. Multi-tenant SaaS - `ixartz/SaaS-Boilerplate`
 
 ---
 
 ## Success Metrics
 
-- User can go from idea to working preview in < 10 minutes
-- Preview loads successfully in 95% of builds
-- 80% of users complete at least one iteration
-- Average 3+ projects per active user
-- < 5% build failure rate
+- User can go from "I have an app idea" to "I have a GitHub repo" in under 10 minutes
+- 80%+ of users complete the interview flow without abandoning
+- Generated CLAUDE.md files enable effective AI-assisted development (qualitative)
+- Template match satisfaction: users confirm matched template on first try 70%+ of the time
 
 ---
 
-## Open Questions (Requires Additional Planning)
+## Open Questions
 
-1. **Ralph Loop Redesign** - How exactly should the iterative build loop work?
-2. **Error Recovery** - Detailed error handling and retry strategies
-3. **Prompt Engineering** - Exact prompts for each phase
-4. **Supabase Multi-tenancy** - Exact implementation of tenant isolation
-5. **Sandbox Wakeup** - How to restore state when waking sleeping sandbox
-6. **Progress Summarization** - How to summarize Claude output for user
+1. **GitHub OAuth scope:** What exact scopes needed for repo creation? (repo, user:email)
+2. **Rate limiting:** How to handle users creating many repos quickly?
+3. **Template updates:** How to update template index when upstream templates change?
+4. **Error handling:** What happens if GitHub repo creation fails mid-process?
+5. **Template licensing:** How to handle attribution for open-source templates?
 
 ---
 
-**Document Version:** 1.0
-**Created:** 2026-01-23
-**Author:** Sean + Claude
+## Appendix: Template Capability Taxonomy
+
+### Auth Types
+- `email` - Email/password authentication
+- `google` - Google OAuth
+- `github` - GitHub OAuth
+- `magic-link` - Passwordless email link
+- `sso` - Enterprise SSO (SAML/OIDC)
+
+### Database Types
+- `convex` - Convex real-time database
+- `supabase` - Supabase (Postgres + real-time)
+- `prisma-postgres` - Prisma ORM with PostgreSQL
+- `drizzle` - Drizzle ORM
+- `firebase` - Firebase Firestore
+
+### Payment Models
+- `one-time` - Single purchase
+- `subscription` - Recurring billing
+- `marketplace` - Multi-party transactions
+
+### UI Frameworks
+- `shadcn` - shadcn/ui component library
+- `tremor` - Tremor dashboard components
+- `chakra` - Chakra UI
+- `tailwind-only` - Just Tailwind, no component library
+
+### Feature Flags
+- `fileUploads` - File/image upload support
+- `email` - Transactional email support
+- `search` - Full-text search
+- `ai` - AI/LLM integration
+- `i18n` - Internationalization
+- `darkMode` - Dark mode toggle

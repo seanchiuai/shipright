@@ -1,4 +1,4 @@
-# Shipright v2 — AI-Powered App Foundation Builder
+# Shipright — AI-Powered App Foundation Builder
 
 ## Overview
 Web app that turns ideas into working MVPs through AI-guided discovery and autonomous building with Claude Code in Daytona sandboxes.

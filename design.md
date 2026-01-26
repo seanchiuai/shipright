@@ -1,8 +1,8 @@
-# Shipright v2 — Design Document
+# Shipright — Design Document
 
 ## Overview
 
-This document describes the system design and component architecture for Shipright v2.
+This document describes the system design and component architecture for Shipright.
 
 ---
 
