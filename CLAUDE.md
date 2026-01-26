@@ -10,8 +10,8 @@ Shipright helps non-technical founders turn app ideas into GitHub repos. Users c
 
 - Next.js 14 (App Router) + TypeScript + Tailwind + shadcn/ui
 - Convex (database, serverless functions, auth with Google OAuth)
-- Claude API (interview question generation)
-- GitHub API (repo creation via OAuth)
+- Vercel AI SDK + @ai-sdk/anthropic (interview question generation)
+- GitHub API via Octokit (repo creation, OAuth)
 - Daytona SDK (sandboxed environments for template customization)
 - Vercel (production deployment)
 - agent-browser (E2E testing for phase verification)
@@ -69,13 +69,11 @@ Domain-specific knowledge lives in `.claude/skills/`. See individual skills for 
 **Always:**
 - Only work on the current phase
 - Verify features are WORKING, not just built
-- Sacrifise grammar for the sake of conciseness in your responses and documentation
+- Sacrifice grammar for conciseness in responses and documentation
 - Update `docs/development-progress.yaml` when moving to next phase
-- Commit changes after every change (even the smallest bug fixes).
+- Commit changes after every change (even the smallest bug fixes)
 
 **Never:**
-- Mark feature as complete without automated user testing
+- Mark feature as complete without automated testing
 - Create GitHub repos without explicit user confirmation
-- Store secrets and keys in files not in `.gitignore`
-
-Important: **Always commit changes after every change (even the smallest bug fixes)**
+- Store secrets/keys in files not in `.gitignore`
