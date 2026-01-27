@@ -136,7 +136,9 @@ export default function ProjectDetailsPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Continue the interview to describe your app requirements.
                 </p>
-                <Button>Continue Interview</Button>
+                <Button onClick={() => router.push(`/interview/${projectId}`)}>
+                  Continue Interview
+                </Button>
               </div>
             )}
 

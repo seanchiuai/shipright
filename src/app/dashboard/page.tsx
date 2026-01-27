@@ -1,8 +1,9 @@
 "use client";
 
 import { useUser, UserButton } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,12 +18,28 @@ import { useSyncUser } from "@/hooks/useSyncUser";
 export default function DashboardPage() {
   const { user: clerkUser, isLoaded } = useUser();
   const router = useRouter();
+  const [creating, setCreating] = useState(false);
 
   const convexUser = useSyncUser();
   const projects = useQuery(
     api.projects.list,
     convexUser ? { userId: convexUser._id } : "skip"
   );
+  const createProject = useMutation(api.projects.create);
+
+  async function handleNewProject() {
+    if (!convexUser) return;
+    setCreating(true);
+    try {
+      const projectId = await createProject({
+        userId: convexUser._id,
+        name: "New Project",
+      });
+      router.push(`/interview/${projectId}`);
+    } finally {
+      setCreating(false);
+    }
+  }
 
   if (!isLoaded || convexUser === undefined) {
     return (
@@ -57,7 +74,9 @@ export default function DashboardPage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-semibold">Your Projects</h2>
-          <Button>+ New Project</Button>
+          <Button onClick={handleNewProject} disabled={creating}>
+            {creating ? "Creating..." : "+ New Project"}
+          </Button>
         </div>
 
         {projects === undefined ? (

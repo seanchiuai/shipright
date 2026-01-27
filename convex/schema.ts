@@ -15,7 +15,10 @@ export default defineSchema({
   projects: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    status: v.string(),
+    status: v.string(), // "interview" | "matching" | "building" | "complete"
+    interviewStep: v.optional(v.number()), // 1, 2, or 3
+    interviewRound: v.optional(v.number()), // For step 2: 1-3
+    appIdea: v.optional(v.string()), // Step 1 input
     requirements: v.optional(v.any()),
     templateId: v.optional(v.string()),
     githubRepoUrl: v.optional(v.string()),
@@ -24,10 +27,15 @@ export default defineSchema({
   interviewSessions: defineTable({
     projectId: v.id("projects"),
     round: v.number(),
-    userInput: v.string(),
-    aiQuestions: v.optional(v.array(v.string())),
-    userAnswers: v.optional(v.any()),
-  }).index("by_project", ["projectId"]),
+    questions: v.optional(v.array(v.object({
+      id: v.string(),
+      question: v.string(),
+      type: v.string(), // "text" | "choice" | "multiselect"
+      options: v.optional(v.array(v.string())),
+      required: v.optional(v.boolean()),
+    }))),
+    answers: v.optional(v.any()), // Record<string, string | string[]>
+  }).index("by_project", ["projectId"]).index("by_project_round", ["projectId", "round"]),
 
   templates: defineTable({
     name: v.string(),
