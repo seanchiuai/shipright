@@ -134,7 +134,7 @@ export default function InterviewPage() {
         appIdea: appIdea.trim(),
         round: 1,
       });
-      setQuestions(result.questions);
+      setQuestions(result.questions as Question[]);
       setAnswers({});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to generate questions");
@@ -175,7 +175,7 @@ export default function InterviewPage() {
           previousRounds,
         });
 
-        setQuestions(result.questions);
+        setQuestions(result.questions as Question[]);
         setAnswers({});
       } else {
         // Max rounds reached, extract requirements

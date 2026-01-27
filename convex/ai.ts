@@ -2,12 +2,23 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { createVertex } from "@ai-sdk/google-vertex";
 import { generateText } from "ai";
 import { api } from "./_generated/api";
 
-// Create Anthropic client - uses ANTHROPIC_API_KEY env var
-const anthropic = createAnthropic();
+// Create Vertex AI provider with service account credentials
+function getVertexProvider() {
+  return createVertex({
+    project: process.env.GOOGLE_VERTEX_PROJECT,
+    location: process.env.GOOGLE_VERTEX_LOCATION || "us-central1",
+    googleAuthOptions: {
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      },
+    },
+  });
+}
 
 const QUESTION_SYSTEM_PROMPT = `You are an expert product manager helping non-technical founders clarify their app ideas.
 
@@ -80,6 +91,15 @@ Output ONLY valid JSON matching this exact schema (no markdown, no explanation):
 
 Be comprehensive but realistic. If something wasn't mentioned, use sensible defaults.`;
 
+// Helper to parse JSON that might be wrapped in markdown code blocks
+function parseJsonResponse(text: string): unknown {
+  let jsonText = text.trim();
+  if (jsonText.startsWith("```")) {
+    jsonText = jsonText.replace(/```json?\n?/g, "").replace(/```$/g, "").trim();
+  }
+  return JSON.parse(jsonText);
+}
+
 export const generateInterviewQuestions = action({
   args: {
     projectId: v.id("projects"),
@@ -95,6 +115,8 @@ export const generateInterviewQuestions = action({
     ),
   },
   handler: async (ctx, args) => {
+    const vertex = getVertexProvider();
+
     let prompt = `The user wants to build: "${args.appIdea}"`;
 
     if (args.previousRounds && args.previousRounds.length > 0) {
@@ -113,19 +135,24 @@ export const generateInterviewQuestions = action({
     prompt += "\n\nGenerate 3-5 interview questions as JSON array.";
 
     const { text } = await generateText({
-      model: anthropic("claude-sonnet-4-20250514"),
+      model: vertex("gemini-2.5-flash"),
       system: QUESTION_SYSTEM_PROMPT,
       prompt,
     });
 
-    // Parse JSON from response
-    const questions = JSON.parse(text.trim());
+    const questions = parseJsonResponse(text);
 
     // Save questions to database
     await ctx.runMutation(api.interviews.saveQuestions, {
       projectId: args.projectId,
       round: args.round,
-      questions,
+      questions: questions as Array<{
+        id: string;
+        question: string;
+        type: string;
+        options?: string[];
+        required?: boolean;
+      }>,
     });
 
     return { questions };
@@ -137,6 +164,8 @@ export const extractRequirements = action({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
+    const vertex = getVertexProvider();
+
     // Get project for app idea
     const project = await ctx.runQuery(api.projects.get, {
       projectId: args.projectId,
@@ -165,13 +194,12 @@ export const extractRequirements = action({
     prompt += "\n\nExtract structured requirements from this interview.";
 
     const { text } = await generateText({
-      model: anthropic("claude-sonnet-4-20250514"),
+      model: vertex("gemini-2.5-flash"),
       system: REQUIREMENTS_SYSTEM_PROMPT,
       prompt,
     });
 
-    // Parse JSON from response
-    const requirements = JSON.parse(text.trim());
+    const requirements = parseJsonResponse(text);
 
     // Save requirements to project
     await ctx.runMutation(api.projects.updateRequirements, {
