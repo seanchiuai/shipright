@@ -1,0 +1,12 @@
+export { FadeIn } from "./fade-in";
+export { StaggerChildren, StaggerItem } from "./stagger-children";
+export { GradientBackground } from "./gradient-background";
+export { Header } from "./header";
+export { HeroSection } from "./hero-section";
+export { HowItWorks } from "./how-it-works";
+export { ValueProp } from "./value-prop";
+export { WhatYouGet } from "./what-you-get";
+export { SocialProof } from "./social-proof";
+export { PricingSection } from "./pricing-section";
+export { FAQSection } from "./faq-section";
+export { Footer } from "./footer";
