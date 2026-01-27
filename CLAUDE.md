@@ -7,7 +7,7 @@ Shipright helps non-technical founders turn app ideas into GitHub repos via AI-g
 - Next.js 14 (App Router) + TypeScript + Tailwind + shadcn/ui
 - Convex (database, serverless functions)
 - Clerk (authentication with Google OAuth)
-- Vercel AI SDK + @ai-sdk/anthropic (AI calls)
+- Vercel AI SDK + @ai-sdk/google-vertex (Gemini 2.5 Flash)
 - GitHub API via Octokit (repo creation)
 - Daytona SDK (template customization)
 - agent-browser (E2E testing)
@@ -33,7 +33,7 @@ npm run lint       # Linting
 | 6 | Scaffolding Generation | US-010, US-011, US-012, US-012b |
 | 7 | Production Deploy | US-015 |
 
-**Current phase:** `docs/development-progress.yaml`
+**Current phase:** `docs/development-progress.yaml` (Do not edit without user permisssion or confirmation)
 
 ## Ralph Loop Workflow
 
@@ -73,8 +73,10 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
 CLERK_SECRET_KEY=sk_...
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
-CLAUDE_CODE_OAUTH_TOKEN=...   # Primary (Claude Code OAuth)
-ANTHROPIC_API_KEY=sk-ant-...  # Fallback (rare cases)
+GOOGLE_VERTEX_PROJECT=...     # GCP project ID
+GOOGLE_VERTEX_LOCATION=us-central1
+GOOGLE_CLIENT_EMAIL=...       # Service account email
+GOOGLE_PRIVATE_KEY=...        # Service account private key
 DAYTONA_API_KEY=dtn_...
 DAYTONA_API_URL=https://api.daytona.io
 ```

@@ -14,10 +14,10 @@ AI-guided interview that extracts structured requirements from user's app idea.
 ## The Flow
 
 1. **Initial Input** - User describes app idea (500 char max)
-2. **AI Questions** - Claude generates 3-5 questions per round
+2. **AI Questions** - Gemini generates 3-5 questions per round
 3. **User Answers** - Interactive form (not chat bubbles)
 4. **Rounds** - Max 3 rounds to clarify requirements
-5. **Extract Requirements** - Claude converts answers to structured JSON
+5. **Extract Requirements** - Gemini converts answers to structured JSON
 6. **User Confirms** - User reviews/edits requirements before proceeding
 
 ## Question Categories
@@ -29,17 +29,28 @@ Questions cover:
 - Core features (what can users do?)
 - Integrations (payments? email? third-party APIs?)
 
-## Using Vercel AI SDK
+## Using Vercel AI SDK with Vertex AI
 
-We use the Vercel AI SDK with `@ai-sdk/anthropic` provider for all Claude calls.
+We use the Vercel AI SDK with `@ai-sdk/google-vertex` provider for Gemini calls.
 
 ```typescript
-import { anthropic } from "@ai-sdk/anthropic";
+import { createVertex } from "@ai-sdk/google-vertex";
 import { generateText } from "ai";
+
+const vertex = createVertex({
+  project: process.env.GOOGLE_VERTEX_PROJECT,
+  location: process.env.GOOGLE_VERTEX_LOCATION || "us-central1",
+  googleAuthOptions: {
+    credentials: {
+      client_email: process.env.GOOGLE_CLIENT_EMAIL!,
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    },
+  },
+});
 
 // Generate follow-up questions
 const { text } = await generateText({
-  model: anthropic("claude-sonnet-4"),
+  model: vertex("gemini-2.5-flash"),
   prompt: `Based on this app idea: "${appIdea}"
 
 Generate 3-5 clarifying questions to understand the requirements.
@@ -49,41 +60,27 @@ Format as JSON array: [{ "question": "...", "type": "text|select|multiselect", "
 const questions = JSON.parse(text);
 ```
 
-**Model**: `claude-sonnet-4`
-**Cost**: ~$0.03 per 3-round interview
-
-## Streaming (optional)
-
-For real-time question generation:
-
-```typescript
-import { streamText } from "ai";
-
-const result = streamText({
-  model: anthropic("claude-sonnet-4"),
-  prompt: questionPrompt,
-});
-
-return result.toTextStreamResponse();
-```
+**Model**: `gemini-2.5-flash`
+**Cost**: ~$0.003 per 3-round interview (10x cheaper than Claude)
 
 ## State Management
 
 - Save each round to `interviewSessions` table
 - Store final requirements in `projects.requirements`
-- Use Convex actions for all Claude API calls
+- Use Convex actions for all AI API calls
 
 ## Requirements Schema
 
 See [reference.md](reference.md) for complete `Requirements` interface.
 
-## UX Notes (TBD)
+## UX Notes
 
-Step 2 interview UX needs detailed planning:
-- Form layout vs conversation style
-- Question types (text, select, multiselect)
-- Back navigation behavior
-- Progress indication
+Step 2 interview uses form-based UI:
+- Text inputs for open questions
+- Radio buttons for single-select
+- Checkboxes for multi-select
+- Progress bar showing step/round
+- Back navigation to previous rounds
 
 ## Reference Files
 
@@ -92,4 +89,4 @@ Step 2 interview UX needs detailed planning:
 ## External Documentation
 
 - [Vercel AI SDK](https://sdk.vercel.ai/docs)
-- [@ai-sdk/anthropic](https://sdk.vercel.ai/providers/ai-sdk-providers/anthropic)
+- [@ai-sdk/google-vertex](https://ai-sdk.dev/providers/ai-sdk-providers/google-vertex)
