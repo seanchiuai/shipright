@@ -54,7 +54,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] "Next" button submits and proceeds
 - [x] Input saved to Convex project record
 - [x] Typecheck passes
-- [ ] Verify in browser
+- [x] Verify in browser
 
 ### US-004: Interview Flow - Step 2 (AI Follow-up Questions)
 **Description:** As a user, I want to answer clarifying questions so that Shipwright fully understands my requirements.
@@ -67,7 +67,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] Maximum 3 rounds of questions before proceeding
 - [x] All answers saved to Convex project record
 - [x] Typecheck passes
-- [ ] Verify in browser
+- [x] Verify in browser
 
 ### US-005: Interview Flow - Step 3 (Requirements Summary)
 **Description:** As a user, I want to see a summary of my requirements before Shipwright matches a template so that I can confirm accuracy.
@@ -78,7 +78,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] "Confirm & Find Template" button proceeds to matching
 - [x] "Start Over" button resets interview
 - [x] Typecheck passes
-- [ ] Verify in browser
+- [x] Verify in browser
 
 ### US-006: Template Matching Engine
 **Description:** As a system, I need to match user requirements to the best-fit template so that users get the most appropriate starting point.

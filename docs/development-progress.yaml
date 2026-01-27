@@ -2,19 +2,25 @@
 # This file tracks which phase of development is currently active
 
 current_phase:
-  phase: 2
-  name: "Interview Flow"
-  description: "AI-guided questions, interactive experience"
-  started: "2026-01-26"
-  status: "in-progress"
+  phase: 3
+  name: "Template Matching"
+  description: "Requirements extraction, scoring algorithm"
+  started: "2026-01-27"
+  status: "pending"
   completion_criteria:
-    - "Dynamic question generation via Claude API"
-    - "Interview navigation (back/forward)"
-    - "State persistence in Convex"
-    - "Requirements extraction"
+    - "Template scoring algorithm"
+    - "Template index/catalog"
+    - "Match explanation UI"
+    - "Template preview"
 
 # Phase History
 completed_phases:
+  - phase: 2
+    name: "Interview Flow"
+    description: "AI-guided questions, interactive experience"
+    started: "2026-01-26"
+    completed: "2026-01-27"
+    status: "complete"
   - phase: 1
     name: "UI + Authentication"
     description: "Landing page, Clerk auth, dashboard shell"
