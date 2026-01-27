@@ -49,35 +49,35 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Description:** As a user, I want to describe my app idea in plain language so that Shipwright understands what I'm building.
 
 **Acceptance Criteria:**
-- [ ] Single text area with prompt: "Tell me about your app in one sentence"
-- [ ] Character limit indicator (500 chars max)
-- [ ] "Next" button submits and proceeds
-- [ ] Input saved to Convex project record
-- [ ] Typecheck passes
+- [x] Single text area with prompt: "Tell me about your app in one sentence"
+- [x] Character limit indicator (500 chars max)
+- [x] "Next" button submits and proceeds
+- [x] Input saved to Convex project record
+- [x] Typecheck passes
 - [ ] Verify in browser
 
 ### US-004: Interview Flow - Step 2 (AI Follow-up Questions)
 **Description:** As a user, I want to answer clarifying questions so that Shipwright fully understands my requirements.
 
 **Acceptance Criteria:**
-- [ ] AI generates 3-5 follow-up questions based on Step 1 input
-- [ ] Questions displayed as form fields (text inputs, dropdowns, or checkboxes as appropriate)
-- [ ] Questions cover: user types, auth needs, data model, core features, integrations
-- [ ] User can submit answers and see next round of questions if AI needs more clarity
-- [ ] Maximum 3 rounds of questions before proceeding
-- [ ] All answers saved to Convex project record
-- [ ] Typecheck passes
+- [x] AI generates 3-5 follow-up questions based on Step 1 input
+- [x] Questions displayed as form fields (text inputs, dropdowns, or checkboxes as appropriate)
+- [x] Questions cover: user types, auth needs, data model, core features, integrations
+- [x] User can submit answers and see next round of questions if AI needs more clarity
+- [x] Maximum 3 rounds of questions before proceeding
+- [x] All answers saved to Convex project record
+- [x] Typecheck passes
 - [ ] Verify in browser
 
 ### US-005: Interview Flow - Step 3 (Requirements Summary)
 **Description:** As a user, I want to see a summary of my requirements before Shipwright matches a template so that I can confirm accuracy.
 
 **Acceptance Criteria:**
-- [ ] Display structured summary: app name, problem, user types, features, auth, database, integrations
-- [ ] User can edit any field inline
-- [ ] "Confirm & Find Template" button proceeds to matching
-- [ ] "Start Over" button resets interview
-- [ ] Typecheck passes
+- [x] Display structured summary: app name, problem, user types, features, auth, database, integrations
+- [x] User can edit any field inline
+- [x] "Confirm & Find Template" button proceeds to matching
+- [x] "Start Over" button resets interview
+- [x] Typecheck passes
 - [ ] Verify in browser
 
 ### US-006: Template Matching Engine
