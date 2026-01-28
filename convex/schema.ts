@@ -21,6 +21,8 @@ export default defineSchema({
     appIdea: v.optional(v.string()), // Step 1 input
     requirements: v.optional(v.any()),
     templateId: v.optional(v.string()),
+    matchScore: v.optional(v.number()),
+    matchGaps: v.optional(v.array(v.string())),
     githubRepoUrl: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 

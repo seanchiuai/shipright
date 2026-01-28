@@ -403,20 +403,20 @@ export default function DashboardPage() {
   const updateAppIdea = useMutation(api.projects.updateAppIdea);
   const generateQuestions = useAction(api.ai.generateInterviewQuestions);
 
-  async function handleSubmit() {
-    if (!convexUser || !appIdea.trim()) return;
+  async function submitIdea(idea: string) {
+    if (!convexUser || !idea.trim()) return;
     setCreating(true);
     try {
       const projectId = await createProject({
         userId: convexUser._id,
-        name: appIdea.trim().slice(0, 50) + (appIdea.length > 50 ? "..." : ""),
+        name: idea.trim().slice(0, 50) + (idea.length > 50 ? "..." : ""),
       });
 
-      await updateAppIdea({ projectId, appIdea: appIdea.trim() });
+      await updateAppIdea({ projectId, appIdea: idea.trim() });
 
       await generateQuestions({
         projectId,
-        appIdea: appIdea.trim(),
+        appIdea: idea.trim(),
         round: 1,
       });
 
@@ -425,6 +425,24 @@ export default function DashboardPage() {
       console.error("Failed to create project:", error);
       setCreating(false);
     }
+  }
+
+  // Check for pending app idea from landing page
+  useEffect(() => {
+    const pendingIdea = localStorage.getItem("pendingAppIdea");
+    if (pendingIdea && convexUser) {
+      setAppIdea(pendingIdea);
+      localStorage.removeItem("pendingAppIdea");
+      // Auto-submit the pending idea after a short delay
+      setTimeout(() => {
+        submitIdea(pendingIdea);
+      }, 500);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convexUser]);
+
+  function handleSubmit() {
+    submitIdea(appIdea);
   }
 
   if (!isLoaded || convexUser === undefined) {

@@ -3,6 +3,11 @@
 import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { ArrowRight } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useMutation, useAction } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { useSyncUser } from "@/hooks/useSyncUser";
 
 const placeholders = [
   "Vertical AI B2B SaaS for enterprise workflows",
@@ -15,14 +20,18 @@ const placeholders = [
   "A pivot-ready MVP with synergy",
 ];
 
-interface HeroSectionProps {
-  onOpenModal?: (idea: string) => void;
-}
-
-export function HeroSection({ onOpenModal }: HeroSectionProps) {
+export function HeroSection() {
   const [appIdea, setAppIdea] = useState("");
   const [placeholder, setPlaceholder] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { isSignedIn } = useUser();
+  const router = useRouter();
+  const convexUser = useSyncUser();
+
+  const createProject = useMutation(api.projects.create);
+  const updateAppIdea = useMutation(api.projects.updateAppIdea);
+  const generateQuestions = useAction(api.ai.generateInterviewQuestions);
 
   // Typing effect
   useEffect(() => {
@@ -62,30 +71,49 @@ export function HeroSection({ onOpenModal }: HeroSectionProps) {
     return () => clearTimeout(timeoutId);
   }, []);
 
-  const handleSubmit = () => {
-    if (onOpenModal) {
-      onOpenModal(appIdea);
+  const handleSubmit = async () => {
+    if (!appIdea.trim()) return;
+
+    if (!isSignedIn) {
+      // Store idea in localStorage and redirect to sign in
+      localStorage.setItem("pendingAppIdea", appIdea.trim());
+      router.push("/dashboard");
+      return;
+    }
+
+    // User is signed in, create project directly
+    if (!convexUser) {
+      // User not synced yet, store idea and redirect
+      localStorage.setItem("pendingAppIdea", appIdea.trim());
+      router.push("/dashboard");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const projectId = await createProject({
+        userId: convexUser._id,
+        name: appIdea.trim().slice(0, 50) + (appIdea.length > 50 ? "..." : ""),
+      });
+
+      await updateAppIdea({ projectId, appIdea: appIdea.trim() });
+
+      await generateQuestions({
+        projectId,
+        appIdea: appIdea.trim(),
+        round: 1,
+      });
+
+      router.push(`/interview/${projectId}`);
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <section className="py-20 md:py-24 text-center relative">
       <div className="max-w-[1140px] mx-auto px-6">
-        {/* Badge */}
-        <motion.div
-          className="inline-flex items-center gap-2 px-4 py-2 bg-accent text-primary rounded-full text-sm font-semibold mb-8"
-          style={{ animation: "badgeGlow 3s ease-in-out infinite" }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <span
-            className="w-2 h-2 bg-green-500 rounded-full"
-            style={{ animation: "pulse 2s infinite" }}
-          />
-          Now in beta
-        </motion.div>
-
         {/* Headline */}
         <motion.h1
           className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-normal leading-tight mb-6 tracking-tight"
@@ -105,8 +133,11 @@ export function HeroSection({ onOpenModal }: HeroSectionProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
-          Go from app idea to <strong className="text-foreground font-semibold">GitHub repo</strong> in 10 minutes.
-          No coding required.
+          Turn ideas into{" "}
+          <strong className="text-foreground font-semibold">
+            plans and architecture
+          </strong>{" "}
+          ready to vibe code.
         </motion.p>
 
         {/* Input box */}
@@ -131,26 +162,27 @@ export function HeroSection({ onOpenModal }: HeroSectionProps) {
               value={appIdea}
               onChange={(e) => setAppIdea(e.target.value)}
               placeholder={placeholder}
-              className="flex-1 border-none outline-none text-lg resize-none bg-transparent min-h-[80px] leading-relaxed placeholder:text-muted-foreground"
+              disabled={isSubmitting}
+              className="flex-1 border-none outline-none text-lg resize-none bg-transparent min-h-[80px] leading-relaxed placeholder:text-muted-foreground disabled:opacity-50"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  handleSubmit();
+                }
+              }}
             />
             <button
               onClick={handleSubmit}
-              className="w-[52px] h-[52px] bg-primary text-white border-none rounded-full flex items-center justify-center cursor-pointer transition-all flex-shrink-0 hover:bg-[#0052cc] hover:scale-110 hover:shadow-[0_6px_20px_rgba(0,102,255,0.3)]"
+              disabled={!appIdea.trim() || isSubmitting}
+              className="w-[52px] h-[52px] bg-primary text-white border-none rounded-full flex items-center justify-center cursor-pointer transition-all flex-shrink-0 hover:bg-[#0052cc] hover:scale-110 hover:shadow-[0_6px_20px_rgba(0,102,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              <ArrowRight className="w-5 h-5" />
+              {isSubmitting ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <ArrowRight className="w-5 h-5" />
+              )}
             </button>
           </div>
         </motion.div>
-
-        {/* Trust line */}
-        <motion.p
-          className="text-sm text-muted-foreground mb-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          Free during beta. No credit card required.
-        </motion.p>
 
         {/* Social proof */}
         <motion.div

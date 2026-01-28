@@ -109,3 +109,20 @@ export const resetInterview = mutation({
     });
   },
 });
+
+export const setMatchedTemplate = mutation({
+  args: {
+    projectId: v.id("projects"),
+    templateId: v.string(),
+    matchScore: v.number(),
+    matchGaps: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      templateId: args.templateId,
+      matchScore: args.matchScore,
+      matchGaps: args.matchGaps,
+      status: "matching",
+    });
+  },
+});

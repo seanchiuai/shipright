@@ -84,24 +84,24 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Description:** As a system, I need to match user requirements to the best-fit template so that users get the most appropriate starting point.
 
 **Acceptance Criteria:**
-- [ ] Parse structured requirements from interview
-- [ ] Score each template in index against requirements
-- [ ] Scoring considers: auth type, database type, payments, real-time needs, UI components
-- [ ] Return top match with confidence score
-- [ ] If no good match (score < 50%), fallback to minimal Next.js starter
-- [ ] Matching logic runs as Convex action
-- [ ] Typecheck passes
+- [x] Parse structured requirements from interview
+- [x] Score each template in index against requirements
+- [x] Scoring considers: auth type, database type, payments, real-time needs, UI components
+- [x] Return top match with confidence score
+- [x] If no good match (score < 50%), fallback to minimal Next.js starter
+- [x] Matching logic runs as Convex action
+- [x] Typecheck passes
 
 ### US-007: Template Selection Confirmation
 **Description:** As a user, I want to see the matched template and confirm before Shipwright creates my repository.
 
 **Acceptance Criteria:**
-- [ ] Display matched template: name, description, included features
-- [ ] Show "What's included" checklist (auth, database, payments, etc.)
-- [ ] Show "What will be built" list (features from requirements not in template)
-- [ ] "Create My Repository" button proceeds to repo generation
-- [ ] "Try Different Template" button (future: manual selection, for now: restart interview)
-- [ ] Typecheck passes
+- [x] Display matched template: name, description, included features
+- [x] Show "What's included" checklist (auth, database, payments, etc.)
+- [x] Show "What will be built" list (features from requirements not in template)
+- [x] "Create My Repository" button proceeds to repo generation
+- [x] "Try Different Template" button (future: manual selection, for now: restart interview)
+- [x] Typecheck passes
 - [ ] Verify in browser
 
 ### US-008: GitHub Repository Generation
@@ -206,11 +206,11 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Description:** As an admin, I need to manage the template index so that users get matched to quality templates.
 
 **Acceptance Criteria:**
-- [ ] Template index stored in Convex
-- [ ] Each template has: id, name, source URL, capabilities (tagged), stack, description
-- [ ] Capabilities follow defined taxonomy (auth types, db types, payments, features)
-- [ ] Admin can add/edit/remove templates via Convex dashboard (no UI needed for MVP)
-- [ ] Typecheck passes
+- [x] Template index stored in Convex
+- [x] Each template has: id, name, source URL, capabilities (tagged), stack, description
+- [x] Capabilities follow defined taxonomy (auth types, db types, payments, features)
+- [x] Admin can add/edit/remove templates via Convex dashboard (no UI needed for MVP)
+- [x] Typecheck passes
 
 ### US-015: Production Deployment
 **Description:** As a developer, I need to deploy Shipright to production so that users can access it.

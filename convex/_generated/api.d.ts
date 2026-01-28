@@ -11,7 +11,9 @@
 import type * as ai from "../ai.js";
 import type * as http from "../http.js";
 import type * as interviews from "../interviews.js";
+import type * as matching from "../matching.js";
 import type * as projects from "../projects.js";
+import type * as templates from "../templates.js";
 import type * as users from "../users.js";
 
 import type {
@@ -24,7 +26,9 @@ declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   http: typeof http;
   interviews: typeof interviews;
+  matching: typeof matching;
   projects: typeof projects;
+  templates: typeof templates;
   users: typeof users;
 }>;
 
