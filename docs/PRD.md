@@ -102,7 +102,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] "Create My Repository" button proceeds to repo generation
 - [x] "Try Different Template" button (future: manual selection, for now: restart interview)
 - [x] Typecheck passes
-- [ ] Verify in browser
+- [x] Verify in browser
 
 ### US-008: GitHub Repository Generation
 **Description:** As a user, I want Shipright to automatically create a GitHub repository with my template so that I have a codebase to work with.
