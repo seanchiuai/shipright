@@ -45,32 +45,26 @@ interface Template {
 
 ## Scoring Algorithm
 
+Weights are determined by AI based on app context. See `convex/matching.ts` for implementation.
+
 ```typescript
-function scoreTemplate(requirements: Requirements, template: Template): number {
-  const scores = {
-    auth: scoreAuth(requirements.auth, template.capabilities.auth),
-    database: scoreDatabase(requirements.database, template.capabilities.database),
-    payments: scorePayments(requirements.payments, template.capabilities.payments),
-    features: scoreFeatures(requirements.features, template.capabilities.features),
-    ui: scoreUI(requirements, template.capabilities.ui),
-  };
+// AI determines weights dynamically based on app context
+const weights = await determineWeights(requirements);
 
-  const weights = {
-    auth: 0.25,
-    database: 0.25,
-    payments: 0.20,
-    features: 0.20,
-    ui: 0.10,
-  };
+const scores = {
+  auth: scoreAuth(requirements.auth, template.capabilities.auth),
+  database: scoreDatabase(requirements.database, template.capabilities.database),
+  payments: scorePayments(requirements.payments, template.capabilities.payments),
+  features: scoreFeatures(requirements.features, template.capabilities.features),
+  ui: scoreUI(requirements, template.capabilities.ui),
+};
 
-  return (
-    scores.auth * weights.auth +
-    scores.database * weights.database +
-    scores.payments * weights.payments +
-    scores.features * weights.features +
-    scores.ui * weights.ui
-  );
-}
+const totalScore =
+  scores.auth * weights.auth +
+  scores.database * weights.database +
+  scores.payments * weights.payments +
+  scores.features * weights.features +
+  scores.ui * weights.ui;
 
 function scoreAuth(reqAuth: any, tmplAuth: any): number {
   if (!reqAuth.needed && !tmplAuth.present) return 100;

@@ -2,20 +2,7 @@
 
 ## Active
 
-### Phase 3: Template Matching
-- [ ] Define template index schema in Convex
-- [ ] Populate 10 curated templates with capability tags
-- [ ] Build template scoring algorithm
-- [ ] Build template confirmation UI (what's included vs what will be built)
-
-## Backlog
-
 ### Phase 4: GitHub Repo Creation
-- [ ] Define template index schema in Convex
-- [ ] Populate 10 curated templates with capability tags
-- [ ] Build template scoring algorithm
-- [ ] Build template confirmation UI (what's included vs what will be built)
-
 - [ ] Implement GitHub OAuth connection flow
 - [ ] Clone template to user's GitHub account
 - [ ] Commit template files to new repo
@@ -43,6 +30,12 @@
 - [ ] Set up error monitoring
 
 ## Complete
+
+### Phase 3: Template Matching (2026-01-28)
+- [x] Define template index schema in Convex
+- [x] Populate 10 curated templates with capability tags
+- [x] Build template scoring algorithm (AI-determined weights)
+- [x] Build template confirmation UI (what's included vs what will be built)
 
 ### Phase 2: Interview Flow (2026-01-27)
 - [x] Build Step 1: App idea input (500 char textarea)

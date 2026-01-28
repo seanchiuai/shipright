@@ -28,13 +28,20 @@ Matches user requirements to the best-fit template from a curated library.
 
 ## Scoring Weights
 
-| Category | Weight | What it measures |
-|----------|--------|------------------|
+Weights are **AI-determined** based on app context. The AI analyzes the requirements and assigns weights that sum to 1.0.
+
+| Category | Default | What it measures |
+|----------|---------|------------------|
 | Auth | 25% | Authentication methods, roles, orgs |
 | Database | 25% | DB type, realtime support |
 | Payments | 20% | Payment provider, billing models |
 | Features | 20% | File uploads, email, search, AI |
 | UI | 10% | Component library, admin dashboard |
+
+Example weight distributions:
+- E-commerce: payments=35%, database=25%, auth=20%
+- Social network: database=30%, auth=30%, features=25%
+- AI chatbot: features=40%, database=25%, auth=20%
 
 ## Template Library (MVP: 10 templates)
 
