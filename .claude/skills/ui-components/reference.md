@@ -20,25 +20,28 @@ components/
 │   ├── button.tsx
 │   ├── card.tsx
 │   ├── input.tsx
-│   └── form.tsx
+│   ├── ai-message.tsx          # Chat message bubble
+│   └── ai-conversation.tsx     # Auto-scroll container
 ├── interview/                  # Interview-specific
-│   ├── question-form.tsx
-│   └── requirements-summary.tsx
-├── dashboard/                  # Dashboard components
-│   ├── project-card.tsx
-│   └── project-list.tsx
-└── shared/                     # Reusable components
-    └── logo.tsx
+│   ├── chat-message.tsx        # AI/user message wrapper
+│   ├── typewriter-text.tsx     # Typewriter effect
+│   ├── choice-card.tsx         # Choice selection UI
+│   ├── magic-textarea.tsx      # Animated text input
+│   ├── celebration.tsx         # Confetti + toast
+│   ├── journey-progress.tsx    # Progress indicator
+│   └── interview-background.tsx # Ambient animation
+└── dashboard/                  # Dashboard components
+    └── project-card.tsx
 
 app/
 ├── page.tsx                    # Landing page
 ├── layout.tsx                  # Root layout
 ├── dashboard/
 │   └── page.tsx                # Dashboard
+├── interview/
+│   └── [id]/page.tsx           # Interview flow
 └── project/
-    └── [id]/
-        ├── page.tsx            # Project detail
-        └── interview/page.tsx  # Interview flow
+    └── [id]/page.tsx           # Project detail
 ```
 
 ## Button Component

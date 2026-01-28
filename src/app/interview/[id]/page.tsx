@@ -4,22 +4,23 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { useSyncUser } from "@/hooks/useSyncUser";
+import { ArrowLeft, Pencil, Check, X } from "lucide-react";
+import {
+  ChatMessage,
+  ChoiceGrid,
+  MagicTextarea,
+  JourneyProgress,
+  CelebrationBurst,
+  EncouragementToast,
+  InterviewBackground,
+  AIConversation,
+} from "@/components/interview";
 
 type Question = {
   id: string;
@@ -27,6 +28,13 @@ type Question = {
   type: "text" | "choice" | "multiselect";
   options?: string[];
   required?: boolean;
+};
+
+type Message = {
+  id: string;
+  type: "ai" | "user";
+  content: string;
+  questionData?: Question;
 };
 
 type Requirements = {
@@ -58,6 +66,8 @@ export default function InterviewPage() {
   // Actions and mutations
   const updateAppIdea = useMutation(api.projects.updateAppIdea);
   const generateQuestions = useAction(api.ai.generateInterviewQuestions);
+  const generateEncouragement = useAction(api.ai.generateEncouragement);
+  const generateCompletionMessage = useAction(api.ai.generateCompletionMessage);
   const saveAnswers = useMutation(api.interviews.saveAnswers);
   const updateInterviewStep = useMutation(api.projects.updateInterviewStep);
   const extractRequirements = useAction(api.ai.extractRequirements);
@@ -65,43 +75,286 @@ export default function InterviewPage() {
   const updateRequirements = useMutation(api.projects.updateRequirements);
   const updateStatus = useMutation(api.projects.updateStatus);
 
-  // Local state
-  const [appIdea, setAppIdea] = useState("");
+  // Chat state
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentInput, setCurrentInput] = useState("");
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [encouragement, setEncouragement] = useState<string | null>(null);
+  const [isTypewriterDone, setIsTypewriterDone] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<string>("");
+  const [editValue, setEditValue] = useState("");
 
-  // Current step: 1 (app idea), 2 (questions), 3 (summary)
   const currentStep = project?.interviewStep || 1;
   const currentRound = project?.interviewRound || 1;
 
-  // Load existing app idea if present
-  useEffect(() => {
-    if (project?.appIdea) {
-      setAppIdea(project.appIdea);
-    }
-  }, [project?.appIdea]);
+  // Calculate progress for background animation
+  const progressValue =
+    currentStep === 1
+      ? 10
+      : currentStep === 2
+        ? 20 + ((currentRound - 1) * 20 + (currentQuestionIndex / Math.max(questions.length, 1)) * 20)
+        : 100;
 
-  // Load questions for current round
+  // Initialize from existing data on step 2
   useEffect(() => {
-    if (currentStep === 2 && interviewRounds) {
-      const currentSession = interviewRounds.find((r) => r.round === currentRound);
+    if (currentStep === 2 && interviewRounds && messages.length === 0) {
+      const currentSession = interviewRounds.find((r: { round: number }) => r.round === currentRound);
       if (currentSession?.questions) {
-        setQuestions(currentSession.questions as Question[]);
+        const loadedQuestions = currentSession.questions as Question[];
+        setQuestions(loadedQuestions);
         if (currentSession.answers) {
           setAnswers(currentSession.answers as Record<string, string | string[]>);
         }
       }
     }
-  }, [currentStep, currentRound, interviewRounds]);
+  }, [currentStep, currentRound, interviewRounds, messages.length]);
 
+  // Show current question as AI message when questions change
+  useEffect(() => {
+    if (questions.length > 0 && currentQuestionIndex < questions.length && isTypewriterDone) {
+      const q = questions[currentQuestionIndex];
+      const alreadyShown = messages.some((m) => m.id === `question-${q.id}`);
+      if (!alreadyShown) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `question-${q.id}`,
+            type: "ai",
+            content: q.question,
+            questionData: q,
+          },
+        ]);
+        setIsTypewriterDone(false);
+      }
+    }
+  }, [questions, currentQuestionIndex, messages, isTypewriterDone]);
+
+  const handleSubmitIdea = useCallback(async () => {
+    if (!currentInput.trim() || loading) return;
+    const idea = currentInput.trim();
+    setLoading(true);
+    setCurrentInput("");
+
+    // Add user message
+    setMessages((prev) => [
+      ...prev,
+      { id: `idea-${Date.now()}`, type: "user", content: idea },
+    ]);
+
+    try {
+      await updateAppIdea({ projectId, appIdea: idea });
+      const result = await generateQuestions({
+        projectId,
+        appIdea: idea,
+        round: 1,
+      });
+
+      // Add AI preamble
+      setMessages((prev) => [
+        ...prev,
+        { id: `preamble-1`, type: "ai", content: result.preamble },
+      ]);
+
+      setQuestions(result.questions as Question[]);
+      setCurrentQuestionIndex(0);
+      setAnswers({});
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          type: "ai",
+          content: `Oops, something went wrong. Let's try again! ${e instanceof Error ? e.message : ""}`,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentInput, loading, projectId, updateAppIdea, generateQuestions]);
+
+  const handleAnswer = useCallback(
+    async (answer: string | string[]) => {
+      if (loading) return;
+      const currentQuestion = questions[currentQuestionIndex];
+      if (!currentQuestion) return;
+
+      const answerText = Array.isArray(answer) ? answer.join(", ") : answer;
+
+      // Add user message
+      setMessages((prev) => [
+        ...prev,
+        { id: `answer-${currentQuestion.id}`, type: "user", content: answerText },
+      ]);
+
+      // Update answers
+      const newAnswers = { ...answers, [currentQuestion.id]: answer };
+      setAnswers(newAnswers);
+
+      // Show celebration
+      setShowCelebration(true);
+
+      // Get encouragement from AI (fire and forget for speed)
+      if (project?.appIdea) {
+        generateEncouragement({
+          appIdea: project.appIdea,
+          question: currentQuestion.question,
+          answer: answerText,
+        })
+          .then((result) => {
+            setEncouragement(result.encouragement);
+            setTimeout(() => setEncouragement(null), 2000);
+          })
+          .catch(() => {});
+      }
+
+      // Move to next question or next round
+      if (currentQuestionIndex < questions.length - 1) {
+        setCurrentQuestionIndex((i) => i + 1);
+        setIsTypewriterDone(true);
+      } else {
+        // Round complete
+        setLoading(true);
+        try {
+          await saveAnswers({ projectId, round: currentRound, answers: newAnswers });
+
+          if (currentRound < 3) {
+            // Get next round
+            const previousRounds =
+              interviewRounds?.map((r: { questions?: unknown[]; answers?: Record<string, unknown> }) => ({
+                questions: r.questions || [],
+                answers: r.answers || {},
+              })) || [];
+            previousRounds.push({ questions, answers: newAnswers });
+
+            const nextRound = currentRound + 1;
+            await updateInterviewStep({ projectId, step: 2, round: nextRound });
+
+            const result = await generateQuestions({
+              projectId,
+              appIdea: project!.appIdea!,
+              round: nextRound,
+              previousRounds,
+            });
+
+            // Add round transition message
+            setMessages((prev) => [
+              ...prev,
+              { id: `preamble-${nextRound}`, type: "ai", content: result.preamble },
+            ]);
+
+            setQuestions(result.questions as Question[]);
+            setCurrentQuestionIndex(0);
+            setAnswers({});
+          } else {
+            // Final round complete - extract requirements
+            await extractRequirements({ projectId });
+
+            // Get completion message
+            const completion = await generateCompletionMessage({ projectId });
+            setMessages((prev) => [
+              ...prev,
+              { id: "completion", type: "ai", content: completion.message },
+            ]);
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoading(false);
+        }
+      }
+    },
+    [
+      loading,
+      questions,
+      currentQuestionIndex,
+      answers,
+      project,
+      projectId,
+      currentRound,
+      interviewRounds,
+      saveAnswers,
+      updateInterviewStep,
+      generateQuestions,
+      extractRequirements,
+      generateCompletionMessage,
+      generateEncouragement,
+    ]
+  );
+
+  const handleFinishEarly = useCallback(async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      await saveAnswers({ projectId, round: currentRound, answers });
+      await extractRequirements({ projectId });
+
+      const completion = await generateCompletionMessage({ projectId });
+      setMessages((prev) => [
+        ...prev,
+        { id: "completion", type: "ai", content: completion.message },
+      ]);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, projectId, currentRound, answers, saveAnswers, extractRequirements, generateCompletionMessage]);
+
+  const handleStartOver = useCallback(async () => {
+    setLoading(true);
+    try {
+      await resetInterview({ projectId });
+      setMessages([]);
+      setQuestions([]);
+      setAnswers({});
+      setCurrentQuestionIndex(0);
+      setCurrentInput("");
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, resetInterview]);
+
+  const handleConfirm = useCallback(async () => {
+    setLoading(true);
+    try {
+      await updateStatus({ projectId, status: "matching" });
+      router.push(`/project/${projectId}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId, updateStatus, router]);
+
+  // Edit handlers for requirements
+  const startEdit = (field: string, value: string) => {
+    setEditingField(field);
+    setEditValue(value);
+  };
+
+  const saveEdit = async (field: string) => {
+    if (!project?.requirements) return;
+    const updated = { ...project.requirements };
+    if (field === "appName") updated.appName = editValue;
+    else if (field === "problemStatement") updated.problemStatement = editValue;
+    await updateRequirements({ projectId, requirements: updated });
+    setEditingField(null);
+  };
+
+  // Loading state
   if (!isLoaded || convexUser === undefined || project === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+        <motion.div
+          className="flex flex-col items-center gap-3"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <span className="text-muted-foreground">Loading your project...</span>
+        </motion.div>
       </div>
     );
   }
@@ -119,449 +372,320 @@ export default function InterviewPage() {
     );
   }
 
-  const progressValue = currentStep === 1 ? 33 : currentStep === 2 ? 66 : 100;
-
-  // Step 1: Submit app idea
-  async function handleSubmitIdea() {
-    if (!appIdea.trim()) return;
-    setLoading(true);
-    setError(null);
-
-    try {
-      await updateAppIdea({ projectId, appIdea: appIdea.trim() });
-      const result = await generateQuestions({
-        projectId,
-        appIdea: appIdea.trim(),
-        round: 1,
-      });
-      setQuestions(result.questions as Question[]);
-      setAnswers({});
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to generate questions");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Step 2: Submit answers and potentially get more questions
-  async function handleSubmitAnswers() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Save current answers
-      await saveAnswers({ projectId, round: currentRound, answers });
-
-      // Check if we need more rounds
-      if (currentRound < 3) {
-        // Get previous rounds for context
-        const previousRounds =
-          interviewRounds?.map((r) => ({
-            questions: r.questions || [],
-            answers: r.answers || {},
-          })) || [];
-
-        // Add current round
-        previousRounds.push({ questions, answers });
-
-        // Generate next round of questions
-        const nextRound = currentRound + 1;
-        await updateInterviewStep({ projectId, step: 2, round: nextRound });
-
-        const result = await generateQuestions({
-          projectId,
-          appIdea: project!.appIdea!,
-          round: nextRound,
-          previousRounds,
-        });
-
-        setQuestions(result.questions as Question[]);
-        setAnswers({});
-      } else {
-        // Max rounds reached, extract requirements
-        await extractRequirements({ projectId });
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to process answers");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Step 2: Skip to requirements extraction
-  async function handleFinishEarly() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Save current answers first
-      await saveAnswers({ projectId, round: currentRound, answers });
-      // Extract requirements
-      await extractRequirements({ projectId });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to extract requirements");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Step 3: Start over
-  async function handleStartOver() {
-    setLoading(true);
-    try {
-      await resetInterview({ projectId });
-      setAppIdea("");
-      setQuestions([]);
-      setAnswers({});
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Step 3: Confirm and proceed to template matching
-  async function handleConfirm() {
-    setLoading(true);
-    try {
-      await updateStatus({ projectId, status: "matching" });
-      router.push(`/project/${projectId}`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // Edit requirement field
-  function startEdit(field: string, value: string) {
-    setEditingField(field);
-    setEditValue(value);
-  }
-
-  async function saveEdit(field: string) {
-    if (!project?.requirements) return;
-
-    const updated = { ...project.requirements };
-    if (field === "appName") updated.appName = editValue;
-    else if (field === "problemStatement") updated.problemStatement = editValue;
-    // Add more fields as needed
-
-    await updateRequirements({ projectId, requirements: updated });
-    setEditingField(null);
-  }
-
   const requirements = project?.requirements as Requirements | undefined;
+  const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-border">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => router.push("/dashboard")}>
-            Shipright
+    <div className="min-h-screen flex flex-col">
+      <InterviewBackground progress={progressValue} />
+      <CelebrationBurst
+        trigger={showCelebration}
+        onComplete={() => setShowCelebration(false)}
+        intensity="subtle"
+      />
+      <EncouragementToast
+        message={encouragement || ""}
+        show={!!encouragement}
+        onComplete={() => setEncouragement(null)}
+      />
+
+      {/* Header */}
+      <header className="relative z-10 border-b border-border/50 bg-white/50 backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/dashboard")}
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Dashboard</span>
           </Button>
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-sm">
-              {clerkUser.fullName || clerkUser.primaryEmailAddress?.emailAddress}
+
+          <div className="flex-1 mx-4">
+            <JourneyProgress
+              currentStep={currentStep}
+              currentRound={currentRound}
+              totalRounds={3}
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-sm text-muted-foreground">
+              {clerkUser.firstName || clerkUser.primaryEmailAddress?.emailAddress}
             </span>
             <UserButton afterSignOutUrl="/" />
           </div>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-8">
-        {/* Progress indicator */}
-        <div className="mb-8">
-          <div className="flex justify-between text-sm text-muted-foreground mb-2">
-            <span>Step {currentStep} of 3</span>
-            {currentStep === 2 && <span>Round {currentRound} of 3</span>}
-          </div>
-          <Progress value={progressValue} className="h-2" />
-        </div>
+      {/* Chat area */}
+      <main className="flex-1 relative z-10 overflow-hidden">
+        <div className="h-full max-w-3xl mx-auto flex flex-col">
+          {/* Messages */}
+          <AIConversation className="flex-1 overflow-y-auto px-4 py-6">
+            {/* Step 1: Initial prompt */}
+            {currentStep === 1 && messages.length === 0 && (
+              <ChatMessage
+                message="What's the app you've been dreaming about? Tell me everything - who it's for, what problem it solves, what makes it special."
+                isAI
+                typewriter
+                onTypewriterComplete={() => setIsTypewriterDone(true)}
+              />
+            )}
 
-        {error && (
-          <Card className="mb-6 border-destructive">
-            <CardContent className="pt-6">
-              <p className="text-destructive">{error}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 1: App Idea */}
-        {currentStep === 1 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>What do you want to build?</CardTitle>
-              <CardDescription>
-                Describe your app idea in one sentence. Be specific about what users can do.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="idea" className="sr-only">
-                  App idea
-                </Label>
-                <Textarea
-                  id="idea"
-                  value={appIdea}
-                  onChange={(e) => setAppIdea(e.target.value)}
-                  placeholder="I want to build an app where..."
-                  maxLength={500}
-                  rows={4}
-                  className="resize-none"
-                />
-                <p className="text-sm text-muted-foreground mt-2 text-right">
-                  {appIdea.length}/500
-                </p>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <p className="font-medium mb-1">Examples:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>&quot;...people can share and discover book recommendations&quot;</li>
-                  <li>&quot;...freelancers can track their time and invoices&quot;</li>
-                </ul>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={handleSubmitIdea} disabled={loading || !appIdea.trim()}>
-                  {loading ? "Generating questions..." : "Next"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 2: AI Questions */}
-        {currentStep === 2 && questions.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>A few questions to understand your app better</CardTitle>
-              <CardDescription>
-                Answer these questions so we can find the best template for you.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {questions.map((q, index) => (
-                <div key={q.id} className="space-y-2">
-                  <Label className="text-base">
-                    {index + 1}. {q.question}
-                    {q.required && <span className="text-destructive ml-1">*</span>}
-                  </Label>
-
-                  {q.type === "text" && (
-                    <Textarea
-                      value={(answers[q.id] as string) || ""}
-                      onChange={(e) =>
-                        setAnswers({ ...answers, [q.id]: e.target.value })
-                      }
-                      placeholder="Your answer..."
-                      rows={3}
-                    />
-                  )}
-
-                  {q.type === "choice" && q.options && (
-                    <RadioGroup
-                      value={(answers[q.id] as string) || ""}
-                      onValueChange={(value) =>
-                        setAnswers({ ...answers, [q.id]: value })
-                      }
-                    >
-                      {q.options.map((opt) => (
-                        <div key={opt} className="flex items-center space-x-2">
-                          <RadioGroupItem value={opt} id={`${q.id}-${opt}`} />
-                          <Label htmlFor={`${q.id}-${opt}`} className="font-normal cursor-pointer">
-                            {opt}
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  )}
-
-                  {q.type === "multiselect" && q.options && (
-                    <div className="space-y-2">
-                      {q.options.map((opt) => {
-                        const selected = ((answers[q.id] as string[]) || []).includes(opt);
-                        return (
-                          <div key={opt} className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id={`${q.id}-${opt}`}
-                              checked={selected}
-                              onChange={(e) => {
-                                const current = (answers[q.id] as string[]) || [];
-                                if (e.target.checked) {
-                                  setAnswers({ ...answers, [q.id]: [...current, opt] });
-                                } else {
-                                  setAnswers({
-                                    ...answers,
-                                    [q.id]: current.filter((v) => v !== opt),
-                                  });
-                                }
-                              }}
-                              className="h-4 w-4 rounded border-input"
-                            />
-                            <Label htmlFor={`${q.id}-${opt}`} className="font-normal cursor-pointer">
-                              {opt}
-                            </Label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={handleFinishEarly} disabled={loading}>
-                  Finish Early
-                </Button>
-                <Button onClick={handleSubmitAnswers} disabled={loading}>
-                  {loading
-                    ? "Processing..."
-                    : currentRound < 3
-                      ? "Next"
-                      : "Review Requirements"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 3: Requirements Summary */}
-        {currentStep === 3 && requirements && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Here&apos;s what we understood</CardTitle>
-              <CardDescription>
-                Review and edit anything that&apos;s wrong before we find your template.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* App Name */}
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">App Name</p>
-                  {editingField === "appName" ? (
-                    <div className="flex gap-2 mt-1">
-                      <Input
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button size="sm" onClick={() => saveEdit("appName")}>
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditingField(null)}
+            {/* Chat messages */}
+            <AnimatePresence mode="popLayout">
+              {messages.map((msg, index) => (
+                <ChatMessage
+                  key={msg.id}
+                  message={msg.content}
+                  isAI={msg.type === "ai"}
+                  typewriter={msg.type === "ai" && index === messages.length - 1 && !msg.questionData}
+                  onTypewriterComplete={() => setIsTypewriterDone(true)}
+                  delay={msg.type === "ai" ? 0.2 : 0}
+                >
+                  {/* Show choice options inline for current question */}
+                  {msg.questionData &&
+                    msg.id === `question-${currentQuestion?.id}` &&
+                    (msg.questionData.type === "choice" || msg.questionData.type === "multiselect") &&
+                    msg.questionData.options && (
+                      <motion.div
+                        className="mt-4"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
                       >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="font-medium">{requirements.appName}</p>
-                  )}
-                </div>
-                {editingField !== "appName" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => startEdit("appName", requirements.appName)}
-                  >
-                    Edit
-                  </Button>
-                )}
-              </div>
+                        <ChoiceGrid
+                          options={msg.questionData.options}
+                          selected={answers[msg.questionData.id] || (msg.questionData.type === "multiselect" ? [] : "")}
+                          onChange={(val) => {
+                            if (msg.questionData!.type === "multiselect") {
+                              setAnswers({ ...answers, [msg.questionData!.id]: val as string[] });
+                            } else {
+                              handleAnswer(val);
+                            }
+                          }}
+                          multiSelect={msg.questionData.type === "multiselect"}
+                        />
+                        {msg.questionData.type === "multiselect" && (
+                          <motion.div
+                            className="mt-3 flex justify-end"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.5 }}
+                          >
+                            <Button
+                              size="sm"
+                              onClick={() => handleAnswer(answers[msg.questionData!.id] as string[] || [])}
+                              disabled={!answers[msg.questionData!.id] || (answers[msg.questionData!.id] as string[]).length === 0}
+                            >
+                              Continue
+                            </Button>
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    )}
+                </ChatMessage>
+              ))}
+            </AnimatePresence>
 
-              {/* Problem Statement */}
-              <div className="flex items-start justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Problem</p>
-                  {editingField === "problemStatement" ? (
-                    <div className="flex flex-col gap-2 mt-1">
-                      <Textarea
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        rows={2}
+            {/* Loading indicator */}
+            {loading && (
+              <motion.div
+                className="flex gap-3 items-center self-start"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                  <div className="flex gap-1">
+                    {[0, 1, 2].map((i) => (
+                      <motion.div
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-white"
+                        animate={{ y: [0, -4, 0] }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 0.6,
+                          delay: i * 0.1,
+                        }}
                       />
+                    ))}
+                  </div>
+                </div>
+                <span className="text-sm text-muted-foreground">Thinking...</span>
+              </motion.div>
+            )}
+
+            {/* Requirements summary */}
+            {currentStep === 3 && requirements && (
+              <motion.div
+                className="bg-white rounded-2xl border border-border/50 shadow-sm p-6 space-y-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <h3 className="font-semibold text-lg">Here's what I understood</h3>
+
+                {/* App Name */}
+                <div className="flex items-start justify-between p-3 rounded-lg bg-secondary/30">
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">App Name</p>
+                    {editingField === "appName" ? (
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={() => saveEdit("problemStatement")}>
-                          Save
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="h-8"
+                        />
+                        <Button size="sm" variant="ghost" onClick={() => saveEdit("appName")}>
+                          <Check className="w-4 h-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditingField(null)}
-                        >
-                          Cancel
+                        <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
-                    </div>
-                  ) : (
-                    <p className="font-medium">{requirements.problemStatement}</p>
+                    ) : (
+                      <p className="font-medium">{requirements.appName}</p>
+                    )}
+                  </div>
+                  {editingField !== "appName" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEdit("appName", requirements.appName)}
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </Button>
                   )}
                 </div>
-                {editingField !== "problemStatement" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      startEdit("problemStatement", requirements.problemStatement)
-                    }
-                  >
-                    Edit
+
+                {/* Problem */}
+                <div className="flex items-start justify-between p-3 rounded-lg bg-secondary/30">
+                  <div className="flex-1">
+                    <p className="text-xs text-muted-foreground mb-1">Problem</p>
+                    {editingField === "problemStatement" ? (
+                      <div className="space-y-2">
+                        <Input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="h-8"
+                        />
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="ghost" onClick={() => saveEdit("problemStatement")}>
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="font-medium">{requirements.problemStatement}</p>
+                    )}
+                  </div>
+                  {editingField !== "problemStatement" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEdit("problemStatement", requirements.problemStatement)}
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+
+                {/* Other fields (read-only) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-secondary/30">
+                    <p className="text-xs text-muted-foreground mb-1">Users</p>
+                    <p className="font-medium text-sm">
+                      {requirements.userTypes.map((u) => u.name).join(", ")}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-secondary/30">
+                    <p className="text-xs text-muted-foreground mb-1">Auth</p>
+                    <p className="font-medium text-sm">
+                      {requirements.auth.needed
+                        ? requirements.auth.methods.join(", ") || "Required"
+                        : "None"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-secondary/30">
+                  <p className="text-xs text-muted-foreground mb-2">Features</p>
+                  <div className="flex flex-wrap gap-2">
+                    {requirements.features.map((f, i) => (
+                      <span
+                        key={i}
+                        className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium"
+                      >
+                        {f.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-between pt-2">
+                  <Button variant="outline" size="sm" onClick={handleStartOver} disabled={loading}>
+                    Start Over
                   </Button>
-                )}
-              </div>
+                  <Button onClick={handleConfirm} disabled={loading} className="gap-2">
+                    {loading ? "Processing..." : "Find My Template"}
+                    {!loading && <span>→</span>}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
 
-              {/* User Types */}
-              <div className="p-3 border rounded-lg">
-                <p className="text-sm text-muted-foreground mb-1">Users</p>
-                <p className="font-medium">
-                  {requirements.userTypes.map((u) => u.name).join(", ")}
-                </p>
-              </div>
+          </AIConversation>
 
-              {/* Auth */}
-              <div className="p-3 border rounded-lg">
-                <p className="text-sm text-muted-foreground mb-1">Authentication</p>
-                <p className="font-medium">
-                  {requirements.auth.needed
-                    ? requirements.auth.methods.join(", ") || "Required"
-                    : "None required"}
-                </p>
-              </div>
+          {/* Input area */}
+          {currentStep !== 3 && (
+            <div className="p-4 border-t border-border/50 bg-white/50 backdrop-blur-sm">
+              {/* Text input for step 1 or text questions */}
+              {(currentStep === 1 ||
+                (currentQuestion?.type === "text" && currentStep === 2)) && (
+                <MagicTextarea
+                  value={currentInput}
+                  onChange={setCurrentInput}
+                  onSubmit={
+                    currentStep === 1
+                      ? handleSubmitIdea
+                      : () => {
+                          if (currentInput.trim()) {
+                            handleAnswer(currentInput.trim());
+                            setCurrentInput("");
+                          }
+                        }
+                  }
+                  placeholder={
+                    currentStep === 1
+                      ? "I want to build an app that..."
+                      : "Type your answer..."
+                  }
+                  maxLength={currentStep === 1 ? 500 : undefined}
+                  loading={loading}
+                  submitLabel={currentStep === 1 ? "Let's Go!" : "Send"}
+                />
+              )}
 
-              {/* Features */}
-              <div className="p-3 border rounded-lg">
-                <p className="text-sm text-muted-foreground mb-2">Features</p>
-                <ul className="space-y-1">
-                  {requirements.features.map((f, i) => (
-                    <li key={i} className="font-medium">
-                      • {f.name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Payments */}
-              <div className="p-3 border rounded-lg">
-                <p className="text-sm text-muted-foreground mb-1">Payments</p>
-                <p className="font-medium">
-                  {requirements.payments.needed
-                    ? requirements.payments.model || "Required"
-                    : "None"}
-                </p>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={handleStartOver} disabled={loading}>
-                  Start Over
-                </Button>
-                <Button onClick={handleConfirm} disabled={loading}>
-                  {loading ? "Processing..." : "Confirm & Find Template"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              {/* Finish early option */}
+              {currentStep === 2 && questions.length > 0 && (
+                <div className="mt-3 text-center">
+                  <button
+                    onClick={handleFinishEarly}
+                    disabled={loading}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    I've shared enough, let's see templates →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

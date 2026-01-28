@@ -127,7 +127,7 @@ After interview completes, everything is automatic until scaffolding is done.
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-Note: Step 2 UX needs more detailed planning. Form vs chat, question types, back navigation behavior TBD.
+Note: Step 2 uses chat-based UI with ChatMessage components, ChoiceGrid for selections, and MagicTextarea for text input. Includes typewriter effect for AI messages and confetti celebration on answer submission.
 
 ### Interview - Step 3 (Requirements Summary)
 
@@ -336,7 +336,7 @@ Using shadcn/ui components with Tailwind. See ui-components skill for patterns.
 
 ## Incomplete / TBD
 
-- [ ] Step 2 interview UX - form layout, question types, back navigation
+- [x] Step 2 interview UX - chat-based with ChatMessage, ChoiceGrid, MagicTextarea
 - [ ] Edit modals for Step 3 summary
 - [ ] Email notification design (when build completes)
 - [ ] Settings page (disconnect GitHub, delete account)

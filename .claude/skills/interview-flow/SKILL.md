@@ -15,7 +15,7 @@ AI-guided interview that extracts structured requirements from user's app idea.
 
 1. **Initial Input** - User describes app idea (500 char max)
 2. **AI Questions** - Gemini generates 3-5 questions per round
-3. **User Answers** - Interactive form (not chat bubbles)
+3. **User Answers** - Chat-based UI with typewriter effect
 4. **Rounds** - Max 3 rounds to clarify requirements
 5. **Extract Requirements** - Gemini converts answers to structured JSON
 6. **User Confirms** - User reviews/edits requirements before proceeding
@@ -75,12 +75,13 @@ See [reference.md](reference.md) for complete `Requirements` interface.
 
 ## UX Notes
 
-Step 2 interview uses form-based UI:
-- Text inputs for open questions
-- Radio buttons for single-select
-- Checkboxes for multi-select
-- Progress bar showing step/round
-- Back navigation to previous rounds
+Step 2 interview uses chat-based UI:
+- `ChatMessage` for AI/user messages with typewriter effect
+- `AIConversation` wrapper for auto-scroll
+- `ChoiceGrid` for single/multi-select options
+- `MagicTextarea` for text input
+- `JourneyProgress` bar showing step/round
+- `CelebrationBurst` confetti on answer submission
 
 ## Reference Files
 
