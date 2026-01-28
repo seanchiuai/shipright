@@ -2,24 +2,20 @@
 
 ## Active
 
-- [ ] Build interview Step 1: App idea input (500 char textarea)
-- [ ] Integrate Claude API for question generation
-
-## Backlog
-
-### Phase 2: Interview Flow
-- [ ] Build Step 2: AI follow-up questions (Claude API integration)
-- [ ] Build Step 3: Requirements summary + inline edit
-- [ ] Store interview sessions in Convex
-- [ ] Extract structured requirements from interview
-
 ### Phase 3: Template Matching
 - [ ] Define template index schema in Convex
 - [ ] Populate 10 curated templates with capability tags
 - [ ] Build template scoring algorithm
 - [ ] Build template confirmation UI (what's included vs what will be built)
 
+## Backlog
+
 ### Phase 4: GitHub Repo Creation
+- [ ] Define template index schema in Convex
+- [ ] Populate 10 curated templates with capability tags
+- [ ] Build template scoring algorithm
+- [ ] Build template confirmation UI (what's included vs what will be built)
+
 - [ ] Implement GitHub OAuth connection flow
 - [ ] Clone template to user's GitHub account
 - [ ] Commit template files to new repo
@@ -47,6 +43,14 @@
 - [ ] Set up error monitoring
 
 ## Complete
+
+### Phase 2: Interview Flow (2026-01-27)
+- [x] Build Step 1: App idea input (500 char textarea)
+- [x] Integrate Gemini API for question generation (via Vertex AI)
+- [x] Build Step 2: AI follow-up questions (multi-round support)
+- [x] Build Step 3: Requirements summary + inline edit
+- [x] Store interview sessions in Convex
+- [x] Extract structured requirements from interview
 
 ### Phase 1: UI + Authentication (2026-01-26)
 - [x] Initialize Next.js 14 + TypeScript + Tailwind project

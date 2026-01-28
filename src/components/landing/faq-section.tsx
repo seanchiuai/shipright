@@ -2,147 +2,92 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { SignInButton } from "@clerk/nextjs";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { FadeIn } from "./fade-in";
-import { ArrowRight } from "lucide-react";
+import { Plus } from "lucide-react";
 
 const faqs = [
   {
-    question: "What is vibe coding?",
+    question: "What exactly do I get?",
     answer:
-      "Vibe coding is a development approach where you describe what you want in natural language, and AI writes the code for you. It's about focusing on the 'what' rather than the 'how'. Shipright gives you the perfect foundation to start vibe coding effectively.",
+      "A GitHub repository with a production-ready template matched to your requirements, plus AI-optimized scaffolding files (CLAUDE.md, TASKS.md, PRD.md) that help Claude Code understand your project.",
   },
   {
     question: "Do I need to know how to code?",
     answer:
-      "No! That's the whole point. Shipright creates a project structure that AI tools (like Claude, Cursor, or GitHub Copilot) can understand and work with. You describe features, AI builds them. You can always learn as you go.",
+      "No. You describe your app in plain English. After you get your repo, you can use Claude Code or Cursor to build features by describing what you want.",
   },
   {
-    question: "What's in the generated repo?",
+    question: "Can I use this with Cursor / Claude Code / Windsurf?",
     answer:
-      "You get a complete Next.js project with: CLAUDE.md (project context for AI), TASKS.md (your feature backlog), PRD.md (product requirements), plus all the boilerplate code configured and ready to run.",
+      "Yes. The repo works with any AI coding tool. The scaffolding is optimized for Claude Code but helps any AI agent.",
   },
   {
-    question: "Can I use any AI tool with it?",
+    question: "What happens to my code?",
     answer:
-      "Yes! The CLAUDE.md file works with Claude Code, Cursor, GitHub Copilot, and any AI coding assistant. It's just a markdown file that explains your project to AI - no proprietary format.",
+      "It's yours. The repo is created in your GitHub account. We don't host it, we don't have access after creation. Take it anywhere.",
   },
   {
-    question: "What if I outgrow Shipright?",
+    question: "What's the catch?",
     answer:
-      "That's the beauty - you can't outgrow it. You get a real GitHub repo with real code. Want to switch to a different framework? Add custom features? Hire developers? It's your code, do whatever you want.",
-  },
-  {
-    question: "How is this different from Lovable, Bolt, or Base44?",
-    answer:
-      "Those tools host your app on their platform - you're locked in. Shipright gives you a GitHub repo you own. Deploy to Vercel, Railway, or your own servers. Use any AI tool. No vendor lock-in, ever.",
+      "No catch. Free during beta, then $15-30/month. No lock-in, no hidden fees.",
   },
 ];
 
 export function FAQSection() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleWaitlist = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email) {
-      setSubmitted(true);
-    }
-  };
+  const [openIndex, setOpenIndex] = useState<number>(0);
 
   return (
-    <section id="faq" className="py-20 lg:py-32">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <FadeIn className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+    <section id="faq" className="py-20">
+      <div className="max-w-[1140px] mx-auto px-6">
+        {/* Section header */}
+        <motion.div
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-normal mb-4">
             Frequently asked questions
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Everything you need to know about Shipright
+          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+            Everything you need to know about ShipRight.
           </p>
-        </FadeIn>
+        </motion.div>
 
-        <FadeIn delay={0.2}>
-          <Accordion type="single" collapsible className="w-full mb-20">
-            {faqs.map((faq, i) => (
-              <AccordionItem
-                key={i}
-                value={`item-${i}`}
-                className="border-border/50"
-              >
-                <AccordionTrigger className="text-left font-medium hover:text-primary transition-colors">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </FadeIn>
-
-        {/* Integrated CTA */}
-        <FadeIn delay={0.3}>
-          <div className="text-center p-8 rounded-2xl glass-card">
-            <h3 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">
-              Ready to start <span className="text-gradient">vibe coding</span>?
-            </h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Describe your app. Get a production-ready repo. Ship something
-              real before your coffee gets cold.
-            </p>
-
+        {/* FAQ list */}
+        <div className="max-w-[700px] mx-auto">
+          {faqs.map((faq, index) => (
             <motion.div
-              className="flex flex-col sm:flex-row gap-4 justify-center mb-6"
+              key={index}
+              className="border-b border-border"
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <SignInButton mode="modal">
-                <Button size="lg" className="glow-button">
-                  Start building free
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </SignInButton>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              {submitted ? (
-                <p className="text-sm text-primary font-medium">
-                  You&apos;re on the list! We&apos;ll be in touch.
+              <button
+                onClick={() => setOpenIndex(openIndex === index ? -1 : index)}
+                className="w-full py-6 flex items-center justify-between text-left text-lg font-semibold hover:text-primary transition-colors"
+              >
+                {faq.question}
+                <Plus
+                  className={`w-5 h-5 transition-transform ${
+                    openIndex === index ? "rotate-45" : ""
+                  }`}
+                />
+              </button>
+              <div
+                className={`overflow-hidden transition-all duration-300 ${
+                  openIndex === index ? "max-h-96 pb-6" : "max-h-0"
+                }`}
+              >
+                <p className="text-muted-foreground leading-relaxed">
+                  {faq.answer}
                 </p>
-              ) : (
-                <form
-                  onSubmit={handleWaitlist}
-                  className="flex flex-col sm:flex-row gap-3 justify-center max-w-sm mx-auto"
-                >
-                  <Input
-                    type="email"
-                    placeholder="Or join the waitlist..."
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="bg-card/30 border-border/50"
-                  />
-                  <Button type="submit" variant="outline" size="default">
-                    Join
-                  </Button>
-                </form>
-              )}
+              </div>
             </motion.div>
-          </div>
-        </FadeIn>
+          ))}
+        </div>
       </div>
     </section>
   );

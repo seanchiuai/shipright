@@ -1,95 +1,77 @@
 "use client";
 
-import { FadeIn } from "./fade-in";
-import { StaggerChildren, StaggerItem } from "./stagger-children";
-import { Quote } from "lucide-react";
+import { motion } from "framer-motion";
 
-const testimonials = [
-  {
-    quote:
-      "I went from idea to working prototype in a single afternoon. The CLAUDE.md file is pure magic.",
-    author: "Alex Chen",
-    role: "Founder, TechStartup",
-    avatar: "AC",
-  },
-  {
-    quote:
-      "Finally, a tool that gives me real code I can actually modify. No more platform lock-in.",
-    author: "Sarah Miller",
-    role: "Indie Hacker",
-    avatar: "SM",
-  },
-  {
-    quote:
-      "The AI just... knows what I'm building. No more explaining my project in every prompt.",
-    author: "James Wilson",
-    role: "Product Manager",
-    avatar: "JW",
-  },
-];
-
-const logos = [
-  { name: "Next.js", text: "Next.js" },
-  { name: "Vercel", text: "Vercel" },
-  { name: "Convex", text: "Convex" },
-  { name: "Clerk", text: "Clerk" },
-  { name: "Stripe", text: "Stripe" },
+const stats = [
+  { value: "1+", label: "Repos generated" },
+  { value: "1+", label: "Founders building" },
+  { value: "5 min", label: "Setup time" },
 ];
 
 export function SocialProof() {
   return (
-    <section className="py-20 lg:py-32">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Logo carousel */}
-        <FadeIn className="text-center mb-16">
-          <p className="text-sm text-muted-foreground mb-6">
-            Built with the best tools in the ecosystem
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-            {logos.map((logo, i) => (
-              <div
-                key={i}
-                className="text-muted-foreground/50 hover:text-muted-foreground transition-colors font-semibold text-lg"
+    <section className="py-20">
+      <div className="max-w-[1140px] mx-auto px-6">
+        <motion.div
+          className="bg-muted rounded-[32px] p-16 text-center relative overflow-hidden"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          {/* Rotating glow effect */}
+          <div
+            className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%]"
+            style={{
+              background:
+                "radial-gradient(circle at center, rgba(0, 102, 255, 0.05) 0%, transparent 50%)",
+              animation: "rotateGlow 20s linear infinite",
+            }}
+          />
+
+          {/* Section header */}
+          <div className="relative z-10 mb-12">
+            <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-normal mb-4">
+              Join founders building with ShipRight
+            </h2>
+          </div>
+
+          {/* Testimonial */}
+          <motion.div
+            className="relative z-10 max-w-md mx-auto mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <div className="bg-card border border-border rounded-2xl p-7 text-center transition-all hover:border-primary hover:shadow-[0_10px_30px_rgba(0,102,255,0.1)] hover:-translate-y-0.5">
+              <p className="text-lg leading-relaxed mb-4">
+                &ldquo;We&apos;re still in beta, so no testimonials yet. But my
+                mom says it&apos;s really cool.&rdquo;
+              </p>
+              <p className="text-sm text-muted-foreground">— The Founder</p>
+            </div>
+          </motion.div>
+
+          {/* Stats */}
+          <div className="relative z-10 flex flex-col sm:flex-row justify-center gap-16">
+            {stats.map((stat, index) => (
+              <motion.div
+                key={index}
+                className="text-center"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.2 + index * 0.1 }}
               >
-                {logo.text}
-              </div>
+                <div className="font-serif text-4xl md:text-5xl text-primary mb-1">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </motion.div>
             ))}
           </div>
-        </FadeIn>
-
-        {/* Testimonials */}
-        <FadeIn className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
-            Loved by builders
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            Join founders who ship faster with Shipright
-          </p>
-        </FadeIn>
-
-        <StaggerChildren className="grid md:grid-cols-3 gap-6 lg:gap-8">
-          {testimonials.map((testimonial, i) => (
-            <StaggerItem key={i}>
-              <div className="p-6 rounded-2xl glass-card transition-all duration-300 h-full flex flex-col">
-                <Quote className="w-8 h-8 text-primary/30 mb-4" />
-                <blockquote className="text-foreground mb-6 flex-1">
-                  &ldquo;{testimonial.quote}&rdquo;
-                </blockquote>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm">
-                    {testimonial.avatar}
-                  </div>
-                  <div>
-                    <div className="font-medium">{testimonial.author}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {testimonial.role}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </StaggerItem>
-          ))}
-        </StaggerChildren>
+        </motion.div>
       </div>
     </section>
   );

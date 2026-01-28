@@ -280,7 +280,6 @@ function StatusBadge({ status }: { status: string }) {
 function ProjectCard({
   project,
   onClick,
-  index,
 }: {
   project: {
     _id: string;
@@ -290,7 +289,6 @@ function ProjectCard({
     _creationTime: number;
   };
   onClick: () => void;
-  index: number;
 }) {
   return (
     <motion.div
@@ -600,12 +598,11 @@ export default function DashboardPage() {
                 className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
                 delay={0.4}
               >
-                {projects.map((project, index) => (
+                {projects.map((project) => (
                   <ProjectCard
                     key={project._id}
                     project={project}
                     onClick={() => router.push(`/project/${project._id}`)}
-                    index={index}
                   />
                 ))}
               </StaggerContainer>

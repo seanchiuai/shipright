@@ -1,127 +1,103 @@
 "use client";
 
-import { FadeIn } from "./fade-in";
-import { StaggerChildren, StaggerItem } from "./stagger-children";
+import { motion } from "framer-motion";
 import {
-  XCircle,
-  RefreshCw,
-  HelpCircle,
-  DollarSign,
-  Cpu,
-  GitBranch,
-  Target,
-  FileText,
+  Clock,
+  Shield,
+  CheckCircle,
+  Layout,
+  Download,
+  Zap,
 } from "lucide-react";
-
-const painPoints = [
-  {
-    icon: XCircle,
-    text: "AI gives you code you can't run",
-  },
-  {
-    icon: RefreshCw,
-    text: "Every prompt needs 20 minutes of context",
-  },
-  {
-    icon: HelpCircle,
-    text: "No idea how to structure a real project",
-  },
-  {
-    icon: DollarSign,
-    text: "Hosted tools cost $200/mo and lock you in",
-  },
-];
 
 const benefits = [
   {
-    icon: Cpu,
-    title: "AI-ready from day one",
+    icon: Clock,
+    title: "Save days of setup time",
     description:
-      "CLAUDE.md tells AI exactly how to build your app. No prompt engineering required.",
+      "Go from app idea to working codebase in 10 minutes, not days. AI picks the perfect template for you.",
   },
   {
-    icon: GitBranch,
-    title: "Your code, your repo",
+    icon: Shield,
+    title: "Eliminate endless error loops",
     description:
-      "Real GitHub repo you own. No vendor lock-in. Deploy anywhere.",
+      "CLAUDE.md gives AI agents the context they need. No more fixing mistakes AI made because it didn't understand your project.",
   },
   {
-    icon: Target,
-    title: "Matched to your idea",
+    icon: CheckCircle,
+    title: "Always know what to build next",
     description:
-      "Not a generic starter. A template chosen specifically for what you're building.",
+      "TASKS.md gives you a clear roadmap. No more staring at a blank screen wondering where to start.",
   },
   {
-    icon: FileText,
-    title: "Plan before you code",
+    icon: Layout,
+    title: "Keep your project organized",
     description:
-      "PRD.md + TASKS.md ensure AI builds what you need, not what it guesses.",
+      "PRD.md documents the \"why\" behind features. You and AI stay aligned as your project grows.",
+  },
+  {
+    icon: Download,
+    title: "Own your code forever",
+    description:
+      "It's a GitHub repo in your account. No platform lock-in. Take it anywhere, anytime.",
+  },
+  {
+    icon: Zap,
+    title: "Build like an expert",
+    description:
+      "Skills directory gives AI domain knowledge from experienced developers. Build like you've done this before.",
   },
 ];
 
 export function ValueProp() {
   return (
-    <section className="py-20 lg:py-32">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Problem side */}
-        <div className="grid lg:grid-cols-2 gap-16 items-start mb-24">
-          <FadeIn>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-6">
-              You&apos;ve heard about vibe coding.
-              <br />
-              <span className="text-muted-foreground">
-                But where do you start?
-              </span>
-            </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              You&apos;ve watched the tweets. You&apos;ve seen founders ship
-              apps in a weekend. But when you try it yourself, you hit the same
-              walls everyone does.
-            </p>
-          </FadeIn>
-
-          <StaggerChildren className="space-y-4">
-            {painPoints.map((point, i) => (
-              <StaggerItem key={i}>
-                <div className="flex items-center gap-4 p-4 rounded-xl glass-card transition-all duration-300">
-                  <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0">
-                    <point.icon className="w-5 h-5 text-destructive" />
-                  </div>
-                  <span className="text-foreground font-medium">
-                    {point.text}
-                  </span>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerChildren>
-        </div>
-
-        {/* Solution side */}
-        <FadeIn className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
-            Shipright gives you the{" "}
-            <span className="text-gradient">perfect starting point</span>
+    <section id="features" className="py-20 bg-muted">
+      <div className="max-w-[1140px] mx-auto px-6">
+        {/* Section header */}
+        <motion.div
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+        >
+          <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-normal mb-4">
+            Ship faster. Build with confidence.
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Stop wrestling with setup. Start building features.
+          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+            Stop wasting time on setup. Start building features that matter.
           </p>
-        </FadeIn>
+        </motion.div>
 
-        <StaggerChildren className="grid md:grid-cols-2 gap-6 lg:gap-8">
-          {benefits.map((benefit, i) => (
-            <StaggerItem key={i}>
-              <div className="flex gap-4 p-6 rounded-2xl glass-card transition-all duration-300 h-full">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <benefit.icon className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg mb-1">{benefit.title}</h3>
-                  <p className="text-muted-foreground">{benefit.description}</p>
-                </div>
+        {/* Benefits grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {benefits.map((benefit, index) => (
+            <motion.div
+              key={index}
+              className="bg-card border border-border rounded-2xl p-7 transition-all duration-300 relative overflow-hidden group hover:border-primary hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,102,255,0.1)]"
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+            >
+              {/* Gradient overlay on hover */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+              {/* Icon */}
+              <div className="w-12 h-12 bg-accent rounded-[14px] flex items-center justify-center text-primary mb-5 relative z-10 transition-all group-hover:bg-primary group-hover:text-white group-hover:shadow-[0_4px_15px_rgba(0,102,255,0.3)]">
+                <benefit.icon className="w-6 h-6" />
               </div>
-            </StaggerItem>
+
+              {/* Content */}
+              <h3 className="text-lg font-semibold mb-2 relative z-10">
+                {benefit.title}
+              </h3>
+              <p className="text-[0.9375rem] text-muted-foreground relative z-10">
+                {benefit.description}
+              </p>
+            </motion.div>
           ))}
-        </StaggerChildren>
+        </div>
       </div>
     </section>
   );

@@ -26,13 +26,13 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Description:** As a user, I want to sign in with Google so that I can save my projects and access them later.
 
 **Acceptance Criteria:**
-- [ ] Sign in button on landing page (Clerk SignInButton)
-- [ ] User redirected to Clerk-managed sign-in page
-- [ ] On success, user is redirected to dashboard
-- [ ] User's profile (name, email, avatar) available via Clerk
-- [ ] Session persists across browser refreshes via Clerk
-- [ ] Logout via Clerk UserButton or signOut
-- [ ] Typecheck passes
+- [x] Sign in button on landing page (Clerk SignInButton)
+- [x] User redirected to Clerk-managed sign-in page
+- [x] On success, user is redirected to dashboard
+- [x] User's profile (name, email, avatar) available via Clerk
+- [x] Session persists across browser refreshes via Clerk
+- [x] Logout via Clerk UserButton or signOut
+- [x] Typecheck passes
 
 ### US-002: Landing Page
 **Description:** As a visitor, I want to understand what Shipwright does so that I can decide to sign up.
