@@ -153,25 +153,19 @@ function scoreAuth(
   reqAuth: Requirements["auth"],
   tmplAuth: TemplateCapabilities["auth"]
 ): number {
-  // Neither needs nor has auth - perfect match
   if (!reqAuth.needed && !tmplAuth.present) return 100;
-  // Has auth but not needed - slight overhead, still good
   if (!reqAuth.needed && tmplAuth.present) return 80;
-  // Needs auth but template doesn't have it - deal breaker
   if (reqAuth.needed && !tmplAuth.present) return 0;
 
   let score = 100;
 
-  // Check auth providers match
   if (reqAuth.methods && reqAuth.methods.length > 0) {
     const matchedProviders = reqAuth.methods.filter((m) =>
       tmplAuth.providers.includes(m.toLowerCase())
     );
-    const matchRatio = matchedProviders.length / reqAuth.methods.length;
-    score *= matchRatio;
+    score *= matchedProviders.length / reqAuth.methods.length;
   }
 
-  // Check roles/orgs requirements
   if (reqAuth.hasRoles && !tmplAuth.hasRoles) score *= 0.7;
   if (reqAuth.hasOrgs && !tmplAuth.hasOrgs) score *= 0.7;
 
@@ -182,16 +176,11 @@ function scoreDatabase(
   reqDb: Requirements["database"],
   tmplDb: TemplateCapabilities["database"]
 ): number {
-  // Neither needs nor has database
   if (!reqDb.needed && !tmplDb.present) return 100;
-  // Has database but not needed
   if (!reqDb.needed && tmplDb.present) return 80;
-  // Needs database but template doesn't have it
   if (reqDb.needed && !tmplDb.present) return 0;
 
   let score = 100;
-
-  // Realtime requirement
   if (reqDb.realtime && !tmplDb.realtime) score *= 0.5;
 
   return Math.round(score);
@@ -201,20 +190,13 @@ function scorePayments(
   reqPay: Requirements["payments"],
   tmplPay: TemplateCapabilities["payments"]
 ): number {
-  // Neither needs nor has payments
   if (!reqPay.needed && !tmplPay.present) return 100;
-  // Has payments but not needed
   if (!reqPay.needed && tmplPay.present) return 80;
-  // Needs payments but template doesn't have it
   if (reqPay.needed && !tmplPay.present) return 0;
 
   let score = 100;
-
-  // Check payment model match
-  if (reqPay.model && tmplPay.models) {
-    if (!tmplPay.models.includes(reqPay.model)) {
-      score *= 0.6;
-    }
+  if (reqPay.model && tmplPay.models && !tmplPay.models.includes(reqPay.model)) {
+    score *= 0.6;
   }
 
   return Math.round(score);
@@ -224,26 +206,24 @@ function scoreFeatures(
   reqFeatures: Requirements["features"],
   tmplFeatures: TemplateCapabilities["features"]
 ): number {
-  // Extract must-have features
   const mustFeatures = reqFeatures.filter((f) => f.priority === "must");
   if (mustFeatures.length === 0) return 100;
 
-  let matches = 0;
-  const featureKeywords: Record<string, keyof TemplateCapabilities["features"]> =
-    {
-      upload: "fileUploads",
-      file: "fileUploads",
-      image: "fileUploads",
-      email: "email",
-      notification: "email",
-      search: "search",
-      find: "search",
-      ai: "ai",
-      chat: "ai",
-      llm: "ai",
-      gpt: "ai",
-    };
+  const featureKeywords: Record<string, keyof TemplateCapabilities["features"]> = {
+    upload: "fileUploads",
+    file: "fileUploads",
+    image: "fileUploads",
+    email: "email",
+    notification: "email",
+    search: "search",
+    find: "search",
+    ai: "ai",
+    chat: "ai",
+    llm: "ai",
+    gpt: "ai",
+  };
 
+  let matches = 0;
   for (const feature of mustFeatures) {
     const name = feature.name.toLowerCase();
     for (const [keyword, capability] of Object.entries(featureKeywords)) {
@@ -254,31 +234,24 @@ function scoreFeatures(
     }
   }
 
-  // Give partial credit even if no keyword matches (features can be built)
-  const baseScore = 50; // Base score for having to build features
-  const matchBonus = (matches / mustFeatures.length) * 50;
-
-  return Math.round(baseScore + matchBonus);
+  // Base 50 + up to 50 bonus for matching features
+  return Math.round(50 + (matches / mustFeatures.length) * 50);
 }
 
 function scoreUI(
   requirements: Requirements,
   tmplUI: TemplateCapabilities["ui"]
 ): number {
-  let score = 50; // Base score
+  let score = 50;
 
-  // Prefer shadcn/ui for better component library
   if (tmplUI.framework === "shadcn") score += 25;
   else if (tmplUI.framework === "tailwind") score += 15;
 
-  // Admin dashboard for apps with admin users
   const hasAdmin = requirements.userTypes?.some((u) => u.isAdmin);
   if (hasAdmin) {
-    if (tmplUI.hasAdminDashboard) score += 25;
-    else score -= 15;
-  } else {
-    // No admin needed, having dashboard is slight bonus
-    if (tmplUI.hasAdminDashboard) score += 10;
+    score += tmplUI.hasAdminDashboard ? 25 : -15;
+  } else if (tmplUI.hasAdminDashboard) {
+    score += 10;
   }
 
   return Math.max(0, Math.min(100, score));
@@ -291,7 +264,6 @@ function identifyGaps(
   const gaps: string[] = [];
   const caps = template.capabilities;
 
-  // Auth gaps
   if (requirements.auth.needed) {
     if (!caps.auth.present) {
       gaps.push("User authentication");
@@ -311,19 +283,16 @@ function identifyGaps(
     }
   }
 
-  // Database gaps
   if (requirements.database.needed && !caps.database.present) {
     gaps.push("Database");
   } else if (requirements.database.realtime && !caps.database.realtime) {
     gaps.push("Real-time data sync");
   }
 
-  // Payments gaps
   if (requirements.payments.needed && !caps.payments.present) {
     gaps.push("Payment processing");
   }
 
-  // Feature gaps
   for (const feature of requirements.features) {
     if (feature.priority !== "must") continue;
     const name = feature.name.toLowerCase();
@@ -342,7 +311,6 @@ function identifyGaps(
     }
   }
 
-  // Remove duplicates
   return [...new Set(gaps)];
 }
 
@@ -382,7 +350,6 @@ export const matchTemplate = action({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args): Promise<MatchResult> => {
-    // Get project with requirements
     const project = await ctx.runQuery(api.projects.get, {
       projectId: args.projectId,
     });
@@ -392,15 +359,12 @@ export const matchTemplate = action({
     }
 
     const requirements = project.requirements as Requirements;
-
-    // Get all templates
     const templates = (await ctx.runQuery(api.templates.list, {})) as Template[];
 
     if (templates.length === 0) {
-      throw new Error("No templates available. Please seed templates first.");
+      throw new Error("No templates available");
     }
 
-    // AI determines weights based on app context
     const weights = await determineWeights(requirements);
 
     let bestMatch: MatchResult | null = null;
@@ -438,7 +402,6 @@ export const matchTemplate = action({
       }
     }
 
-    // Fallback to minimal starter if score < 50%
     if (bestMatch!.score < 50) {
       const minimalStarter = templates.find((t) => t.name === "Minimal Starter");
       if (minimalStarter) {
@@ -453,7 +416,6 @@ export const matchTemplate = action({
       }
     }
 
-    // Save matched template to project
     await ctx.runMutation(api.projects.setMatchedTemplate, {
       projectId: args.projectId,
       templateId: bestMatch!.template._id,

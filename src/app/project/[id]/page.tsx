@@ -146,13 +146,11 @@ export default function ProjectDetailsPage() {
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Get matched template from project
   const matchedTemplate =
     project?.templateId && templates
       ? templates.find((t) => t._id === project.templateId)
       : null;
 
-  // Run matching when project enters "matching" status
   useEffect(() => {
     async function runMatching() {
       if (project?.status === "matching" && !matchResult && !matching) {
@@ -171,10 +169,8 @@ export default function ProjectDetailsPage() {
     runMatching();
   }, [project?.status, matchResult, matching, matchTemplate, projectId]);
 
-  // Use stored match result if available
   useEffect(() => {
     if (matchedTemplate && project?.matchScore !== undefined && !matchResult) {
-      // Reconstruct match result from stored data (weights not stored, use placeholders)
       setMatchResult({
         template: matchedTemplate as Template,
         score: project.matchScore,
