@@ -127,7 +127,13 @@ export const sync = mutation({
             existing.description !== template.description ||
             existing.sourceUrl !== template.sourceUrl ||
             !deepEqual(existing.stack, template.stack) ||
-            !deepEqual(existing.capabilities, template.capabilities);
+            !deepEqual(existing.capabilities, template.capabilities) ||
+            !deepEqual(existing.tags, template.tags) ||
+            !deepEqual(existing.integrations, template.integrations) ||
+            !deepEqual(existing.useCases, template.useCases) ||
+            existing.complexity !== template.complexity ||
+            existing.maintained !== template.maintained ||
+            existing.lastVerified !== template.lastVerified;
 
           if (hasChanges) {
             await ctx.db.patch(existing._id, {
@@ -137,6 +143,12 @@ export const sync = mutation({
               sourceUrl: template.sourceUrl,
               stack: template.stack,
               capabilities: template.capabilities,
+              tags: template.tags,
+              integrations: template.integrations,
+              useCases: template.useCases,
+              complexity: template.complexity as "starter" | "intermediate" | "advanced" | undefined,
+              maintained: template.maintained,
+              lastVerified: template.lastVerified,
             });
             stats.updated++;
           } else {
@@ -151,6 +163,12 @@ export const sync = mutation({
             sourceUrl: template.sourceUrl,
             stack: template.stack,
             capabilities: template.capabilities,
+            tags: template.tags,
+            integrations: template.integrations,
+            useCases: template.useCases,
+            complexity: template.complexity as "starter" | "intermediate" | "advanced" | undefined,
+            maintained: template.maintained,
+            lastVerified: template.lastVerified,
           });
           stats.added++;
         }
@@ -187,6 +205,12 @@ export const seed = mutation({
         sourceUrl: template.sourceUrl,
         stack: template.stack,
         capabilities: template.capabilities,
+        tags: template.tags,
+        integrations: template.integrations,
+        useCases: template.useCases,
+        complexity: template.complexity as "starter" | "intermediate" | "advanced" | undefined,
+        maintained: template.maintained,
+        lastVerified: template.lastVerified,
       });
       stats.added++;
     }

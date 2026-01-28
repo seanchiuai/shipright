@@ -13,7 +13,13 @@
         "payments": { "present": false },
         "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": false },
         "features": { "fileUploads": false, "email": false, "search": false, "ai": false }
-      }
+      },
+      "tags": ["type:portfolio", "ui:tailwind"],
+      "integrations": [],
+      "useCases": ["static-site", "landing-page", "custom-build"],
+      "complexity": "starter",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     },
     {
       "slug": "simple-auth",
@@ -27,7 +33,13 @@
         "payments": { "present": false },
         "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": false },
         "features": { "fileUploads": false, "email": false, "search": false, "ai": false }
-      }
+      },
+      "tags": ["auth", "auth:nextauth", "ui:tailwind"],
+      "integrations": ["google-oauth", "github-oauth"],
+      "useCases": ["user-accounts", "protected-content"],
+      "complexity": "starter",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     },
     {
       "slug": "simple-database",
@@ -41,7 +53,13 @@
         "payments": { "present": false },
         "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": false },
         "features": { "fileUploads": false, "email": false, "search": false, "ai": false }
-      }
+      },
+      "tags": ["database", "database:prisma", "database:postgres", "ui:tailwind"],
+      "integrations": ["postgres"],
+      "useCases": ["data-storage", "crud-app", "api-backend"],
+      "complexity": "starter",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     },
     {
       "slug": "t3-stack",
@@ -55,7 +73,13 @@
         "payments": { "present": false },
         "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": false },
         "features": { "fileUploads": false, "email": false, "search": false, "ai": false }
-      }
+      },
+      "tags": ["auth", "auth:nextauth", "database", "database:prisma", "ui:tailwind"],
+      "integrations": ["google-oauth", "github-oauth", "postgres"],
+      "useCases": ["full-stack-app", "type-safe-api", "user-data-app"],
+      "complexity": "intermediate",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     },
     {
       "slug": "saas-boilerplate",
@@ -69,7 +93,13 @@
         "payments": { "present": true, "provider": "stripe", "models": ["subscription"] },
         "ui": { "framework": "tailwind", "hasAdminDashboard": true, "hasLandingPage": true },
         "features": { "fileUploads": false, "email": true, "search": false, "ai": false }
-      }
+      },
+      "tags": ["type:saas", "database", "database:supabase", "auth", "auth:supabase", "auth:roles", "payments", "payments:stripe", "payments:stripe:subscriptions", "realtime", "ui:tailwind", "ui:dashboard", "ui:landing", "features:email"],
+      "integrations": ["supabase", "stripe", "google-oauth", "github-oauth"],
+      "useCases": ["subscription-saas", "membership-site", "paid-product"],
+      "complexity": "intermediate",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     },
     {
       "slug": "convex-saas-starter",
@@ -83,7 +113,13 @@
         "payments": { "present": true, "provider": "stripe", "models": ["subscription"] },
         "ui": { "framework": "shadcn", "hasAdminDashboard": true, "hasLandingPage": true },
         "features": { "fileUploads": true, "email": true, "search": false, "ai": false }
-      }
+      },
+      "tags": ["type:saas", "database", "database:convex", "auth", "auth:clerk", "auth:roles", "auth:orgs", "payments", "payments:stripe", "payments:stripe:subscriptions", "realtime", "realtime:convex", "ui:shadcn", "ui:dashboard", "ui:landing", "features:file-upload", "features:email"],
+      "integrations": ["convex", "clerk", "stripe", "google-oauth"],
+      "useCases": ["realtime-saas", "collaborative-app", "team-product"],
+      "complexity": "intermediate",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     },
     {
       "slug": "ai-chatbot",
@@ -97,7 +133,13 @@
         "payments": { "present": false },
         "ui": { "framework": "shadcn", "hasAdminDashboard": false, "hasLandingPage": false },
         "features": { "fileUploads": true, "email": false, "search": false, "ai": true }
-      }
+      },
+      "tags": ["ai", "ai:openai", "ai:streaming", "auth", "auth:nextauth", "database", "database:postgres", "ui:shadcn", "features:file-upload"],
+      "integrations": ["openai", "google-oauth", "github-oauth", "postgres"],
+      "useCases": ["chatbot", "ai-assistant", "conversational-ui"],
+      "complexity": "intermediate",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     },
     {
       "slug": "e-commerce",
@@ -111,7 +153,13 @@
         "payments": { "present": true, "provider": "stripe", "models": ["one-time"] },
         "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": true },
         "features": { "fileUploads": false, "email": true, "search": true, "ai": false }
-      }
+      },
+      "tags": ["type:ecommerce", "payments", "payments:stripe", "payments:stripe:one-time", "ui:tailwind", "ui:landing", "features:email", "features:search"],
+      "integrations": ["shopify", "stripe"],
+      "useCases": ["online-store", "product-catalog", "shopping-cart"],
+      "complexity": "intermediate",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     },
     {
       "slug": "admin-dashboard",
@@ -125,7 +173,13 @@
         "payments": { "present": false },
         "ui": { "framework": "shadcn", "hasAdminDashboard": true, "hasLandingPage": false },
         "features": { "fileUploads": false, "email": false, "search": true, "ai": false }
-      }
+      },
+      "tags": ["type:internal", "auth", "auth:roles", "ui:shadcn", "ui:dashboard", "features:search"],
+      "integrations": [],
+      "useCases": ["admin-panel", "internal-tool", "data-dashboard"],
+      "complexity": "intermediate",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     },
     {
       "slug": "multi-tenant-saas",
@@ -139,7 +193,13 @@
         "payments": { "present": true, "provider": "stripe", "models": ["subscription", "one-time"] },
         "ui": { "framework": "shadcn", "hasAdminDashboard": true, "hasLandingPage": true },
         "features": { "fileUploads": true, "email": true, "search": false, "ai": false }
-      }
+      },
+      "tags": ["type:saas", "type:b2b", "database", "database:drizzle", "auth", "auth:clerk", "auth:roles", "auth:orgs", "payments", "payments:stripe", "payments:stripe:subscriptions", "payments:stripe:one-time", "ui:shadcn", "ui:dashboard", "ui:landing", "features:file-upload", "features:email"],
+      "integrations": ["clerk", "stripe", "google-oauth", "github-oauth"],
+      "useCases": ["b2b-saas", "team-collaboration", "multi-tenant"],
+      "complexity": "advanced",
+      "maintained": true,
+      "lastVerified": "2026-01-28"
     }
   ]
 }

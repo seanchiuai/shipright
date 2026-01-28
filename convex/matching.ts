@@ -59,11 +59,18 @@ type Requirements = {
 
 type Template = {
   _id: string;
+  slug?: string;
   name: string;
   description: string;
   sourceUrl: string;
   stack: string[];
   capabilities: TemplateCapabilities;
+  tags?: string[];
+  integrations?: string[];
+  useCases?: string[];
+  complexity?: "starter" | "intermediate" | "advanced";
+  maintained?: boolean;
+  lastVerified?: string;
 };
 
 type MatchResult = {
@@ -79,6 +86,25 @@ type MatchResult = {
   weights: Weights;
   gaps: string[];
   included: string[];
+};
+
+// V2 Types for tag-based matching
+type RankedTemplate = {
+  slug: string;
+  name: string;
+  score: number;
+  tagScore: number;
+  aiScore: number;
+  reasoning: string;
+  pros: string[];
+  cons: string[];
+  template: Template;
+};
+
+type MatchResultV2 = {
+  topMatches: RankedTemplate[];
+  bestMatch: RankedTemplate;
+  extractedTags: string[];
 };
 
 // Default weights (fallback if AI fails)
@@ -344,6 +370,283 @@ function identifyIncluded(template: Template): string[] {
 
   return included;
 }
+
+import tagsTaxonomy from "../data/tags-taxonomy.json";
+
+const tagExtractionSchema = z.object({
+  tags: z.array(z.string()),
+  reasoning: z.string(),
+});
+
+const rankingSchema = z.object({
+  rankings: z.array(
+    z.object({
+      slug: z.string(),
+      score: z.number().min(0).max(100),
+      reasoning: z.string(),
+      pros: z.array(z.string()),
+      cons: z.array(z.string()),
+    })
+  ),
+});
+
+async function extractTagsFromRequirements(
+  requirements: Requirements
+): Promise<string[]> {
+  try {
+    const vertex = getVertexProvider();
+    const availableTags = tagsTaxonomy.allTags;
+
+    const prompt = `Analyze these app requirements and select the most relevant tags from the available list.
+
+App: ${requirements.appName}
+Problem: ${requirements.problemStatement}
+User Types: ${requirements.userTypes.map((u) => `${u.name}${u.isAdmin ? " (admin)" : ""}`).join(", ")}
+
+Requirements:
+- Auth: ${requirements.auth.needed ? `Yes (methods: ${requirements.auth.methods.join(", ")}, roles: ${requirements.auth.hasRoles}, orgs: ${requirements.auth.hasOrgs})` : "No"}
+- Database: ${requirements.database.needed ? `Yes (realtime: ${requirements.database.realtime})` : "No"}
+- Payments: ${requirements.payments.needed ? `Yes (model: ${requirements.payments.model || "unspecified"})` : "No"}
+- Features: ${requirements.features.map((f) => `${f.name} (${f.priority})`).join(", ")}
+- Integrations: ${requirements.integrations.join(", ") || "none"}
+
+Available tags (hierarchical, e.g., "ai" is parent of "ai:openai"):
+${availableTags.join(", ")}
+
+Select 5-15 tags that best describe what this app needs. Include both specific tags (e.g., "auth:clerk") and general category tags (e.g., "auth") when relevant.`;
+
+    const { object } = await generateObject({
+      model: vertex("gemini-2.0-flash"),
+      schema: tagExtractionSchema,
+      prompt,
+    });
+
+    return object.tags.filter((tag) => availableTags.includes(tag));
+  } catch (error) {
+    console.error("Failed to extract tags via AI, using fallback:", error);
+    const tags: string[] = [];
+    if (requirements.auth.needed) tags.push("auth");
+    if (requirements.database.needed) tags.push("database");
+    if (requirements.database.realtime) tags.push("realtime");
+    if (requirements.payments.needed) tags.push("payments");
+    if (requirements.features.some((f) => f.name.toLowerCase().includes("ai"))) {
+      tags.push("ai");
+    }
+    return tags;
+  }
+}
+
+function calculateTagOverlap(
+  userTags: string[],
+  templateTags: string[]
+): number {
+  if (userTags.length === 0) return 0;
+
+  let totalScore = 0;
+
+  for (const userTag of userTags) {
+    if (templateTags.includes(userTag)) {
+      totalScore += 1.0;
+      continue;
+    }
+
+    const userParts = userTag.split(":");
+    const userParent = userParts.slice(0, -1).join(":");
+
+    for (const tmplTag of templateTags) {
+      if (tmplTag.startsWith(userTag + ":")) {
+        totalScore += 0.7;
+        break;
+      }
+
+      if (userTag.startsWith(tmplTag + ":")) {
+        totalScore += 0.5;
+        break;
+      }
+
+      if (userParent && userParts.length > 1) {
+        const tmplParent = tmplTag.split(":").slice(0, -1).join(":");
+        if (userParent === tmplParent) {
+          totalScore += 0.3;
+          break;
+        }
+      }
+    }
+  }
+
+  return totalScore / userTags.length;
+}
+
+function filterTemplatesByTags(
+  templates: Template[],
+  userTags: string[]
+): Array<{ template: Template; tagScore: number }> {
+  const scored = templates.map((template) => {
+    const tagScore = calculateTagOverlap(userTags, template.tags || []);
+    return { template, tagScore };
+  });
+
+  const filtered = scored.filter(({ template, tagScore }) => {
+    if (tagScore >= 0.3) return true;
+    return userTags.some((tag) => (template.tags || []).includes(tag));
+  });
+
+  return filtered.sort((a, b) => b.tagScore - a.tagScore).slice(0, 20);
+}
+
+async function rankCandidates(
+  candidates: Array<{ template: Template; tagScore: number }>,
+  requirements: Requirements
+): Promise<RankedTemplate[]> {
+  if (candidates.length === 0) return [];
+
+  try {
+    const vertex = getVertexProvider();
+
+    const candidateDescriptions = candidates
+      .map(
+        ({ template, tagScore }) =>
+          `- ${template.slug || template.name}: ${template.description} (Stack: ${template.stack.join(", ")}, Tags: ${(template.tags || []).join(", ")}, Tag Score: ${(tagScore * 100).toFixed(0)}%)`
+      )
+      .join("\n");
+
+    const prompt = `Rank these template candidates for the following app requirements.
+
+App: ${requirements.appName}
+Problem: ${requirements.problemStatement}
+User Types: ${requirements.userTypes.map((u) => `${u.name}${u.isAdmin ? " (admin)" : ""}`).join(", ")}
+
+Requirements:
+- Auth: ${requirements.auth.needed ? `Yes (methods: ${requirements.auth.methods.join(", ")}, roles: ${requirements.auth.hasRoles}, orgs: ${requirements.auth.hasOrgs})` : "No"}
+- Database: ${requirements.database.needed ? `Yes (realtime: ${requirements.database.realtime})` : "No"}
+- Payments: ${requirements.payments.needed ? `Yes (model: ${requirements.payments.model || "unspecified"})` : "No"}
+- Key Features: ${requirements.features.filter((f) => f.priority === "must").map((f) => f.name).join(", ")}
+- Integrations: ${requirements.integrations.join(", ") || "none"}
+
+Candidate Templates:
+${candidateDescriptions}
+
+Rank the TOP 5 templates by how well they match the requirements. For each:
+1. Score (0-100): How well does this template fit?
+2. Reasoning: Why this score? (1-2 sentences)
+3. Pros: 2-3 strengths for this use case
+4. Cons: 1-2 limitations or things that would need to be added
+
+Return candidates by their slug/name identifier.`;
+
+    const { object } = await generateObject({
+      model: vertex("gemini-2.0-flash"),
+      schema: rankingSchema,
+      prompt,
+    });
+
+    const rankedTemplates: RankedTemplate[] = [];
+    for (const ranking of object.rankings.slice(0, 5)) {
+      const candidate = candidates.find(
+        (c) =>
+          (c.template.slug || c.template.name).toLowerCase() ===
+          ranking.slug.toLowerCase()
+      );
+      if (candidate) {
+        rankedTemplates.push({
+          slug: candidate.template.slug || candidate.template.name,
+          name: candidate.template.name,
+          score: Math.round(candidate.tagScore * 40 + ranking.score * 0.6),
+          tagScore: Math.round(candidate.tagScore * 100),
+          aiScore: ranking.score,
+          reasoning: ranking.reasoning,
+          pros: ranking.pros,
+          cons: ranking.cons,
+          template: candidate.template,
+        });
+      }
+    }
+
+    return rankedTemplates.sort((a, b) => b.score - a.score);
+  } catch (error) {
+    console.error("Failed to rank candidates via AI, using tag scores:", error);
+    return candidates.slice(0, 5).map(({ template, tagScore }) => ({
+      slug: template.slug || template.name,
+      name: template.name,
+      score: Math.round(tagScore * 100),
+      tagScore: Math.round(tagScore * 100),
+      aiScore: 0,
+      reasoning: "Ranked by tag match (AI unavailable)",
+      pros: identifyIncluded(template).slice(0, 3),
+      cons: [],
+      template,
+    }));
+  }
+}
+
+export const matchTemplateV2 = action({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args): Promise<MatchResultV2> => {
+    const project = await ctx.runQuery(api.projects.get, {
+      projectId: args.projectId,
+    });
+
+    if (!project?.requirements) {
+      throw new Error("Project has no requirements");
+    }
+
+    const requirements = project.requirements as Requirements;
+    const templates = (await ctx.runQuery(
+      api.templates.list,
+      {}
+    )) as Template[];
+
+    if (templates.length === 0) {
+      throw new Error("No templates available");
+    }
+
+    const extractedTags = await extractTagsFromRequirements(requirements);
+
+    let candidates = filterTemplatesByTags(templates, extractedTags);
+    if (candidates.length === 0) {
+      candidates = templates.map((t) => ({ template: t, tagScore: 0 }));
+    }
+
+    let rankedMatches = await rankCandidates(candidates, requirements);
+    if (rankedMatches.length === 0) {
+      const minimalStarter = templates.find(
+        (t) => t.slug === "minimal-starter" || t.name === "Minimal Starter"
+      );
+      if (minimalStarter) {
+        rankedMatches = [
+          {
+            slug: minimalStarter.slug || "minimal-starter",
+            name: minimalStarter.name,
+            score: 30,
+            tagScore: 0,
+            aiScore: 30,
+            reasoning: "Default fallback template for custom builds",
+            pros: ["Clean starting point", "No unnecessary dependencies"],
+            cons: ["Requires building most features from scratch"],
+            template: minimalStarter,
+          },
+        ];
+      }
+    }
+
+    const bestMatch = rankedMatches[0];
+
+    await ctx.runMutation(api.projects.setMatchedTemplate, {
+      projectId: args.projectId,
+      templateId: bestMatch.template._id,
+      matchScore: bestMatch.score,
+      matchGaps: identifyGaps(requirements, bestMatch.template),
+    });
+
+    return {
+      topMatches: rankedMatches,
+      bestMatch,
+      extractedTags,
+    };
+  },
+});
 
 export const matchTemplate = action({
   args: {

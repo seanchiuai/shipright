@@ -46,5 +46,11 @@ export default defineSchema({
     sourceUrl: v.string(),
     stack: v.array(v.string()),
     capabilities: v.any(),
+    tags: v.optional(v.array(v.string())),
+    integrations: v.optional(v.array(v.string())),
+    useCases: v.optional(v.array(v.string())),
+    complexity: v.optional(v.union(v.literal("starter"), v.literal("intermediate"), v.literal("advanced"))),
+    maintained: v.optional(v.boolean()),
+    lastVerified: v.optional(v.string()),
   }).index("by_slug", ["slug"]),
 });

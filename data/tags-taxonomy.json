@@ -1,0 +1,47 @@
+{
+  "version": "1.0",
+  "categories": {
+    "ai": {
+      "description": "AI and machine learning capabilities",
+      "tags": ["ai", "ai:openai", "ai:anthropic", "ai:voice", "ai:image", "ai:embeddings", "ai:streaming"]
+    },
+    "payments": {
+      "description": "Payment processing and billing",
+      "tags": ["payments", "payments:stripe", "payments:stripe:subscriptions", "payments:stripe:one-time", "payments:lemonsqueezy", "payments:paddle"]
+    },
+    "auth": {
+      "description": "Authentication and authorization",
+      "tags": ["auth", "auth:clerk", "auth:nextauth", "auth:supabase", "auth:roles", "auth:orgs"]
+    },
+    "database": {
+      "description": "Database and data storage",
+      "tags": ["database", "database:convex", "database:supabase", "database:prisma", "database:drizzle", "database:postgres", "database:mongodb"]
+    },
+    "realtime": {
+      "description": "Real-time features",
+      "tags": ["realtime", "realtime:websocket", "realtime:sse", "realtime:convex"]
+    },
+    "ui": {
+      "description": "UI frameworks and component libraries",
+      "tags": ["ui", "ui:shadcn", "ui:tailwind", "ui:dashboard", "ui:landing"]
+    },
+    "type": {
+      "description": "Application type",
+      "tags": ["type:saas", "type:ecommerce", "type:internal", "type:portfolio", "type:b2b", "type:marketplace"]
+    },
+    "features": {
+      "description": "Specific feature capabilities",
+      "tags": ["features:file-upload", "features:email", "features:search", "features:analytics"]
+    }
+  },
+  "allTags": [
+    "ai", "ai:openai", "ai:anthropic", "ai:voice", "ai:image", "ai:embeddings", "ai:streaming",
+    "payments", "payments:stripe", "payments:stripe:subscriptions", "payments:stripe:one-time", "payments:lemonsqueezy", "payments:paddle",
+    "auth", "auth:clerk", "auth:nextauth", "auth:supabase", "auth:roles", "auth:orgs",
+    "database", "database:convex", "database:supabase", "database:prisma", "database:drizzle", "database:postgres", "database:mongodb",
+    "realtime", "realtime:websocket", "realtime:sse", "realtime:convex",
+    "ui", "ui:shadcn", "ui:tailwind", "ui:dashboard", "ui:landing",
+    "type:saas", "type:ecommerce", "type:internal", "type:portfolio", "type:b2b", "type:marketplace",
+    "features:file-upload", "features:email", "features:search", "features:analytics"
+  ]
+}

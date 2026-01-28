@@ -5,56 +5,63 @@ description: Template scoring algorithm, template index, and matching logic
 
 # Template Matching
 
-Matches user requirements to the best-fit template from a curated library.
+Matches user requirements to the best-fit templates from a curated library using two-stage tag-based matching.
 
 ## Where It Fits
 
 **Phase 3**: After interview complete, before GitHub repo creation.
 
-## Scoring Algorithm
+## Two-Stage Matching Algorithm
 
-1. Parse structured requirements from interview
-2. For each template in index:
-   - Score each category (auth, database, payments, features, UI)
-   - Apply category weights
-   - Calculate weighted total
-3. Return top match with confidence score
+**V2 (Current):** Tag-based matching with AI ranking
+
+1. **Tag Extraction (AI):** Extract relevant tags from requirements (e.g., `auth:clerk`, `database:convex`, `type:saas`)
+2. **Tag Filtering (Deterministic):** Filter templates by tag overlap score (≥30% or 1+ exact match)
+3. **AI Ranking:** Rank top candidates and return top 5 with explanations
+
+**Score Formula:** 40% tag score + 60% AI ranking score
+
+**V1 (Legacy):** 5-category weighted scoring preserved for backwards compatibility.
 
 ## Confidence Thresholds
 
 - **>70%** - Strong match, proceed confidently
 - **50-70%** - Decent match, proceed to Phase 5 (Daytona customization)
-- **<50%** - Poor match, use minimal starter template
+- **<50%** - Poor match, fallback to minimal-starter template
 
-## Scoring Weights
+## Tag Taxonomy
 
-Weights are **AI-determined** based on app context. The AI analyzes the requirements and assigns weights that sum to 1.0.
+Hierarchical tags with parent/child relationships:
+- `ai` → `ai:openai`, `ai:anthropic`, `ai:streaming`
+- `payments` → `payments:stripe`, `payments:stripe:subscriptions`
+- `auth` → `auth:clerk`, `auth:nextauth`, `auth:roles`, `auth:orgs`
+- `database` → `database:convex`, `database:prisma`, `database:drizzle`
+- `realtime` → `realtime:convex`, `realtime:websocket`
+- `ui` → `ui:shadcn`, `ui:tailwind`, `ui:dashboard`
+- `type:saas`, `type:ecommerce`, `type:internal`, `type:b2b`
 
-| Category | Default | What it measures |
-|----------|---------|------------------|
-| Auth | 25% | Authentication methods, roles, orgs |
-| Database | 25% | DB type, realtime support |
-| Payments | 20% | Payment provider, billing models |
-| Features | 20% | File uploads, email, search, AI |
-| UI | 10% | Component library, admin dashboard |
+See `data/tags-taxonomy.json` for complete list.
 
-Example weight distributions:
-- E-commerce: payments=35%, database=25%, auth=20%
-- Social network: database=30%, auth=30%, features=25%
-- AI chatbot: features=40%, database=25%, auth=20%
+## Template Library (10 templates)
 
-## Template Library (MVP: 10 templates)
+See [reference.md](reference.md) for complete template index with tags.
 
-See [reference.md](reference.md) for complete template index.
+## Match Result (V2)
 
-## Match Result
+Returns:
+- `topMatches[]` - Top 5 ranked templates with scores, pros, cons
+- `bestMatch` - Highest scoring template
+- `extractedTags[]` - Tags derived from requirements
 
-Present to user:
-- Matched template name and description
-- "What's included" checklist
-- "What will be built" list (gaps to fill)
-- Confidence score with explanation
+Each match includes:
+- Slug, name, score (0-100)
+- Tag score (40%) + AI score (60%)
+- Reasoning, pros, cons
+- Full template object
 
 ## Reference Files
 
 - [reference.md](reference.md) - Template schema, scoring code, template index
+- `convex/matching.ts` - matchTemplate (V1), matchTemplateV2 (current)
+- `data/tags-taxonomy.json` - Hierarchical tag definitions
+- `data/templates.json` - Template catalog with tags

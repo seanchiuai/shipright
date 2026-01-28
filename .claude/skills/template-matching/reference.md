@@ -1,51 +1,116 @@
 # Template Matching Reference
 
-Complete template schema, scoring algorithm, and template index.
+Complete template schema, two-stage matching algorithm, and template index.
 
 ## Template Schema
 
 ```typescript
 interface Template {
-  id: string;
+  slug: string;
   name: string;
   description: string;
-  sourceUrl: string; // GitHub URL to clone
+  sourceUrl: string;
   stack: string[];
   capabilities: {
-    auth: {
-      present: boolean;
-      providers: string[];
-      hasRoles: boolean;
-      hasOrgs: boolean;
-    };
-    database: {
-      present: boolean;
-      type: string;
-      realtime: boolean;
-    };
-    payments: {
-      present: boolean;
-      provider?: string;
-      models?: string[];
-    };
-    ui: {
-      framework: string;
-      hasAdminDashboard: boolean;
-      hasLandingPage: boolean;
-    };
-    features: {
-      fileUploads: boolean;
-      email: boolean;
-      search: boolean;
-      ai: boolean;
-    };
+    auth: { present: boolean; providers: string[]; hasRoles: boolean; hasOrgs: boolean };
+    database: { present: boolean; type: string; realtime: boolean };
+    payments: { present: boolean; provider?: string; models?: string[] };
+    ui: { framework: string; hasAdminDashboard: boolean; hasLandingPage: boolean };
+    features: { fileUploads: boolean; email: boolean; search: boolean; ai: boolean };
   };
+  tags: string[];
+  integrations: string[];
+  useCases: string[];
+  complexity: "starter" | "intermediate" | "advanced";
+  maintained: boolean;
+  lastVerified: string;
 }
 ```
 
-## Scoring Algorithm
+## V2 Two-Stage Matching Algorithm
 
-Weights are determined by AI based on app context. See `convex/matching.ts` for implementation.
+See `convex/matching.ts` for full implementation.
+
+### Stage 1: Tag Extraction
+
+```typescript
+async function extractTagsFromRequirements(requirements: Requirements): Promise<string[]> {
+  const { object } = await generateObject({
+    model: vertex("gemini-2.0-flash"),
+    schema: tagExtractionSchema,
+    prompt: `Analyze requirements and select relevant tags from: ${availableTags.join(", ")}`,
+  });
+  return object.tags.filter((tag) => availableTags.includes(tag));
+}
+```
+
+### Stage 2: Tag Filtering
+
+```typescript
+function calculateTagOverlap(userTags: string[], templateTags: string[]): number {
+  let totalScore = 0;
+  for (const userTag of userTags) {
+    if (templateTags.includes(userTag)) {
+      totalScore += 1.0; // Exact match
+    } else if (tmplTag.startsWith(userTag + ":")) {
+      totalScore += 0.7; // User tag is parent
+    } else if (userTag.startsWith(tmplTag + ":")) {
+      totalScore += 0.5; // Template tag is parent
+    } else if (sameParent) {
+      totalScore += 0.3; // Same category
+    }
+  }
+  return totalScore / userTags.length;
+}
+
+function filterTemplatesByTags(templates, userTags) {
+  return templates
+    .filter(t => tagScore >= 0.3 || hasExactMatch)
+    .sort((a, b) => b.tagScore - a.tagScore)
+    .slice(0, 20);
+}
+```
+
+### Stage 3: AI Ranking
+
+```typescript
+async function rankCandidates(candidates, requirements): Promise<RankedTemplate[]> {
+  const { object } = await generateObject({
+    model: vertex("gemini-2.0-flash"),
+    schema: rankingSchema,
+    prompt: `Rank these templates for the requirements. Return top 5 with score, reasoning, pros, cons.`,
+  });
+
+  return object.rankings.map(ranking => ({
+    score: Math.round(candidate.tagScore * 40 + ranking.score * 0.6), // 40% tag + 60% AI
+    tagScore, aiScore, reasoning, pros, cons, template,
+  }));
+}
+```
+
+### matchTemplateV2 Action
+
+```typescript
+export const matchTemplateV2 = action({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args): Promise<MatchResultV2> => {
+    const extractedTags = await extractTagsFromRequirements(requirements);
+    let candidates = filterTemplatesByTags(templates, extractedTags);
+    if (candidates.length === 0) {
+      candidates = templates.map(t => ({ template: t, tagScore: 0 }));
+    }
+    const rankedMatches = await rankCandidates(candidates, requirements);
+
+    await ctx.runMutation(api.projects.setMatchedTemplate, {
+      projectId, templateId: bestMatch.template._id, matchScore, matchGaps,
+    });
+
+    return { topMatches: rankedMatches, bestMatch: rankedMatches[0], extractedTags };
+  },
+});
+```
+
+## V1 Legacy Scoring (Backwards Compatible)
 
 ```typescript
 // AI determines weights dynamically based on app context
@@ -65,185 +130,39 @@ const totalScore =
   scores.payments * weights.payments +
   scores.features * weights.features +
   scores.ui * weights.ui;
-
-function scoreAuth(reqAuth: any, tmplAuth: any): number {
-  if (!reqAuth.needed && !tmplAuth.present) return 100;
-  if (!reqAuth.needed && tmplAuth.present) return 80; // Not needed but included
-  if (reqAuth.needed && !tmplAuth.present) return 0;
-
-  let score = 100;
-
-  // Check auth providers
-  const matchedProviders = reqAuth.methods.filter((m: string) =>
-    tmplAuth.providers.includes(m)
-  );
-  score *= matchedProviders.length / reqAuth.methods.length;
-
-  // Check roles/orgs
-  if (reqAuth.hasRoles && !tmplAuth.hasRoles) score *= 0.7;
-  if (reqAuth.hasOrgs && !tmplAuth.hasOrgs) score *= 0.7;
-
-  return score;
-}
-
-function scoreDatabase(reqDb: any, tmplDb: any): number {
-  if (!reqDb.needed && !tmplDb.present) return 100;
-  if (!reqDb.needed && tmplDb.present) return 80;
-  if (reqDb.needed && !tmplDb.present) return 0;
-
-  let score = 100;
-  if (reqDb.realtime && !tmplDb.realtime) score *= 0.5;
-
-  return score;
-}
-
-function scorePayments(reqPay: any, tmplPay: any): number {
-  if (!reqPay.needed && !tmplPay.present) return 100;
-  if (!reqPay.needed && tmplPay.present) return 80;
-  if (reqPay.needed && !tmplPay.present) return 0;
-
-  let score = 100;
-  if (reqPay.model && tmplPay.models && !tmplPay.models.includes(reqPay.model)) {
-    score *= 0.6;
-  }
-
-  return score;
-}
-
-function scoreFeatures(reqFeatures: any[], tmplFeatures: any): number {
-  // Count how many required features are present in template
-  const mustFeatures = reqFeatures.filter(f => f.priority === "must");
-  if (mustFeatures.length === 0) return 100;
-
-  let matches = 0;
-  mustFeatures.forEach(feature => {
-    const name = feature.name.toLowerCase();
-    if (name.includes("upload") && tmplFeatures.fileUploads) matches++;
-    if (name.includes("email") && tmplFeatures.email) matches++;
-    if (name.includes("search") && tmplFeatures.search) matches++;
-    if (name.includes("ai") && tmplFeatures.ai) matches++;
-  });
-
-  return (matches / mustFeatures.length) * 100;
-}
-
-function scoreUI(requirements: Requirements, tmplUI: any): number {
-  let score = 50; // Base score
-
-  // Prefer templates with shadcn/ui
-  if (tmplUI.framework.includes("shadcn")) score += 25;
-
-  // Admin dashboard for apps with admin users
-  const hasAdmin = requirements.userTypes.some(u => u.isAdmin);
-  if (hasAdmin && tmplUI.hasAdminDashboard) score += 25;
-  if (hasAdmin && !tmplUI.hasAdminDashboard) score -= 15;
-
-  return Math.max(0, Math.min(100, score));
-}
 ```
 
-## Template Index (MVP)
+## Template Index
 
-```typescript
-const templates: Template[] = [
-  {
-    id: "minimal-starter",
-    name: "Minimal Starter",
-    description: "create-next-app with TypeScript and Tailwind",
-    sourceUrl: "https://github.com/vercel/next.js/tree/canary/examples/with-tailwindcss",
-    stack: ["Next.js", "TypeScript", "Tailwind"],
-    capabilities: {
-      auth: { present: false, providers: [], hasRoles: false, hasOrgs: false },
-      database: { present: false, type: "", realtime: false },
-      payments: { present: false },
-      ui: { framework: "tailwind", hasAdminDashboard: false, hasLandingPage: false },
-      features: { fileUploads: false, email: false, search: false, ai: false },
-    },
-  },
-  {
-    id: "simple-auth",
-    name: "Simple Auth",
-    description: "Next.js with NextAuth.js (Google OAuth)",
-    sourceUrl: "https://github.com/nextauthjs/next-auth-example",
-    stack: ["Next.js", "NextAuth.js", "TypeScript"],
-    capabilities: {
-      auth: { present: true, providers: ["google", "github"], hasRoles: false, hasOrgs: false },
-      database: { present: false, type: "", realtime: false },
-      payments: { present: false },
-      ui: { framework: "tailwind", hasAdminDashboard: false, hasLandingPage: false },
-      features: { fileUploads: false, email: false, search: false, ai: false },
-    },
-  },
-  {
-    id: "convex-saas-starter",
-    name: "Convex SaaS Starter",
-    description: "Real-time SaaS with Convex, Auth, and Payments",
-    sourceUrl: "https://github.com/get-convex/convex-saas-starter",
-    stack: ["Next.js", "Convex", "shadcn/ui", "Stripe"],
-    capabilities: {
-      auth: { present: true, providers: ["google", "email"], hasRoles: true, hasOrgs: true },
-      database: { present: true, type: "convex", realtime: true },
-      payments: { present: true, provider: "stripe", models: ["subscription"] },
-      ui: { framework: "shadcn", hasAdminDashboard: true, hasLandingPage: true },
-      features: { fileUploads: true, email: true, search: false, ai: false },
-    },
-  },
-  // Add 7 more templates for MVP
-];
-```
+10 templates with tags. See `data/templates.json` for full details.
 
-## Finding Best Match
+| Slug | Tags | Complexity |
+|------|------|------------|
+| minimal-starter | `type:portfolio`, `ui:tailwind` | starter |
+| simple-auth | `auth`, `auth:nextauth`, `ui:tailwind` | starter |
+| simple-database | `database`, `database:prisma`, `ui:tailwind` | starter |
+| t3-stack | `auth`, `auth:nextauth`, `database`, `database:prisma`, `ui:tailwind` | intermediate |
+| saas-boilerplate | `type:saas`, `database:supabase`, `auth:supabase`, `payments:stripe`, `realtime` | intermediate |
+| convex-saas-starter | `type:saas`, `database:convex`, `auth:clerk`, `payments:stripe`, `realtime:convex`, `ui:shadcn` | intermediate |
+| ai-chatbot | `ai`, `ai:openai`, `ai:streaming`, `auth:nextauth`, `database:postgres`, `ui:shadcn` | intermediate |
+| e-commerce | `type:ecommerce`, `payments:stripe`, `ui:tailwind` | intermediate |
+| admin-dashboard | `type:internal`, `auth:roles`, `ui:shadcn`, `ui:dashboard` | intermediate |
+| multi-tenant-saas | `type:saas`, `type:b2b`, `database:drizzle`, `auth:clerk`, `auth:orgs`, `payments:stripe`, `ui:shadcn` | advanced |
 
-```typescript
-function findBestMatch(requirements: Requirements): {
-  template: Template;
-  score: number;
-  gaps: string[];
-} {
-  let bestMatch = templates[0];
-  let bestScore = 0;
+## Tag Taxonomy
 
-  for (const template of templates) {
-    const score = scoreTemplate(requirements, template);
-    if (score > bestScore) {
-      bestScore = score;
-      bestMatch = template;
-    }
-  }
+See `data/tags-taxonomy.json`:
 
-  const gaps = identifyGaps(requirements, bestMatch);
-
-  return {
-    template: bestMatch,
-    score: bestScore,
-    gaps,
-  };
-}
-
-function identifyGaps(requirements: Requirements, template: Template): string[] {
-  const gaps: string[] = [];
-
-  // Check auth gaps
-  if (requirements.auth.needed) {
-    const missingProviders = requirements.auth.methods.filter(
-      m => !template.capabilities.auth.providers.includes(m)
-    );
-    if (missingProviders.length > 0) {
-      gaps.push(`Auth providers: ${missingProviders.join(", ")}`);
-    }
-  }
-
-  // Check feature gaps
-  requirements.features.forEach(feature => {
-    const name = feature.name.toLowerCase();
-    if (name.includes("upload") && !template.capabilities.features.fileUploads) {
-      gaps.push(`File uploads`);
-    }
-    if (name.includes("email") && !template.capabilities.features.email) {
-      gaps.push(`Email functionality`);
-    }
-  });
-
-  return gaps;
+```json
+{
+  "allTags": [
+    "ai", "ai:openai", "ai:anthropic", "ai:streaming",
+    "payments", "payments:stripe", "payments:stripe:subscriptions",
+    "auth", "auth:clerk", "auth:nextauth", "auth:roles", "auth:orgs",
+    "database", "database:convex", "database:prisma", "database:drizzle",
+    "realtime", "realtime:convex", "realtime:websocket",
+    "ui", "ui:shadcn", "ui:tailwind", "ui:dashboard",
+    "type:saas", "type:ecommerce", "type:internal", "type:b2b"
+  ]
 }
 ```

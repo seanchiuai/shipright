@@ -52,6 +52,12 @@ export const templateSchema = z.object({
   sourceUrl: z.string().url(),
   stack: z.array(z.string()).min(1),
   capabilities: capabilitiesSchema,
+  tags: z.array(z.string()).optional(),
+  integrations: z.array(z.string()).optional(),
+  useCases: z.array(z.string()).optional(),
+  complexity: z.enum(["starter", "intermediate", "advanced"]).optional(),
+  maintained: z.boolean().optional(),
+  lastVerified: z.string().optional(),
 });
 
 // Templates file schema
