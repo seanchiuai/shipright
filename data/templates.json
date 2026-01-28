@@ -1,0 +1,145 @@
+{
+  "version": "1.0",
+  "templates": [
+    {
+      "slug": "minimal-starter",
+      "name": "Minimal Starter",
+      "description": "Basic Next.js with TypeScript and Tailwind. Perfect for simple static sites or custom builds from scratch.",
+      "sourceUrl": "https://github.com/vercel/next.js/tree/canary/examples/with-tailwindcss",
+      "stack": ["Next.js", "TypeScript", "Tailwind"],
+      "capabilities": {
+        "auth": { "present": false, "providers": [], "hasRoles": false, "hasOrgs": false },
+        "database": { "present": false, "type": "", "realtime": false },
+        "payments": { "present": false },
+        "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": false },
+        "features": { "fileUploads": false, "email": false, "search": false, "ai": false }
+      }
+    },
+    {
+      "slug": "simple-auth",
+      "name": "Simple Auth",
+      "description": "Next.js with NextAuth.js for authentication. Good for apps that need user accounts but no database.",
+      "sourceUrl": "https://github.com/nextauthjs/next-auth-example",
+      "stack": ["Next.js", "NextAuth.js", "TypeScript"],
+      "capabilities": {
+        "auth": { "present": true, "providers": ["google", "github", "email"], "hasRoles": false, "hasOrgs": false },
+        "database": { "present": false, "type": "", "realtime": false },
+        "payments": { "present": false },
+        "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": false },
+        "features": { "fileUploads": false, "email": false, "search": false, "ai": false }
+      }
+    },
+    {
+      "slug": "simple-database",
+      "name": "Simple Database",
+      "description": "Next.js with Prisma and PostgreSQL. For apps that need data storage without authentication.",
+      "sourceUrl": "https://github.com/prisma/prisma-examples/tree/latest/typescript/rest-nextjs-api-routes",
+      "stack": ["Next.js", "Prisma", "PostgreSQL", "TypeScript"],
+      "capabilities": {
+        "auth": { "present": false, "providers": [], "hasRoles": false, "hasOrgs": false },
+        "database": { "present": true, "type": "prisma-postgres", "realtime": false },
+        "payments": { "present": false },
+        "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": false },
+        "features": { "fileUploads": false, "email": false, "search": false, "ai": false }
+      }
+    },
+    {
+      "slug": "t3-stack",
+      "name": "T3 Stack",
+      "description": "Full-stack TypeScript with tRPC, Prisma, NextAuth. Best for apps needing auth + database.",
+      "sourceUrl": "https://github.com/t3-oss/create-t3-app",
+      "stack": ["Next.js", "tRPC", "Prisma", "NextAuth.js", "TypeScript", "Tailwind"],
+      "capabilities": {
+        "auth": { "present": true, "providers": ["google", "github", "email"], "hasRoles": false, "hasOrgs": false },
+        "database": { "present": true, "type": "prisma-postgres", "realtime": false },
+        "payments": { "present": false },
+        "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": false },
+        "features": { "fileUploads": false, "email": false, "search": false, "ai": false }
+      }
+    },
+    {
+      "slug": "saas-boilerplate",
+      "name": "SaaS Boilerplate",
+      "description": "Complete SaaS starter with auth, payments, and admin dashboard. For subscription-based products.",
+      "sourceUrl": "https://github.com/vercel/nextjs-subscription-payments",
+      "stack": ["Next.js", "Supabase", "Stripe", "TypeScript", "Tailwind"],
+      "capabilities": {
+        "auth": { "present": true, "providers": ["email", "google", "github"], "hasRoles": true, "hasOrgs": false },
+        "database": { "present": true, "type": "supabase", "realtime": true },
+        "payments": { "present": true, "provider": "stripe", "models": ["subscription"] },
+        "ui": { "framework": "tailwind", "hasAdminDashboard": true, "hasLandingPage": true },
+        "features": { "fileUploads": false, "email": true, "search": false, "ai": false }
+      }
+    },
+    {
+      "slug": "convex-saas-starter",
+      "name": "Convex SaaS Starter",
+      "description": "Real-time SaaS with Convex, Clerk auth, and Stripe. Best for apps needing real-time features.",
+      "sourceUrl": "https://github.com/get-convex/convex-saas-starter",
+      "stack": ["Next.js", "Convex", "Clerk", "Stripe", "shadcn/ui"],
+      "capabilities": {
+        "auth": { "present": true, "providers": ["google", "email"], "hasRoles": true, "hasOrgs": true },
+        "database": { "present": true, "type": "convex", "realtime": true },
+        "payments": { "present": true, "provider": "stripe", "models": ["subscription"] },
+        "ui": { "framework": "shadcn", "hasAdminDashboard": true, "hasLandingPage": true },
+        "features": { "fileUploads": true, "email": true, "search": false, "ai": false }
+      }
+    },
+    {
+      "slug": "ai-chatbot",
+      "name": "AI Chatbot",
+      "description": "Vercel AI chatbot with streaming, auth, and persistence. For AI-powered conversational apps.",
+      "sourceUrl": "https://github.com/vercel/ai-chatbot",
+      "stack": ["Next.js", "Vercel AI SDK", "NextAuth.js", "TypeScript"],
+      "capabilities": {
+        "auth": { "present": true, "providers": ["google", "github"], "hasRoles": false, "hasOrgs": false },
+        "database": { "present": true, "type": "postgres", "realtime": false },
+        "payments": { "present": false },
+        "ui": { "framework": "shadcn", "hasAdminDashboard": false, "hasLandingPage": false },
+        "features": { "fileUploads": true, "email": false, "search": false, "ai": true }
+      }
+    },
+    {
+      "slug": "e-commerce",
+      "name": "E-commerce",
+      "description": "Vercel Commerce template with product catalog, cart, and checkout. For online stores.",
+      "sourceUrl": "https://github.com/vercel/commerce",
+      "stack": ["Next.js", "Shopify", "TypeScript", "Tailwind"],
+      "capabilities": {
+        "auth": { "present": true, "providers": ["email"], "hasRoles": false, "hasOrgs": false },
+        "database": { "present": true, "type": "shopify", "realtime": false },
+        "payments": { "present": true, "provider": "stripe", "models": ["one-time"] },
+        "ui": { "framework": "tailwind", "hasAdminDashboard": false, "hasLandingPage": true },
+        "features": { "fileUploads": false, "email": true, "search": true, "ai": false }
+      }
+    },
+    {
+      "slug": "admin-dashboard",
+      "name": "Admin Dashboard",
+      "description": "shadcn/ui admin dashboard with charts, tables, and data visualization. For internal tools.",
+      "sourceUrl": "https://github.com/Kiranism/next-shadcn-dashboard-starter",
+      "stack": ["Next.js", "shadcn/ui", "TypeScript", "Tailwind"],
+      "capabilities": {
+        "auth": { "present": true, "providers": ["email"], "hasRoles": true, "hasOrgs": false },
+        "database": { "present": false, "type": "", "realtime": false },
+        "payments": { "present": false },
+        "ui": { "framework": "shadcn", "hasAdminDashboard": true, "hasLandingPage": false },
+        "features": { "fileUploads": false, "email": false, "search": true, "ai": false }
+      }
+    },
+    {
+      "slug": "multi-tenant-saas",
+      "name": "Multi-tenant SaaS",
+      "description": "Full SaaS boilerplate with organizations, teams, and billing. For B2B products.",
+      "sourceUrl": "https://github.com/ixartz/SaaS-Boilerplate",
+      "stack": ["Next.js", "Drizzle", "Clerk", "Stripe", "shadcn/ui"],
+      "capabilities": {
+        "auth": { "present": true, "providers": ["google", "email", "github"], "hasRoles": true, "hasOrgs": true },
+        "database": { "present": true, "type": "drizzle", "realtime": false },
+        "payments": { "present": true, "provider": "stripe", "models": ["subscription", "one-time"] },
+        "ui": { "framework": "shadcn", "hasAdminDashboard": true, "hasLandingPage": true },
+        "features": { "fileUploads": true, "email": true, "search": false, "ai": false }
+      }
+    }
+  ]
+}

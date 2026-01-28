@@ -40,10 +40,11 @@ export default defineSchema({
   }).index("by_project", ["projectId"]).index("by_project_round", ["projectId", "round"]),
 
   templates: defineTable({
+    slug: v.optional(v.string()), // Unique identifier for sync (optional for backwards compat)
     name: v.string(),
     description: v.string(),
     sourceUrl: v.string(),
     stack: v.array(v.string()),
     capabilities: v.any(),
-  }),
+  }).index("by_slug", ["slug"]),
 });

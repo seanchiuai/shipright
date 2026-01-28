@@ -1,37 +1,10 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-// Template capabilities schema for type safety
-export const templateCapabilitiesSchema = v.object({
-  auth: v.object({
-    present: v.boolean(),
-    providers: v.array(v.string()),
-    hasRoles: v.boolean(),
-    hasOrgs: v.boolean(),
-  }),
-  database: v.object({
-    present: v.boolean(),
-    type: v.string(),
-    realtime: v.boolean(),
-  }),
-  payments: v.object({
-    present: v.boolean(),
-    provider: v.optional(v.string()),
-    models: v.optional(v.array(v.string())),
-  }),
-  ui: v.object({
-    framework: v.string(),
-    hasAdminDashboard: v.boolean(),
-    hasLandingPage: v.boolean(),
-  }),
-  features: v.object({
-    fileUploads: v.boolean(),
-    email: v.boolean(),
-    search: v.boolean(),
-    ai: v.boolean(),
-  }),
-});
+// Import template data from JSON (bundled at build time)
+import templatesData from "../data/templates.json";
 
+// Template capabilities type (matches JSON schema)
 export type TemplateCapabilities = {
   auth: {
     present: boolean;
@@ -62,6 +35,7 @@ export type TemplateCapabilities = {
   };
 };
 
+// Query: List all templates
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -69,6 +43,7 @@ export const list = query({
   },
 });
 
+// Query: Get template by ID
 export const get = query({
   args: { templateId: v.id("templates") },
   handler: async (ctx, args) => {
@@ -76,6 +51,18 @@ export const get = query({
   },
 });
 
+// Query: Get template by slug
+export const getBySlug = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("templates")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .first();
+  },
+});
+
+// Query: Get template by name (backwards compatibility)
 export const getByName = query({
   args: { name: v.string() },
   handler: async (ctx, args) => {
@@ -84,252 +71,126 @@ export const getByName = query({
   },
 });
 
-// Seed templates - call once to populate database
+// Mutation: Sync templates from JSON file
+// - Inserts new templates (by slug)
+// - Updates existing templates (matches by slug, falls back to name)
+// - Does NOT delete orphaned templates
+export const sync = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const stats = { added: 0, updated: 0, unchanged: 0, errors: [] as string[] };
+
+    for (const template of templatesData.templates) {
+      try {
+        // Validate required fields
+        if (!template.slug || !template.name || !template.sourceUrl) {
+          stats.errors.push(`Invalid template: missing required fields (slug: ${template.slug})`);
+          continue;
+        }
+
+        // Check if template exists by slug first
+        let existing = await ctx.db
+          .query("templates")
+          .withIndex("by_slug", (q) => q.eq("slug", template.slug))
+          .first();
+
+        // Fallback: check by name for templates without slugs (backwards compat)
+        if (!existing) {
+          const allTemplates = await ctx.db.query("templates").collect();
+          existing = allTemplates.find((t) => t.name === template.name) || null;
+        }
+
+        if (existing) {
+          // Update existing template (including adding slug if missing)
+          // Deep equality check that handles different key orders
+          const deepEqual = (a: unknown, b: unknown): boolean => {
+            if (a === b) return true;
+            if (typeof a !== typeof b) return false;
+            if (a === null || b === null) return a === b;
+            if (Array.isArray(a) && Array.isArray(b)) {
+              if (a.length !== b.length) return false;
+              return a.every((v, i) => deepEqual(v, b[i]));
+            }
+            if (typeof a === "object" && typeof b === "object") {
+              const aObj = a as Record<string, unknown>;
+              const bObj = b as Record<string, unknown>;
+              const aKeys = Object.keys(aObj);
+              const bKeys = Object.keys(bObj);
+              if (aKeys.length !== bKeys.length) return false;
+              return aKeys.every((k) => deepEqual(aObj[k], bObj[k]));
+            }
+            return false;
+          };
+          const hasChanges =
+            existing.slug !== template.slug ||
+            existing.name !== template.name ||
+            existing.description !== template.description ||
+            existing.sourceUrl !== template.sourceUrl ||
+            !deepEqual(existing.stack, template.stack) ||
+            !deepEqual(existing.capabilities, template.capabilities);
+
+          if (hasChanges) {
+            await ctx.db.patch(existing._id, {
+              slug: template.slug,
+              name: template.name,
+              description: template.description,
+              sourceUrl: template.sourceUrl,
+              stack: template.stack,
+              capabilities: template.capabilities,
+            });
+            stats.updated++;
+          } else {
+            stats.unchanged++;
+          }
+        } else {
+          // Insert new template
+          await ctx.db.insert("templates", {
+            slug: template.slug,
+            name: template.name,
+            description: template.description,
+            sourceUrl: template.sourceUrl,
+            stack: template.stack,
+            capabilities: template.capabilities,
+          });
+          stats.added++;
+        }
+      } catch (error) {
+        stats.errors.push(`Error processing ${template.slug}: ${error}`);
+      }
+    }
+
+    return {
+      message: `Sync complete: ${stats.added} added, ${stats.updated} updated, ${stats.unchanged} unchanged`,
+      ...stats,
+      total: templatesData.templates.length,
+    };
+  },
+});
+
+// Mutation: Seed templates (legacy - redirects to sync)
 export const seed = mutation({
   args: {},
   handler: async (ctx) => {
     // Check if templates already exist
     const existing = await ctx.db.query("templates").first();
     if (existing) {
-      return { message: "Templates already seeded", count: 0 };
+      return { message: "Templates already exist. Use sync to update.", count: 0 };
     }
 
-    const templates = getTemplateData();
-    for (const template of templates) {
-      await ctx.db.insert("templates", template);
+    // Run sync for initial population
+    const stats = { added: 0 };
+    for (const template of templatesData.templates) {
+      await ctx.db.insert("templates", {
+        slug: template.slug,
+        name: template.name,
+        description: template.description,
+        sourceUrl: template.sourceUrl,
+        stack: template.stack,
+        capabilities: template.capabilities,
+      });
+      stats.added++;
     }
 
-    return { message: "Templates seeded", count: templates.length };
+    return { message: "Templates seeded", count: stats.added };
   },
 });
-
-// Internal helper to get template data
-function getTemplateData() {
-  return [
-    {
-      name: "Minimal Starter",
-      description:
-        "Basic Next.js with TypeScript and Tailwind. Perfect for simple static sites or custom builds from scratch.",
-      sourceUrl:
-        "https://github.com/vercel/next.js/tree/canary/examples/with-tailwindcss",
-      stack: ["Next.js", "TypeScript", "Tailwind"],
-      capabilities: {
-        auth: { present: false, providers: [], hasRoles: false, hasOrgs: false },
-        database: { present: false, type: "", realtime: false },
-        payments: { present: false },
-        ui: {
-          framework: "tailwind",
-          hasAdminDashboard: false,
-          hasLandingPage: false,
-        },
-        features: { fileUploads: false, email: false, search: false, ai: false },
-      },
-    },
-    {
-      name: "Simple Auth",
-      description:
-        "Next.js with NextAuth.js for authentication. Good for apps that need user accounts but no database.",
-      sourceUrl: "https://github.com/nextauthjs/next-auth-example",
-      stack: ["Next.js", "NextAuth.js", "TypeScript"],
-      capabilities: {
-        auth: {
-          present: true,
-          providers: ["google", "github", "email"],
-          hasRoles: false,
-          hasOrgs: false,
-        },
-        database: { present: false, type: "", realtime: false },
-        payments: { present: false },
-        ui: {
-          framework: "tailwind",
-          hasAdminDashboard: false,
-          hasLandingPage: false,
-        },
-        features: { fileUploads: false, email: false, search: false, ai: false },
-      },
-    },
-    {
-      name: "Simple Database",
-      description:
-        "Next.js with Prisma and PostgreSQL. For apps that need data storage without authentication.",
-      sourceUrl: "https://github.com/prisma/prisma-examples/tree/latest/typescript/rest-nextjs-api-routes",
-      stack: ["Next.js", "Prisma", "PostgreSQL", "TypeScript"],
-      capabilities: {
-        auth: { present: false, providers: [], hasRoles: false, hasOrgs: false },
-        database: { present: true, type: "prisma-postgres", realtime: false },
-        payments: { present: false },
-        ui: {
-          framework: "tailwind",
-          hasAdminDashboard: false,
-          hasLandingPage: false,
-        },
-        features: { fileUploads: false, email: false, search: false, ai: false },
-      },
-    },
-    {
-      name: "T3 Stack",
-      description:
-        "Full-stack TypeScript with tRPC, Prisma, NextAuth. Best for apps needing auth + database.",
-      sourceUrl: "https://github.com/t3-oss/create-t3-app",
-      stack: ["Next.js", "tRPC", "Prisma", "NextAuth.js", "TypeScript", "Tailwind"],
-      capabilities: {
-        auth: {
-          present: true,
-          providers: ["google", "github", "email"],
-          hasRoles: false,
-          hasOrgs: false,
-        },
-        database: { present: true, type: "prisma-postgres", realtime: false },
-        payments: { present: false },
-        ui: {
-          framework: "tailwind",
-          hasAdminDashboard: false,
-          hasLandingPage: false,
-        },
-        features: { fileUploads: false, email: false, search: false, ai: false },
-      },
-    },
-    {
-      name: "SaaS Boilerplate",
-      description:
-        "Complete SaaS starter with auth, payments, and admin dashboard. For subscription-based products.",
-      sourceUrl: "https://github.com/vercel/nextjs-subscription-payments",
-      stack: ["Next.js", "Supabase", "Stripe", "TypeScript", "Tailwind"],
-      capabilities: {
-        auth: {
-          present: true,
-          providers: ["email", "google", "github"],
-          hasRoles: true,
-          hasOrgs: false,
-        },
-        database: { present: true, type: "supabase", realtime: true },
-        payments: { present: true, provider: "stripe", models: ["subscription"] },
-        ui: {
-          framework: "tailwind",
-          hasAdminDashboard: true,
-          hasLandingPage: true,
-        },
-        features: { fileUploads: false, email: true, search: false, ai: false },
-      },
-    },
-    {
-      name: "Convex SaaS Starter",
-      description:
-        "Real-time SaaS with Convex, Clerk auth, and Stripe. Best for apps needing real-time features.",
-      sourceUrl: "https://github.com/get-convex/convex-saas-starter",
-      stack: ["Next.js", "Convex", "Clerk", "Stripe", "shadcn/ui"],
-      capabilities: {
-        auth: {
-          present: true,
-          providers: ["google", "email"],
-          hasRoles: true,
-          hasOrgs: true,
-        },
-        database: { present: true, type: "convex", realtime: true },
-        payments: { present: true, provider: "stripe", models: ["subscription"] },
-        ui: {
-          framework: "shadcn",
-          hasAdminDashboard: true,
-          hasLandingPage: true,
-        },
-        features: { fileUploads: true, email: true, search: false, ai: false },
-      },
-    },
-    {
-      name: "AI Chatbot",
-      description:
-        "Vercel AI chatbot with streaming, auth, and persistence. For AI-powered conversational apps.",
-      sourceUrl: "https://github.com/vercel/ai-chatbot",
-      stack: ["Next.js", "Vercel AI SDK", "NextAuth.js", "TypeScript"],
-      capabilities: {
-        auth: {
-          present: true,
-          providers: ["google", "github"],
-          hasRoles: false,
-          hasOrgs: false,
-        },
-        database: { present: true, type: "postgres", realtime: false },
-        payments: { present: false },
-        ui: {
-          framework: "shadcn",
-          hasAdminDashboard: false,
-          hasLandingPage: false,
-        },
-        features: { fileUploads: true, email: false, search: false, ai: true },
-      },
-    },
-    {
-      name: "E-commerce",
-      description:
-        "Vercel Commerce template with product catalog, cart, and checkout. For online stores.",
-      sourceUrl: "https://github.com/vercel/commerce",
-      stack: ["Next.js", "Shopify", "TypeScript", "Tailwind"],
-      capabilities: {
-        auth: {
-          present: true,
-          providers: ["email"],
-          hasRoles: false,
-          hasOrgs: false,
-        },
-        database: { present: true, type: "shopify", realtime: false },
-        payments: { present: true, provider: "stripe", models: ["one-time"] },
-        ui: {
-          framework: "tailwind",
-          hasAdminDashboard: false,
-          hasLandingPage: true,
-        },
-        features: { fileUploads: false, email: true, search: true, ai: false },
-      },
-    },
-    {
-      name: "Admin Dashboard",
-      description:
-        "shadcn/ui admin dashboard with charts, tables, and data visualization. For internal tools.",
-      sourceUrl: "https://github.com/Kiranism/next-shadcn-dashboard-starter",
-      stack: ["Next.js", "shadcn/ui", "TypeScript", "Tailwind"],
-      capabilities: {
-        auth: {
-          present: true,
-          providers: ["email"],
-          hasRoles: true,
-          hasOrgs: false,
-        },
-        database: { present: false, type: "", realtime: false },
-        payments: { present: false },
-        ui: {
-          framework: "shadcn",
-          hasAdminDashboard: true,
-          hasLandingPage: false,
-        },
-        features: { fileUploads: false, email: false, search: true, ai: false },
-      },
-    },
-    {
-      name: "Multi-tenant SaaS",
-      description:
-        "Full SaaS boilerplate with organizations, teams, and billing. For B2B products.",
-      sourceUrl: "https://github.com/ixartz/SaaS-Boilerplate",
-      stack: ["Next.js", "Drizzle", "Clerk", "Stripe", "shadcn/ui"],
-      capabilities: {
-        auth: {
-          present: true,
-          providers: ["google", "email", "github"],
-          hasRoles: true,
-          hasOrgs: true,
-        },
-        database: { present: true, type: "drizzle", realtime: false },
-        payments: {
-          present: true,
-          provider: "stripe",
-          models: ["subscription", "one-time"],
-        },
-        ui: {
-          framework: "shadcn",
-          hasAdminDashboard: true,
-          hasLandingPage: true,
-        },
-        features: { fileUploads: true, email: true, search: false, ai: false },
-      },
-    },
-  ];
-}
