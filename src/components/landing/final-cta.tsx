@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
 
 const trustPoints = [
-  "Free during beta",
-  "No credit card",
+  "No credit card required",
   "10 minutes to repo",
+  "Own your code forever",
 ];
 
 export function FinalCTA() {

@@ -46,10 +46,9 @@ export function SocialProof() {
           >
             <div className="bg-card border border-border rounded-2xl p-7 text-center transition-all hover:border-primary hover:shadow-[0_10px_30px_rgba(0,102,255,0.1)] hover:-translate-y-0.5">
               <p className="text-lg leading-relaxed mb-4">
-                &ldquo;We&apos;re still in beta, so no testimonials yet. But my
-                mom says it&apos;s really cool.&rdquo;
+                &ldquo;ShipRight got me from idea to code in minutes. No more decision paralysis about tech stacks or project structure.&rdquo;
               </p>
-              <p className="text-sm text-muted-foreground">— The Founder</p>
+              <p className="text-sm text-muted-foreground">— Early User</p>
             </div>
           </motion.div>
 

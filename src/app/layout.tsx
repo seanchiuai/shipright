@@ -24,7 +24,7 @@ const firaCode = Fira_Code({
 
 export const metadata: Metadata = {
   title: "ShipRight — From App Idea to GitHub Repo in 10 Minutes",
-  description: "Describe your app, get a production-ready GitHub repo with AI-optimized scaffolding. The missing piece for vibe coding. Free during beta.",
+  description: "Describe your app, get a production-ready GitHub repo with AI-optimized scaffolding. The missing piece for vibe coding.",
 };
 
 export default function RootLayout({

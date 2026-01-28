@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -19,24 +18,16 @@ import {
   Footer,
   GradientBackground,
 } from "@/components/landing";
-import { BetaModal } from "@/components/landing/beta-modal";
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useUser();
   const router = useRouter();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalIdea, setModalIdea] = useState("");
 
   useEffect(() => {
     if (isSignedIn) {
       router.push("/dashboard");
     }
   }, [isSignedIn, router]);
-
-  const handleOpenModal = (idea: string) => {
-    setModalIdea(idea);
-    setIsModalOpen(true);
-  };
 
   if (!isLoaded) {
     return (
@@ -50,7 +41,7 @@ export default function LandingPage() {
     <GradientBackground className="min-h-screen">
       <Header />
       <main>
-        <HeroSection onOpenModal={handleOpenModal} />
+        <HeroSection />
         <DemoSection />
         <WhatYouGet />
         <HowItWorks />
@@ -62,11 +53,6 @@ export default function LandingPage() {
         <FinalCTA />
       </main>
       <Footer />
-      <BetaModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        initialIdea={modalIdea}
-      />
     </GradientBackground>
   );
 }

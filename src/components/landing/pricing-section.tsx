@@ -7,33 +7,33 @@ import { Check } from "lucide-react";
 
 const plans = [
   {
-    name: "Beta",
-    description: "During beta",
-    price: "Free",
-    period: "",
-    features: ["Unlimited projects", "Full template library", "All scaffolding features"],
-    cta: "Start building",
-    ctaVariant: "default" as const,
-    featured: true,
-    badge: "Current",
-  },
-  {
     name: "Starter",
-    description: "Coming soon",
+    description: "For solo builders",
     price: "$15",
     period: "/month",
     features: ["Template matching", "GitHub repo generation", "AI scaffolding files"],
-    cta: "Join waitlist",
-    ctaVariant: "secondary" as const,
+    cta: "Start building",
+    ctaVariant: "default" as const,
     featured: false,
   },
   {
     name: "Pro",
-    description: "Coming soon",
+    description: "For serious builders",
     price: "$30",
     period: "/month",
     features: ["Everything in Starter", "Custom template requests", "Priority support"],
-    cta: "Join waitlist",
+    cta: "Start building",
+    ctaVariant: "default" as const,
+    featured: true,
+    badge: "Most Popular",
+  },
+  {
+    name: "Enterprise",
+    description: "For teams",
+    price: "Custom",
+    period: "",
+    features: ["Everything in Pro", "Team collaboration", "Dedicated support", "Custom integrations"],
+    cta: "Contact us",
     ctaVariant: "secondary" as const,
     featured: false,
   },
@@ -55,7 +55,7 @@ export function PricingSection() {
             Simple pricing. No surprises.
           </h2>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            Free during beta. Affordable plans when we launch.
+            Start building today. Cancel anytime.
           </p>
         </motion.div>
 

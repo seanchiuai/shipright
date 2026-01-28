@@ -28,7 +28,7 @@ const faqs = [
   {
     question: "What's the catch?",
     answer:
-      "No catch. Free during beta, then $15-30/month. No lock-in, no hidden fees.",
+      "No catch. Plans start at $15/month. No lock-in, no hidden fees. Cancel anytime.",
   },
 ];
 
