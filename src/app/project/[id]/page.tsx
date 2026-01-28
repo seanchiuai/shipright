@@ -65,6 +65,14 @@ type Template = {
   };
 };
 
+type Weights = {
+  auth: number;
+  database: number;
+  payments: number;
+  features: number;
+  ui: number;
+};
+
 type MatchResult = {
   template: Template;
   score: number;
@@ -75,6 +83,7 @@ type MatchResult = {
     features: number;
     ui: number;
   };
+  weights: Weights;
   gaps: string[];
   included: string[];
 };
@@ -165,11 +174,12 @@ export default function ProjectDetailsPage() {
   // Use stored match result if available
   useEffect(() => {
     if (matchedTemplate && project?.matchScore !== undefined && !matchResult) {
-      // Reconstruct match result from stored data
+      // Reconstruct match result from stored data (weights not stored, use placeholders)
       setMatchResult({
         template: matchedTemplate as Template,
         score: project.matchScore,
         scoreBreakdown: { auth: 0, database: 0, payments: 0, features: 0, ui: 0 },
+        weights: { auth: 0, database: 0, payments: 0, features: 0, ui: 0 },
         gaps: project.matchGaps || [],
         included: getIncludedFeatures(matchedTemplate as Template),
       });
@@ -355,6 +365,36 @@ export default function ProjectDetailsPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* AI-Determined Matching Priorities */}
+                {matchResult.weights.auth > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                      Matching Priorities
+                    </h4>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      AI analyzed your app to determine what matters most:
+                    </p>
+                    <div className="space-y-2">
+                      {Object.entries(matchResult.weights)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([key, value]) => (
+                          <div key={key} className="flex items-center gap-3">
+                            <span className="text-xs w-20 capitalize">{key}</span>
+                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary rounded-full transition-all"
+                                style={{ width: `${value * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground w-10">
+                              {Math.round(value * 100)}%
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* What's Included */}
                 <div>

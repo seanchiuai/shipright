@@ -4,6 +4,41 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 import { TemplateCapabilities } from "./templates";
+import { createVertex } from "@ai-sdk/google-vertex";
+import { generateObject } from "ai";
+import { z } from "zod";
+
+// Create Vertex AI provider with service account credentials
+function getVertexProvider() {
+  return createVertex({
+    project: process.env.GOOGLE_VERTEX_PROJECT,
+    location: process.env.GOOGLE_VERTEX_LOCATION || "us-central1",
+    googleAuthOptions: {
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      },
+    },
+  });
+}
+
+// Schema for AI-generated weights
+const weightsSchema = z.object({
+  auth: z.number().min(0).max(1),
+  database: z.number().min(0).max(1),
+  payments: z.number().min(0).max(1),
+  features: z.number().min(0).max(1),
+  ui: z.number().min(0).max(1),
+  reasoning: z.string(),
+});
+
+type Weights = {
+  auth: number;
+  database: number;
+  payments: number;
+  features: number;
+  ui: number;
+};
 
 // Requirements schema from interview
 type Requirements = {
@@ -41,18 +76,78 @@ type MatchResult = {
     features: number;
     ui: number;
   };
+  weights: Weights;
   gaps: string[];
   included: string[];
 };
 
-// Scoring weights as per PRD
-const WEIGHTS = {
+// Default weights (fallback if AI fails)
+const DEFAULT_WEIGHTS: Weights = {
   auth: 0.25,
   database: 0.25,
   payments: 0.2,
   features: 0.2,
   ui: 0.1,
 };
+
+// AI-determined weights based on app context
+async function determineWeights(requirements: Requirements): Promise<Weights> {
+  try {
+    const vertex = getVertexProvider();
+
+    const prompt = `Analyze this app idea and determine the relative importance of each category for template matching.
+
+App: ${requirements.appName}
+Problem: ${requirements.problemStatement}
+User Types: ${requirements.userTypes.map((u) => u.name).join(", ")}
+Auth Needed: ${requirements.auth.needed}
+Database Needed: ${requirements.database.needed}, Realtime: ${requirements.database.realtime}
+Payments Needed: ${requirements.payments.needed}${requirements.payments.model ? ` (${requirements.payments.model})` : ""}
+Key Features: ${requirements.features.map((f) => f.name).join(", ")}
+
+Based on this app's nature, assign weights (must sum to 1.0) to each category:
+- auth: How important is authentication/authorization for this app?
+- database: How important is database/data storage for this app?
+- payments: How important is payment processing for this app?
+- features: How important are specific features (file uploads, email, search, AI) for this app?
+- ui: How important is the UI framework/admin dashboard for this app?
+
+Examples:
+- E-commerce app: payments=0.35, database=0.25, auth=0.20, features=0.15, ui=0.05
+- Social network: database=0.30, auth=0.30, features=0.25, ui=0.10, payments=0.05
+- SaaS dashboard: auth=0.25, database=0.25, ui=0.25, features=0.15, payments=0.10
+- AI chatbot: features=0.40, database=0.25, auth=0.20, ui=0.10, payments=0.05`;
+
+    const { object } = await generateObject({
+      model: vertex("gemini-2.0-flash"),
+      schema: weightsSchema,
+      prompt,
+    });
+
+    // Normalize weights to ensure they sum to 1.0
+    const sum = object.auth + object.database + object.payments + object.features + object.ui;
+    if (Math.abs(sum - 1.0) > 0.01) {
+      return {
+        auth: object.auth / sum,
+        database: object.database / sum,
+        payments: object.payments / sum,
+        features: object.features / sum,
+        ui: object.ui / sum,
+      };
+    }
+
+    return {
+      auth: object.auth,
+      database: object.database,
+      payments: object.payments,
+      features: object.features,
+      ui: object.ui,
+    };
+  } catch (error) {
+    console.error("Failed to determine weights via AI, using defaults:", error);
+    return DEFAULT_WEIGHTS;
+  }
+}
 
 function scoreAuth(
   reqAuth: Requirements["auth"],
@@ -305,6 +400,9 @@ export const matchTemplate = action({
       throw new Error("No templates available. Please seed templates first.");
     }
 
+    // AI determines weights based on app context
+    const weights = await determineWeights(requirements);
+
     let bestMatch: MatchResult | null = null;
 
     for (const template of templates) {
@@ -319,17 +417,18 @@ export const matchTemplate = action({
       };
 
       const totalScore = Math.round(
-        scoreBreakdown.auth * WEIGHTS.auth +
-          scoreBreakdown.database * WEIGHTS.database +
-          scoreBreakdown.payments * WEIGHTS.payments +
-          scoreBreakdown.features * WEIGHTS.features +
-          scoreBreakdown.ui * WEIGHTS.ui
+        scoreBreakdown.auth * weights.auth +
+          scoreBreakdown.database * weights.database +
+          scoreBreakdown.payments * weights.payments +
+          scoreBreakdown.features * weights.features +
+          scoreBreakdown.ui * weights.ui
       );
 
       const result: MatchResult = {
         template,
         score: totalScore,
         scoreBreakdown,
+        weights,
         gaps: identifyGaps(requirements, template),
         included: identifyIncluded(template),
       };
@@ -347,6 +446,7 @@ export const matchTemplate = action({
           template: minimalStarter,
           score: bestMatch!.score,
           scoreBreakdown: bestMatch!.scoreBreakdown,
+          weights,
           gaps: identifyGaps(requirements, minimalStarter),
           included: identifyIncluded(minimalStarter),
         };
