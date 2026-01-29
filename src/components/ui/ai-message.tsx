@@ -2,7 +2,8 @@
 
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
-import { Sparkles, User } from "lucide-react";
+import Image from "next/image";
+import { User } from "lucide-react";
 
 export interface AIMessageProps extends React.HTMLAttributes<HTMLDivElement> {
   role: "assistant" | "user";
@@ -28,12 +29,12 @@ const AIMessage = forwardRef<HTMLDivElement, AIMessageProps>(
           className={cn(
             "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center",
             isAssistant
-              ? "bg-gradient-to-br from-primary to-primary/70 text-white shadow-lg shadow-primary/20"
+              ? "bg-white border border-border/50 shadow-sm"
               : "bg-gradient-to-br from-secondary to-secondary/70 text-foreground"
           )}
         >
           {isAssistant ? (
-            <Sparkles className="w-4 h-4" />
+            <Image src="/logo.png" alt="ShipRight" width={32} height={32} className="w-[90%] h-[90%] object-contain" />
           ) : (
             <User className="w-4 h-4" />
           )}
