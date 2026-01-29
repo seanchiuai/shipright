@@ -3,6 +3,7 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 
 export function Header() {
   const { scrollY } = useScroll();
@@ -26,14 +27,18 @@ export function Header() {
         {/* Logo */}
         <motion.a
           href="#"
-          className="flex items-center gap-2.5 font-bold text-xl text-foreground no-underline"
+          className="flex items-center gap-2 font-bold text-xl text-foreground no-underline"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-sm">
-            S
-          </div>
+          <Image
+            src="/logo.png"
+            alt="ShipRight"
+            width={32}
+            height={32}
+            className="w-8 h-8"
+          />
           ShipRight
         </motion.a>
 

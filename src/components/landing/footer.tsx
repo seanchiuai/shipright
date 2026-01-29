@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 const footerLinks = {
   Product: [
     { label: "Features", href: "#features" },
@@ -25,10 +27,14 @@ export function Footer() {
         <div className="flex flex-col lg:flex-row justify-between gap-12 mb-12">
           {/* Brand */}
           <div className="max-w-[280px]">
-            <a href="#" className="flex items-center gap-2.5 font-bold text-xl no-underline mb-3">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                S
-              </div>
+            <a href="#" className="flex items-center gap-2 font-bold text-xl no-underline mb-3">
+              <Image
+                src="/logo.png"
+                alt="ShipRight"
+                width={32}
+                height={32}
+                className="w-8 h-8"
+              />
               ShipRight
             </a>
             <p className="text-[0.9375rem] text-muted-foreground">
