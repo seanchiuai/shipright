@@ -535,6 +535,12 @@ export const matchTemplateV2 = action({
     }
 
     const requirements = project.requirements as Requirements;
+    if (!Array.isArray(requirements.keyFeatures)) {
+      requirements.keyFeatures = [];
+    }
+    if (!requirements.constraints) {
+      requirements.constraints = { timeline: null, mustHave: [], mustNotHave: [] };
+    }
     const templates = (await ctx.runQuery(
       api.templates.list,
       {}
@@ -604,6 +610,12 @@ export const matchTemplate = action({
     }
 
     const requirements = project.requirements as Requirements;
+    if (!Array.isArray(requirements.keyFeatures)) {
+      requirements.keyFeatures = [];
+    }
+    if (!requirements.constraints) {
+      requirements.constraints = { timeline: null, mustHave: [], mustNotHave: [] };
+    }
     const templates = (await ctx.runQuery(api.templates.list, {})) as Template[];
 
     if (templates.length === 0) {

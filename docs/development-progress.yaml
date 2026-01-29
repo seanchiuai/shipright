@@ -2,19 +2,25 @@
 # This file tracks which phase of development is currently active
 
 current_phase:
-  phase: 3
-  name: "Template Matching"
-  description: "Requirements extraction, scoring algorithm"
-  started: "2026-01-27"
+  phase: 4
+  name: "GitHub Repo Creation"
+  description: "OAuth connection, repo from template"
+  started: "2026-01-29"
   status: "pending"
   completion_criteria:
-    - "Template scoring algorithm"
-    - "Template index/catalog"
-    - "Match explanation UI"
-    - "Template preview"
+    - "GitHub OAuth flow"
+    - "Repo creation from template"
+    - "User confirmation/authorization"
+    - "Success confirmation page"
 
 # Phase History
 completed_phases:
+  - phase: 3
+    name: "Template Matching"
+    description: "Requirements extraction, scoring algorithm"
+    started: "2026-01-27"
+    completed: "2026-01-29"
+    status: "complete"
   - phase: 2
     name: "Interview Flow"
     description: "AI-guided questions, interactive experience"
