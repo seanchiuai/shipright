@@ -24,6 +24,7 @@ export default defineSchema({
     matchScore: v.optional(v.number()),
     matchGaps: v.optional(v.array(v.string())),
     githubRepoUrl: v.optional(v.string()),
+    githubRepoFullName: v.optional(v.string()),
     interviewPhase: v.optional(v.string()),  // "seed" | "conversation" | "summary"
   }).index("by_user", ["userId"]),
 

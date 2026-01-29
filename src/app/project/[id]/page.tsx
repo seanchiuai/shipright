@@ -237,36 +237,32 @@ export default function ProjectDetailsPage() {
     setError(null);
 
     try {
-      // Extract owner/repo from sourceUrl (e.g. "https://github.com/owner/repo")
       const sourceUrl = matchResult.template.sourceUrl;
       const urlParts = new URL(sourceUrl).pathname.split("/").filter(Boolean);
       const templateRepoFullName = `${urlParts[0]}/${urlParts[1]}`;
 
-      // Generate repo name from project name
       const repoName = project.name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-|-$/g, "");
 
-      const result = await cloneTemplate({
+      await cloneTemplate({
         projectId,
         templateRepoFullName,
         newRepoName: repoName || "shipright-app",
       });
 
-      // Redirect to project page (will now show "building" status with repo link)
       router.refresh();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to create repository";
       if (message.includes("TEMPLATE_UNAVAILABLE")) {
         setError("Template unavailable. Re-matching with next best template...");
         setMatchResult(null);
-        // Re-trigger matching
         try {
-          const result = await matchTemplate({ projectId });
-          setMatchResult(result);
+          const newMatch = await matchTemplate({ projectId });
+          setMatchResult(newMatch);
           setError(null);
-        } catch (matchErr) {
+        } catch {
           setError("No alternative templates available. Please start over.");
         }
       } else if (message.includes("GitHub connection expired") || message.includes("401")) {

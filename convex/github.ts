@@ -6,7 +6,6 @@ import { api } from "./_generated/api";
 import { Octokit } from "octokit";
 import { encryptToken, decryptToken } from "../lib/encryption";
 
-// Exchange GitHub authorization code for access token, encrypt and store
 export const exchangeGitHubCode = action({
   args: { code: v.string() },
   handler: async (ctx, args) => {
@@ -44,7 +43,6 @@ export const exchangeGitHubCode = action({
   },
 });
 
-// Validate that a user's stored GitHub token is still valid
 export const validateToken = action({
   args: {},
   handler: async (ctx) => {
@@ -69,7 +67,6 @@ export const validateToken = action({
   },
 });
 
-// Clone a template repo into a new private repo for the user
 export const cloneTemplate = action({
   args: {
     projectId: v.id("projects"),
@@ -89,19 +86,16 @@ export const cloneTemplate = action({
     const [templateOwner, templateRepo] =
       args.templateRepoFullName.split("/");
 
-    // 1. Fetch all files from template repo
     let files: Array<{ path: string; content: string }>;
     try {
       files = await fetchRepoFiles(octokit, templateOwner, templateRepo);
     } catch (error: unknown) {
-      const status = (error as { status?: number }).status;
-      if (status === 404) {
+      if ((error as { status?: number }).status === 404) {
         throw new Error("TEMPLATE_UNAVAILABLE");
       }
       throw error;
     }
 
-    // 2. Create new private repo
     let newRepo;
     try {
       const result = await octokit.rest.repos.createForAuthenticatedUser({
@@ -111,9 +105,7 @@ export const cloneTemplate = action({
       });
       newRepo = result.data;
     } catch (error: unknown) {
-      const status = (error as { status?: number }).status;
-      if (status === 422) {
-        // Name taken, try with suffix
+      if ((error as { status?: number }).status === 422) {
         const suffix = Date.now().toString(36).slice(-4);
         const result = await octokit.rest.repos.createForAuthenticatedUser({
           name: `${args.newRepoName}-${suffix}`,
@@ -126,7 +118,6 @@ export const cloneTemplate = action({
       }
     }
 
-    // 3. Commit all template files
     await commitFiles(
       octokit,
       newRepo.owner.login,
@@ -135,7 +126,6 @@ export const cloneTemplate = action({
       `Initial commit from Shipright template: ${templateRepo}`
     );
 
-    // 4. Save repo URL to project
     await ctx.runMutation(api.projects.updateGitHubRepo, {
       projectId: args.projectId,
       repoUrl: newRepo.html_url,
@@ -146,7 +136,6 @@ export const cloneTemplate = action({
   },
 });
 
-// Recursively fetch all files from a repo
 async function fetchRepoFiles(
   octokit: Octokit,
   owner: string,
@@ -176,7 +165,6 @@ async function fetchRepoFiles(
   return files;
 }
 
-// Commit multiple files to a repo using Git tree API
 async function commitFiles(
   octokit: Octokit,
   owner: string,
@@ -184,7 +172,6 @@ async function commitFiles(
   files: Array<{ path: string; content: string }>,
   message: string
 ) {
-  // Create blobs for each file
   const blobs = await Promise.all(
     files.map(async (file) => {
       const { data: blob } = await octokit.rest.git.createBlob({
@@ -197,7 +184,6 @@ async function commitFiles(
     })
   );
 
-  // Create tree (no base_tree since repo is empty)
   const { data: tree } = await octokit.rest.git.createTree({
     owner,
     repo,
@@ -209,7 +195,6 @@ async function commitFiles(
     })),
   });
 
-  // Create commit (no parents since it's first commit)
   const { data: commit } = await octokit.rest.git.createCommit({
     owner,
     repo,
@@ -217,7 +202,6 @@ async function commitFiles(
     tree: tree.sha,
   });
 
-  // Create main branch ref
   await octokit.rest.git.createRef({
     owner,
     repo,

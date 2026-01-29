@@ -13,27 +13,26 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${appUrl}/connect-github?error=no_code`);
   }
 
-  // Decode return URL from state
   let returnTo = "/dashboard";
   if (state) {
     try {
       const parsed = JSON.parse(
         Buffer.from(state, "base64url").toString("utf8")
       );
-      returnTo = parsed.returnTo || "/dashboard";
+      if (parsed.returnTo?.startsWith("/")) {
+        returnTo = parsed.returnTo;
+      }
     } catch {
-      // ignore malformed state
+      // malformed state, use default
     }
   }
 
-  // Get Clerk auth token for Convex
   const { getToken } = await auth();
   const token = await getToken({ template: "convex" });
   if (!token) {
     return NextResponse.redirect(`${appUrl}/connect-github?error=not_authenticated`);
   }
 
-  // Call Convex action to exchange code and store token
   const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   convex.setAuth(token);
 

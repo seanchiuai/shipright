@@ -139,6 +139,7 @@ export const updateGitHubRepo = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
       githubRepoUrl: args.repoUrl,
+      githubRepoFullName: args.repoFullName,
       status: "building",
     });
   },

@@ -72,7 +72,6 @@ export const syncUser = mutation({
   },
 });
 
-// Save encrypted GitHub token for authenticated user
 export const saveGitHubToken = mutation({
   args: { encryptedToken: v.string() },
   handler: async (ctx, args) => {
@@ -89,7 +88,6 @@ export const saveGitHubToken = mutation({
   },
 });
 
-// Remove GitHub token (disconnect)
 export const removeGitHubToken = mutation({
   args: {},
   handler: async (ctx) => {

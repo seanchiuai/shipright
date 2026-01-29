@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -40,7 +40,6 @@ export default function ConnectGitHubPage() {
 
   const isConnected = !!convexUser?.githubToken;
 
-  // Validate token on load if connected
   useEffect(() => {
     async function validate() {
       if (!isConnected || validating || githubUsername) return;
@@ -51,7 +50,7 @@ export default function ConnectGitHubPage() {
           setGithubUsername(result.username || null);
         }
       } catch {
-        // Token validation failed silently
+        // token may be invalid
       } finally {
         setValidating(false);
       }
@@ -65,7 +64,7 @@ export default function ConnectGitHubPage() {
       await removeToken({});
       setGithubUsername(null);
     } catch {
-      // ignore
+      // disconnect failed
     } finally {
       setDisconnecting(false);
     }
