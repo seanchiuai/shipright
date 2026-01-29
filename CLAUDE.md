@@ -85,7 +85,7 @@ DAYTONA_API_URL=https://api.daytona.io
 
 **Always:**
 - Test every change before committing
-- Commit after every small change.You must run test before commiting. Never move on and leave something uncommitted.
+- Commit after every small change (if a test has not been ran, mark commit as "untested" in the commit message)
 - Sacrifice grammar for conciseness
 - Follow vercel react best practices
 - Only work on current phase
