@@ -111,28 +111,28 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Description:** As a user, I want Shipright to automatically create a GitHub repository with my template so that I have a codebase to work with.
 
 **Acceptance Criteria:**
-- [ ] User must have connected GitHub account (OAuth) before build starts
-- [ ] Repository name auto-generated from app name (no user prompt, can rename on GitHub later)
-- [ ] Repository created as **private** by default
-- [ ] Template files fetched via GitHub API and committed to new repo
-- [ ] If template unavailable, re-run matching with next best template
-- [ ] Initial commit with message: "Initial commit from Shipright template: {templateName}"
-- [ ] Flow is autonomous - no user confirmation required for repo creation
+- [x] User must have connected GitHub account (OAuth) before build starts
+- [x] Repository name auto-generated from app name (no user prompt, can rename on GitHub later)
+- [x] Repository created as **private** by default
+- [x] Template files fetched via GitHub API and committed to new repo
+- [x] If template unavailable, re-run matching with next best template
+- [x] Initial commit with message: "Initial commit from Shipright template: {templateName}"
+- [x] Flow is autonomous - no user confirmation required for repo creation
 - [ ] Success screen shown after scaffolding complete (Phase 6)
-- [ ] Typecheck passes
+- [x] Typecheck passes
 
 ### US-009: GitHub OAuth Connection
 **Description:** As a user, I want to connect my GitHub account so that Shipright can create repositories on my behalf.
 
 **Acceptance Criteria:**
-- [ ] "Connect GitHub" button shown before first build (if not already connected)
-- [ ] GitHub OAuth flow requests `repo` + `user:email` scopes
-- [ ] User redirected to GitHub to authorize
-- [ ] GitHub access token encrypted (AES-256-GCM) and stored in Convex
-- [ ] Token validated before any GitHub operations
-- [ ] User can disconnect GitHub from settings/profile
-- [ ] If token expires (401 error), prompt user to reconnect
-- [ ] Typecheck passes
+- [x] "Connect GitHub" button shown before first build (if not already connected)
+- [x] GitHub OAuth flow requests `repo` + `user:email` scopes
+- [x] User redirected to GitHub to authorize
+- [x] GitHub access token encrypted (AES-256-GCM) and stored in Convex
+- [x] Token validated before any GitHub operations
+- [x] User can disconnect GitHub from settings/profile
+- [x] If token expires (401 error), prompt user to reconnect
+- [x] Typecheck passes
 
 ### US-010: CLAUDE.md Generation
 **Description:** As a system, I need to generate a CLAUDE.md file tailored to the user's project so that AI agents can effectively work on the codebase.

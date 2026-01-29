@@ -1,6 +1,6 @@
 # GitHub Integration Reference
 
-Complete OAuth flow, API usage, and security patterns for GitHub integration in Shipright.
+OAuth flow, API usage, and security patterns for GitHub integration in Shipright.
 
 ## Installation
 
@@ -8,66 +8,86 @@ Complete OAuth flow, API usage, and security patterns for GitHub integration in 
 npm install octokit
 ```
 
-## Complete OAuth Flow
+## OAuth Flow
 
 ### 1. Redirect to GitHub Authorization
 
 ```typescript
-// app/api/github/connect/route.ts
-export async function GET() {
+// src/app/api/github/connect/route.ts
+import { NextResponse } from "next/server";
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const returnTo = url.searchParams.get("returnTo") || "/dashboard";
   const clientId = process.env.GITHUB_CLIENT_ID;
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/github/callback`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || url.origin;
+  const redirectUri = `${appUrl}/api/auth/github/callback`;
+  const state = Buffer.from(JSON.stringify({ returnTo })).toString("base64url");
 
-  const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo user:email`;
+  const authUrl = new URL("https://github.com/login/oauth/authorize");
+  authUrl.searchParams.set("client_id", clientId);
+  authUrl.searchParams.set("redirect_uri", redirectUri);
+  authUrl.searchParams.set("scope", "repo user:email");
+  authUrl.searchParams.set("state", state);
 
-  return Response.redirect(authUrl);
+  return NextResponse.redirect(authUrl.toString());
 }
 ```
 
-**Parameters**:
-- `client_id` - Your GitHub OAuth App client ID
-- `redirect_uri` - Your callback URL (must match OAuth App settings)
-- `scope` - Space-separated scopes: `repo user:email`
-
-### 2. Handle Callback with Authorization Code
+### 2. Handle Callback
 
 ```typescript
-// app/api/auth/github/callback/route.ts
+// src/app/api/auth/github/callback/route.ts
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../../../../convex/_generated/api";
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || url.origin;
 
   if (!code) {
-    return Response.json({ error: "No code provided" }, { status: 400 });
+    return NextResponse.redirect(`${appUrl}/connect-github?error=no_code`);
   }
 
-  // Exchange code for token (call Convex action)
-  const accessToken = await exchangeCode(code);
+  let returnTo = "/dashboard";
+  if (state) {
+    try {
+      const parsed = JSON.parse(Buffer.from(state, "base64url").toString("utf8"));
+      if (parsed.returnTo?.startsWith("/")) returnTo = parsed.returnTo;
+    } catch { /* malformed state */ }
+  }
 
-  // Redirect to dashboard
-  return Response.redirect("/dashboard");
+  const { getToken } = await auth();
+  const token = await getToken({ template: "convex" });
+  if (!token) {
+    return NextResponse.redirect(`${appUrl}/connect-github?error=not_authenticated`);
+  }
+
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  convex.setAuth(token);
+  await convex.action(api.github.exchangeGitHubCode, { code });
+
+  return NextResponse.redirect(`${appUrl}${returnTo}`);
 }
 ```
-
-**Important**: Authorization code expires after 10 minutes.
 
 ### 3. Exchange Code for Access Token (Convex Action)
 
 ```typescript
-// convex/github.ts
-import { action } from "./_generated/server";
-import { v } from "convex/values";
-import { api } from "./_generated/api";
-
+// convex/github.ts ("use node" directive required)
 export const exchangeGitHubCode = action({
-  args: { code: v.string(), userId: v.id("users") },
+  args: { code: v.string() },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
     const response = await fetch("https://github.com/login/oauth/access_token", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
         client_id: process.env.GITHUB_CLIENT_ID,
         client_secret: process.env.GITHUB_CLIENT_SECRET,
@@ -76,31 +96,16 @@ export const exchangeGitHubCode = action({
     });
 
     const data = await response.json();
+    if (data.error) throw new Error(`GitHub OAuth error: ${data.error_description}`);
 
-    if (data.error) {
-      throw new Error(`GitHub OAuth error: ${data.error_description}`);
-    }
-
-    // Encrypt and store token
     const encryptedToken = encryptToken(data.access_token);
-    await ctx.runMutation(api.users.saveGitHubToken, {
-      userId: args.userId,
-      token: encryptedToken,
-    });
-
+    await ctx.runMutation(api.users.saveGitHubToken, { encryptedToken });
     return { success: true };
   },
 });
 ```
 
-**Response Format**:
-```json
-{
-  "access_token": "gho_16C7e42F292c6912E7710c838347Ae178B4a",
-  "scope": "repo,user:email",
-  "token_type": "bearer"
-}
-```
+**Key**: Uses JWT auth (`ctx.auth.getUserIdentity()`) - no userId arg needed.
 
 ## Token Encryption
 
@@ -108,317 +113,192 @@ export const exchangeGitHubCode = action({
 // lib/encryption.ts
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
 
+const ALGORITHM = "aes-256-gcm";
+
 export function encryptToken(token: string): string {
-  const algorithm = "aes-256-gcm";
   const key = Buffer.from(process.env.ENCRYPTION_KEY!, "hex");
   const iv = randomBytes(16);
-  const cipher = createCipheriv(algorithm, key, iv);
-
+  const cipher = createCipheriv(ALGORITHM, key, iv);
   let encrypted = cipher.update(token, "utf8", "hex");
   encrypted += cipher.final("hex");
   const authTag = cipher.getAuthTag();
-
-  // Format: iv:authTag:encrypted
   return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
 }
 
 export function decryptToken(encryptedToken: string): string {
-  const algorithm = "aes-256-gcm";
   const key = Buffer.from(process.env.ENCRYPTION_KEY!, "hex");
   const [ivHex, authTagHex, encrypted] = encryptedToken.split(":");
-
-  const decipher = createDecipheriv(
-    algorithm,
-    key,
-    Buffer.from(ivHex, "hex")
-  );
+  const decipher = createDecipheriv(ALGORITHM, key, Buffer.from(ivHex, "hex"));
   decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
-
   let decrypted = decipher.update(encrypted, "hex", "utf8");
   decrypted += decipher.final("utf8");
-
   return decrypted;
 }
 ```
 
 **Generate Encryption Key**:
 ```bash
-# Generate 32-byte key
 openssl rand -hex 32
-```
-
-Add to `.env.local`:
-```bash
-ENCRYPTION_KEY=your_hex_encoded_key_here
 ```
 
 ## Template Cloning
 
-Fetch all files from a public template repo and commit to user's new repo.
+Fetches all files from a template repo and commits to a new private repo.
 
 ```typescript
 // convex/github.ts
 export const cloneTemplate = action({
   args: {
-    templateRepoFullName: v.string(), // "owner/repo" of template
-    newRepoName: v.string(),
-    userId: v.id("users"),
     projectId: v.id("projects"),
+    templateRepoFullName: v.string(),
+    newRepoName: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.runQuery(api.users.get, { userId: args.userId });
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.runQuery(api.users.current, {});
+    if (!user?.githubToken) throw new Error("GitHub not connected");
+
     const accessToken = decryptToken(user.githubToken);
     const octokit = new Octokit({ auth: accessToken });
-
     const [templateOwner, templateRepo] = args.templateRepoFullName.split("/");
 
-    // 1. Get all files from template repo
-    const files = await fetchRepoFiles(octokit, templateOwner, templateRepo);
+    let files: Array<{ path: string; content: string }>;
+    try {
+      files = await fetchRepoFiles(octokit, templateOwner, templateRepo);
+    } catch (error: unknown) {
+      if ((error as { status?: number }).status === 404) {
+        throw new Error("TEMPLATE_UNAVAILABLE");
+      }
+      throw error;
+    }
 
-    // 2. Create new private repo
-    const { data: newRepo } = await octokit.rest.repos.createForAuthenticatedUser({
-      name: args.newRepoName,
-      private: true,
-      auto_init: false,
-    });
+    let newRepo;
+    try {
+      const result = await octokit.rest.repos.createForAuthenticatedUser({
+        name: args.newRepoName, private: true, auto_init: false,
+      });
+      newRepo = result.data;
+    } catch (error: unknown) {
+      if ((error as { status?: number }).status === 422) {
+        const suffix = Date.now().toString(36).slice(-4);
+        const result = await octokit.rest.repos.createForAuthenticatedUser({
+          name: `${args.newRepoName}-${suffix}`, private: true, auto_init: false,
+        });
+        newRepo = result.data;
+      } else { throw error; }
+    }
 
-    // 3. Commit all template files
     await commitFiles(octokit, newRepo.owner.login, newRepo.name, files,
       `Initial commit from Shipright template: ${templateRepo}`);
 
-    // 4. Save to project
     await ctx.runMutation(api.projects.updateGitHubRepo, {
       projectId: args.projectId,
       repoUrl: newRepo.html_url,
       repoFullName: newRepo.full_name,
     });
 
-    return { repoUrl: newRepo.html_url };
+    return { repoUrl: newRepo.html_url, repoFullName: newRepo.full_name };
   },
 });
+```
 
-// Recursively fetch all files from a repo
+### Helper: Fetch Repo Files Recursively
+
+```typescript
 async function fetchRepoFiles(
-  octokit: Octokit,
-  owner: string,
-  repo: string,
-  path: string = ""
+  octokit: Octokit, owner: string, repo: string, path: string = ""
 ): Promise<Array<{ path: string; content: string }>> {
-  const { data: contents } = await octokit.rest.repos.getContent({
-    owner,
-    repo,
-    path,
-  });
-
+  const { data: contents } = await octokit.rest.repos.getContent({ owner, repo, path });
   const files: Array<{ path: string; content: string }> = [];
+  const items = Array.isArray(contents) ? contents : [contents];
 
-  for (const item of Array.isArray(contents) ? contents : [contents]) {
+  for (const item of items) {
     if (item.type === "file" && item.download_url) {
       const response = await fetch(item.download_url);
-      const content = await response.text();
-      files.push({ path: item.path, content });
+      files.push({ path: item.path, content: await response.text() });
     } else if (item.type === "dir") {
-      const subFiles = await fetchRepoFiles(octokit, owner, repo, item.path);
-      files.push(...subFiles);
+      files.push(...await fetchRepoFiles(octokit, owner, repo, item.path));
     }
   }
-
   return files;
 }
 ```
 
-**Template Unavailable Handling:**
+### Helper: Commit Files via Git Tree API
 
 ```typescript
-try {
-  const files = await fetchRepoFiles(octokit, templateOwner, templateRepo);
-} catch (error: any) {
-  if (error.status === 404) {
-    // Template repo not found - trigger re-match
-    await ctx.runMutation(api.templates.markUnavailable, {
-      templateId: args.templateId
-    });
-    throw new Error("TEMPLATE_UNAVAILABLE");
-  }
-  throw error;
+async function commitFiles(
+  octokit: Octokit, owner: string, repo: string,
+  files: Array<{ path: string; content: string }>, message: string
+) {
+  const blobs = await Promise.all(
+    files.map(async (file) => {
+      const { data: blob } = await octokit.rest.git.createBlob({
+        owner, repo,
+        content: Buffer.from(file.content).toString("base64"),
+        encoding: "base64",
+      });
+      return { path: file.path, sha: blob.sha };
+    })
+  );
+
+  const { data: tree } = await octokit.rest.git.createTree({
+    owner, repo,
+    tree: blobs.map((b) => ({
+      path: b.path, mode: "100644" as const, type: "blob" as const, sha: b.sha,
+    })),
+  });
+
+  const { data: commit } = await octokit.rest.git.createCommit({
+    owner, repo, message, tree: tree.sha,
+  });
+
+  await octokit.rest.git.createRef({
+    owner, repo, ref: "refs/heads/main", sha: commit.sha,
+  });
 }
 ```
 
-## Repository Creation with Octokit
+## Batch Commits (Phase 5/6)
+
+For committing files to an existing repo (scaffolding, customizations):
 
 ```typescript
-// convex/github.ts
-import { action } from "./_generated/server";
-import { v } from "convex/values";
-import { Octokit } from "octokit";
-import { api } from "./_generated/api";
+// Pattern for Phase 5/6 - commit to existing repo with base_tree
+async function commitToExistingRepo(
+  octokit: Octokit, owner: string, repo: string,
+  files: Array<{ path: string; content: string }>, message: string
+) {
+  const { data: ref } = await octokit.rest.git.getRef({ owner, repo, ref: "heads/main" });
+  const currentCommitSha = ref.object.sha;
 
-export const createRepository = action({
-  args: {
-    name: v.string(),
-    description: v.optional(v.string()),
-    isPrivate: v.boolean(),
-    userId: v.id("users"),
-    projectId: v.id("projects"),
-  },
-  handler: async (ctx, args) => {
-    // Get user's encrypted token
-    const user = await ctx.runQuery(api.users.get, { userId: args.userId });
-    const accessToken = decryptToken(user.githubToken);
-
-    // Initialize Octokit
-    const octokit = new Octokit({ auth: accessToken });
-
-    try {
-      // Create repository
-      const { data } = await octokit.rest.repos.createForAuthenticatedUser({
-        name: args.name,
-        description: args.description || "",
-        private: args.isPrivate,
-        auto_init: true, // Initialize with README
-        has_issues: true,
-        has_projects: false,
-        has_wiki: false,
+  const blobs = await Promise.all(
+    files.map(async (file) => {
+      const { data: blob } = await octokit.rest.git.createBlob({
+        owner, repo,
+        content: Buffer.from(file.content).toString("base64"),
+        encoding: "base64",
       });
+      return { path: file.path, sha: blob.sha };
+    })
+  );
 
-      // Save repo URL to project
-      await ctx.runMutation(api.projects.updateGitHubRepo, {
-        projectId: args.projectId,
-        repoUrl: data.html_url,
-        repoFullName: data.full_name,
-      });
-
-      return {
-        url: data.html_url,
-        cloneUrl: data.clone_url,
-        fullName: data.full_name,
-      };
-    } catch (error: any) {
-      if (error.status === 422) {
-        throw new Error("Repository name already exists");
-      }
-      throw error;
-    }
-  },
-});
-```
-
-**Common Parameters**:
-- `name` (required) - Repository name
-- `description` - Short description
-- `private` - `true` for private, `false` for public
-- `auto_init` - Initialize with README
-- `has_issues` - Enable issues
-- `has_projects` - Enable projects
-- `has_wiki` - Enable wiki
-
-## Committing Files with Contents API
-
-```typescript
-export const commitFile = action({
-  args: {
-    repoFullName: v.string(), // "owner/repo"
-    filePath: v.string(),
-    content: v.string(),
-    message: v.string(),
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.runQuery(api.users.get, { userId: args.userId });
-    const accessToken = decryptToken(user.githubToken);
-
-    const octokit = new Octokit({ auth: accessToken });
-    const [owner, repo] = args.repoFullName.split("/");
-
-    // Base64 encode content
-    const contentEncoded = Buffer.from(args.content).toString("base64");
-
-    await octokit.rest.repos.createOrUpdateFileContents({
-      owner,
-      repo,
-      path: args.filePath,
-      message: args.message,
-      content: contentEncoded,
-      branch: "main",
-    });
-  },
-});
-```
-
-## Batch Commits
-
-For committing multiple files at once (scaffolding generation):
-
-```typescript
-export const commitScaffolding = action({
-  args: {
-    repoFullName: v.string(),
-    files: v.array(v.object({
-      path: v.string(),
-      content: v.string(),
+  const { data: tree } = await octokit.rest.git.createTree({
+    owner, repo, base_tree: currentCommitSha,
+    tree: blobs.map((b) => ({
+      path: b.path, mode: "100644" as const, type: "blob" as const, sha: b.sha,
     })),
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.runQuery(api.users.get, { userId: args.userId });
-    const accessToken = decryptToken(user.githubToken);
-    const octokit = new Octokit({ auth: accessToken });
-    const [owner, repo] = args.repoFullName.split("/");
+  });
 
-    // Get current commit SHA
-    const { data: ref } = await octokit.rest.git.getRef({
-      owner,
-      repo,
-      ref: "heads/main",
-    });
-    const currentCommitSha = ref.object.sha;
+  const { data: commit } = await octokit.rest.git.createCommit({
+    owner, repo, message, tree: tree.sha, parents: [currentCommitSha],
+  });
 
-    // Create blobs for each file
-    const blobs = await Promise.all(
-      args.files.map(async (file) => {
-        const { data: blob } = await octokit.rest.git.createBlob({
-          owner,
-          repo,
-          content: Buffer.from(file.content).toString("base64"),
-          encoding: "base64",
-        });
-        return { path: file.path, sha: blob.sha };
-      })
-    );
-
-    // Create tree
-    const { data: tree } = await octokit.rest.git.createTree({
-      owner,
-      repo,
-      base_tree: currentCommitSha,
-      tree: blobs.map((blob) => ({
-        path: blob.path,
-        mode: "100644",
-        type: "blob",
-        sha: blob.sha,
-      })),
-    });
-
-    // Create commit
-    const { data: commit } = await octokit.rest.git.createCommit({
-      owner,
-      repo,
-      message: "Add Shipright scaffolding files",
-      tree: tree.sha,
-      parents: [currentCommitSha],
-    });
-
-    // Update ref
-    await octokit.rest.git.updateRef({
-      owner,
-      repo,
-      ref: "heads/main",
-      sha: commit.sha,
-    });
-
-    return { commitSha: commit.sha };
-  },
-});
+  await octokit.rest.git.updateRef({ owner, repo, ref: "heads/main", sha: commit.sha });
+  return { commitSha: commit.sha };
+}
 ```
 
 ## Error Handling
@@ -426,55 +306,83 @@ export const commitScaffolding = action({
 ```typescript
 try {
   await octokit.rest.repos.createForAuthenticatedUser({ name });
-} catch (error: any) {
-  if (error.status === 401) {
-    // Token expired - prompt re-auth
+} catch (error: unknown) {
+  const status = (error as { status?: number }).status;
+  if (status === 401) {
     throw new Error("GitHub connection expired. Please reconnect.");
-  } else if (error.status === 422) {
-    // Name taken
-    throw new Error("Repository name already exists. Try another name.");
-  } else if (error.status === 403 && error.response.headers["x-ratelimit-remaining"] === "0") {
-    // Rate limited
-    const resetTime = error.response.headers["x-ratelimit-reset"];
-    throw new Error(`Rate limited. Try again after ${new Date(resetTime * 1000)}.`);
+  } else if (status === 422) {
+    throw new Error("Repository name already exists.");
+  } else if (status === 403) {
+    throw new Error("Rate limited or insufficient permissions.");
   }
   throw error;
 }
 ```
 
-**Common Errors**:
+| Error | Status | Action |
+|-------|--------|--------|
+| Token expired | 401 | Redirect to /connect-github |
+| Repo name taken | 422 | Auto-suffix with timestamp |
+| Rate limited | 403 | Show wait time |
+| Template not found | 404 | Throw TEMPLATE_UNAVAILABLE, client re-matches |
 
-| Error | Status | Solution |
-|-------|--------|----------|
-| Token expired | 401 | Prompt user to reconnect GitHub |
-| Repo name taken | 422 | Suggest alternative names |
-| Rate limited | 403 | Show wait time, implement backoff |
-| Insufficient permissions | 403 | Request correct scopes |
-| Not found | 404 | Verify repo exists and user has access |
+## Convex Mutations
 
-## Rate Limits
-
-- **OAuth apps**: 5,000 requests/hour per authenticated user
-- **Token creation**: 10 tokens per user/app/scope, 10 tokens/hour max
-
-Check rate limit status:
 ```typescript
-const { data: rateLimit } = await octokit.rest.rateLimit.get();
-console.log(`Remaining: ${rateLimit.rate.remaining}/${rateLimit.rate.limit}`);
+// convex/users.ts
+export const saveGitHubToken = mutation({
+  args: { encryptedToken: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject)).first();
+    if (!user) throw new Error("User not found");
+    await ctx.db.patch(user._id, { githubToken: args.encryptedToken });
+  },
+});
+
+export const removeGitHubToken = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject)).first();
+    if (!user) throw new Error("User not found");
+    await ctx.db.patch(user._id, { githubToken: undefined });
+  },
+});
+
+// convex/projects.ts
+export const updateGitHubRepo = mutation({
+  args: {
+    projectId: v.id("projects"),
+    repoUrl: v.string(),
+    repoFullName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      githubRepoUrl: args.repoUrl,
+      githubRepoFullName: args.repoFullName,
+      status: "building",
+    });
+  },
+});
 ```
 
 ## Environment Variables
 
 ```bash
-# .env.local
+# .env.local (Next.js)
 GITHUB_CLIENT_ID=Iv1...
 GITHUB_CLIENT_SECRET=...
-ENCRYPTION_KEY=hex_encoded_32_byte_key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# Production (.env.production or Vercel)
-GITHUB_CLIENT_ID=Iv1...
+# Convex env (set via npx convex env set)
+GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
 ENCRYPTION_KEY=hex_encoded_32_byte_key
-NEXT_PUBLIC_APP_URL=https://shipright.vercel.app
 ```
+
+**Note**: `ENCRYPTION_KEY` and GitHub secrets must be set in both Next.js `.env.local` and Convex environment since `convex/github.ts` runs in Convex Node.js runtime.

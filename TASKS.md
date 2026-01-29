@@ -2,12 +2,6 @@
 
 ## Active
 
-### Phase 4: GitHub Repo Creation
-- [ ] Implement GitHub OAuth connection flow
-- [ ] Clone template to user's GitHub account
-- [ ] Commit template files to new repo
-- [ ] Handle errors (template unavailable, API failures)
-
 ### Phase 5: Template Customization (Daytona)
 - [ ] Integrate Daytona SDK
 - [ ] Detect when template has gaps (AI determines)
@@ -30,6 +24,14 @@
 - [ ] Set up error monitoring
 
 ## Complete
+
+### Phase 4: GitHub Repo Creation (2026-01-29)
+- [x] Implement GitHub OAuth connection flow (connect/disconnect page)
+- [x] Create API routes for OAuth redirect and callback
+- [x] Clone template to user's GitHub account via Octokit
+- [x] Commit template files to new private repo (Git tree API)
+- [x] Handle errors (template unavailable re-matches, 422 name conflict auto-suffix, 401 reconnect)
+- [x] Encrypt tokens with AES-256-GCM before Convex storage
 
 ### Phase 3: Template Matching (2026-01-28)
 - [x] Define template index schema in Convex

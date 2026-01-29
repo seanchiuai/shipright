@@ -24,26 +24,59 @@ export default defineSchema({
     userId: v.id("users"),
     name: v.string(),
     status: v.string(), // "interview" | "matching" | "building" | "complete"
+    interviewStep: v.optional(v.number()),
+    interviewRound: v.optional(v.number()),
+    appIdea: v.optional(v.string()),
     requirements: v.optional(v.any()),
     templateId: v.optional(v.string()),
+    matchScore: v.optional(v.number()),
+    matchGaps: v.optional(v.array(v.string())),
     githubRepoUrl: v.optional(v.string()),
+    githubRepoFullName: v.optional(v.string()),
+    interviewPhase: v.optional(v.string()), // "seed" | "conversation" | "summary"
   }).index("by_user", ["userId"]),
+
+  interviewMessages: defineTable({
+    projectId: v.id("projects"),
+    role: v.string(), // "user" | "assistant"
+    content: v.string(),
+    questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
+    options: v.optional(v.array(v.string())),
+    isComplete: v.optional(v.boolean()),
+    timestamp: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_timestamp", ["projectId", "timestamp"]),
 
   interviewSessions: defineTable({
     projectId: v.id("projects"),
     round: v.number(),
-    userInput: v.string(),
-    aiQuestions: v.optional(v.array(v.string())),
-    userAnswers: v.optional(v.any()),
-  }).index("by_project", ["projectId"]),
+    preamble: v.optional(v.string()),
+    questions: v.optional(v.array(v.object({
+      id: v.string(),
+      question: v.string(),
+      type: v.string(),
+      options: v.optional(v.array(v.string())),
+      required: v.optional(v.boolean()),
+    }))),
+    answers: v.optional(v.any()),
+  }).index("by_project", ["projectId"])
+    .index("by_project_round", ["projectId", "round"]),
 
   templates: defineTable({
+    slug: v.optional(v.string()),
     name: v.string(),
     description: v.string(),
     sourceUrl: v.string(),
     stack: v.array(v.string()),
     capabilities: v.any(),
-  }),
+    tags: v.optional(v.array(v.string())),
+    integrations: v.optional(v.array(v.string())),
+    useCases: v.optional(v.array(v.string())),
+    complexity: v.optional(v.union(v.literal("starter"), v.literal("intermediate"), v.literal("advanced"))),
+    maintained: v.optional(v.boolean()),
+    lastVerified: v.optional(v.string()),
+  }).index("by_slug", ["slug"]),
 });
 ```
 
