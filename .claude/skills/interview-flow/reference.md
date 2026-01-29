@@ -203,6 +203,7 @@ const [currentInput, setCurrentInput] = useState("");
 const [loading, setLoading] = useState(false);
 const [isTypewriterDone, setIsTypewriterDone] = useState(true);
 const [multiselectValue, setMultiselectValue] = useState<string[]>([]);
+const [customInputMode, setCustomInputMode] = useState(false);
 
 // Derived
 const phase = project?.interviewPhase || "seed";

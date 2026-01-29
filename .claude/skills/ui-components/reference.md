@@ -20,7 +20,7 @@ components/
 │   ├── button.tsx
 │   ├── card.tsx
 │   ├── input.tsx
-│   ├── ai-message.tsx          # Chat message bubble
+│   ├── ai-message.tsx          # Chat message bubble (accepts userImageUrl prop)
 │   └── ai-conversation.tsx     # Auto-scroll container
 ├── interview/                  # Interview-specific
 │   ├── chat-message.tsx        # AI/user message wrapper
@@ -406,7 +406,12 @@ export function QuestionCard({ question, id, required }: QuestionCardProps) {
 
 ## Design Principles
 
-- **Clean & Minimal** - Focus on clarity
+- **Warm Editorial Palette** - Cream backgrounds (`#faf8f5`), warm borders (`#e2ddd5`), dark foreground (`#1c1917`)
+- **Typography** - `font-serif` (Instrument Serif) for headings, `font-sans` (Instrument Sans) for body
+- **Clean & Minimal** - Focus on clarity, no flashy gradients in interactive areas
 - **Consistent Spacing** - Use Tailwind spacing scale (4, 8, 16, 24)
 - **Accessible** - shadcn/ui built on Radix UI (accessible by default)
 - **Desktop-first for MVP** - Mobile-responsive but optimize for desktop
+- **Frosted Glass Headers** - `backdrop-blur-md bg-background/80` for sticky headers
+- **Dark CTAs** - Primary buttons use `bg-foreground text-background` style
+- **Subtle Focus States** - `shadow-[0_0_0_3px_rgba(28,25,23,0.06)]` instead of bright rings

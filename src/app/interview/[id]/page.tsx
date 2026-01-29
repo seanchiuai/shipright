@@ -14,6 +14,7 @@ import { ArrowLeft, Pencil, Check, X, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
 import {
   ChatMessage,
+  ChoiceCard,
   ChoiceGrid,
   MagicTextarea,
   AIConversation,
@@ -61,6 +62,7 @@ export default function InterviewPage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [multiselectValue, setMultiselectValue] = useState<string[]>([]);
+  const [customInputMode, setCustomInputMode] = useState(false);
 
   // Track which AI message IDs we've already seen (for typewriter)
   const seenAiMessages = useRef<Set<string>>(new Set());
@@ -161,6 +163,7 @@ export default function InterviewPage() {
       setLoading(true);
       setCurrentInput("");
       setMultiselectValue([]);
+      setCustomInputMode(false);
 
       try {
         await addMessage({ projectId, role: "user", content: answerText });
@@ -325,7 +328,7 @@ export default function InterviewPage() {
   const showChoiceInput = lastAiMsg && !isComplete && phase === "conversation" &&
     (lastAiMsg.questionType === "choice" || lastAiMsg.questionType === "multiselect") &&
     lastAiMsg.options;
-  const showTextInput = phase === "seed" || (phase === "conversation" && !isComplete && !showChoiceInput);
+  const showTextInput = phase === "seed" || (phase === "conversation" && !isComplete && (!showChoiceInput || customInputMode));
 
   // Example idea chips for seed phase
   const exampleIdeas = [
@@ -443,6 +446,16 @@ export default function InterviewPage() {
                             }}
                             multiSelect={msg.questionType === "multiselect"}
                           />
+                          {!customInputMode && (
+                            <ChoiceCard
+                              label="Something else"
+                              selected={false}
+                              onClick={() => setCustomInputMode(true)}
+                              icon={<Pencil className="w-4 h-4" />}
+                              multiSelect={msg.questionType === "multiselect"}
+                              delay={(msg.options?.length ?? 0) * 0.04}
+                            />
+                          )}
                           {msg.questionType === "multiselect" && (
                             <motion.div
                               className="mt-3 flex justify-end"
