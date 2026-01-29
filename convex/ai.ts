@@ -3,7 +3,7 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { createVertex } from "@ai-sdk/google-vertex";
-import { generateText, tool, stepCountIs } from "ai";
+import { generateText, stepCountIs } from "ai";
 import { z } from "zod";
 import { api } from "./_generated/api";
 import {
@@ -205,17 +205,17 @@ export const continueConversation = action({
       system: CONVERSATION_SYSTEM_PROMPT,
       messages,
       tools: {
-        searchWeb: tool({
+        searchWeb: {
           description:
             "Search the web for current info about a specific service, API, integration, or technical best practice. Only use when a user mentions a specific service by name or you need to verify technical feasibility.",
-          parameters: z.object({
+          inputSchema: z.object({
             query: z
               .string()
               .describe(
                 "Concise search query about the service or integration"
               ),
           }),
-          execute: async ({ query }) => {
+          execute: async ({ query }: { query: string }) => {
             const apiKey = process.env.TAVILY_API_KEY;
             if (!apiKey) return "Web search not configured.";
             const res = await fetch("https://api.tavily.com/search", {
@@ -243,7 +243,7 @@ export const continueConversation = action({
             }
             return result || "No results found.";
           },
-        }),
+        },
       },
       stopWhen: stepCountIs(2),
     });
