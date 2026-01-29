@@ -29,6 +29,7 @@ export default defineSchema({
   interviewSessions: defineTable({
     projectId: v.id("projects"),
     round: v.number(),
+    preamble: v.optional(v.string()),
     questions: v.optional(v.array(v.object({
       id: v.string(),
       question: v.string(),

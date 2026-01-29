@@ -62,9 +62,9 @@ export const generateInterviewQuestions = action({
         prompt += `Questions: ${JSON.stringify(round.questions)}\n`;
         prompt += `Answers: ${JSON.stringify(round.answers)}\n`;
       }
-      prompt += `\nThis is round ${args.round}. Build on previous answers and ask about areas not yet covered. In the preamble, acknowledge something specific from their previous answers.`;
+      prompt += `\nThis is round ${args.round}. Build on previous answers and extract information about areas not yet covered.`;
     } else {
-      prompt += "\n\nThis is round 1. Start by understanding the basics. In the preamble, welcome them warmly and show genuine excitement about their idea.";
+      prompt += "\n\nThis is round 1. In the preamble, restate their idea in concrete buildable terms and ask for confirmation.";
     }
 
     prompt += "\n\nGenerate the interview questions with a contextual preamble.";
@@ -86,16 +86,26 @@ export const generateInterviewQuestions = action({
       }>;
     };
 
-    // Save questions to database
+    // Strip extra fields the AI may add (e.g. "context") — Convex rejects unknown fields
+    const cleanQuestions = result.questions.map((q) => ({
+      id: q.id,
+      question: q.question,
+      type: q.type,
+      ...(q.options ? { options: q.options } : {}),
+      ...(q.required !== undefined ? { required: q.required } : {}),
+    }));
+
+    // Save questions and preamble to database
     await ctx.runMutation(api.interviews.saveQuestions, {
       projectId: args.projectId,
       round: args.round,
-      questions: result.questions,
+      preamble: result.preamble,
+      questions: cleanQuestions,
     });
 
     return {
       preamble: result.preamble,
-      questions: result.questions,
+      questions: cleanQuestions,
     };
   },
 });

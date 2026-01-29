@@ -15,10 +15,8 @@ import {
   ChatMessage,
   ChoiceGrid,
   MagicTextarea,
-  JourneyProgress,
   CelebrationBurst,
   EncouragementToast,
-  InterviewBackground,
   AIConversation,
 } from "@/components/interview";
 
@@ -91,21 +89,66 @@ export default function InterviewPage() {
   const currentStep = project?.interviewStep || 1;
   const currentRound = project?.interviewRound || 1;
 
-  // Calculate progress for background animation
-  const progressValue =
-    currentStep === 1
-      ? 10
-      : currentStep === 2
-        ? 20 + ((currentRound - 1) * 20 + (currentQuestionIndex / Math.max(questions.length, 1)) * 20)
-        : 100;
+  // Auto-generate questions if arriving with an appIdea but no questions yet (from dashboard submit)
+  useEffect(() => {
+    if (
+      currentStep === 1 &&
+      project?.appIdea &&
+      messages.length === 0 &&
+      questions.length === 0 &&
+      !loading
+    ) {
+      (async () => {
+        setLoading(true);
+        setMessages([
+          { id: `idea-${Date.now()}`, type: "user", content: project.appIdea! },
+        ]);
+        try {
+          const result = await generateQuestions({
+            projectId,
+            appIdea: project.appIdea!,
+            round: 1,
+          });
+          setMessages((prev) => [
+            ...prev,
+            { id: "preamble-1", type: "ai", content: result.preamble },
+          ]);
+          setQuestions(result.questions as Question[]);
+          setCurrentQuestionIndex(0);
+          setAnswers({});
+        } catch (e) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `error-${Date.now()}`,
+              type: "ai",
+              content: `Oops, something went wrong. Let's try again! ${e instanceof Error ? e.message : ""}`,
+            },
+          ]);
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, project?.appIdea]);
 
   // Initialize from existing data on step 2
   useEffect(() => {
     if (currentStep === 2 && interviewRounds && messages.length === 0) {
-      const currentSession = interviewRounds.find((r: { round: number }) => r.round === currentRound);
+      const currentSession = interviewRounds.find((r: { round: number; preamble?: string }) => r.round === currentRound);
       if (currentSession?.questions) {
         const loadedQuestions = currentSession.questions as Question[];
+        // Show stored preamble if available
+        if (currentSession.preamble) {
+          setMessages([{
+            id: `preamble-${currentRound}`,
+            type: "ai",
+            content: currentSession.preamble,
+          }]);
+        }
         setQuestions(loadedQuestions);
+        setIsTypewriterDone(true);
         if (currentSession.answers) {
           setAnswers(currentSession.answers as Record<string, string | string[]>);
         }
@@ -376,8 +419,7 @@ export default function InterviewPage() {
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <InterviewBackground progress={progressValue} />
+    <div className="min-h-screen flex flex-col bg-white">
       <CelebrationBurst
         trigger={showCelebration}
         onComplete={() => setShowCelebration(false)}
@@ -390,7 +432,7 @@ export default function InterviewPage() {
       />
 
       {/* Header */}
-      <header className="relative z-10 border-b border-border/50 bg-white/50 backdrop-blur-sm">
+      <header className="relative z-10 border-b border-border bg-white">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <Button
             variant="ghost"
@@ -402,13 +444,7 @@ export default function InterviewPage() {
             <span className="hidden sm:inline">Dashboard</span>
           </Button>
 
-          <div className="flex-1 mx-4">
-            <JourneyProgress
-              currentStep={currentStep}
-              currentRound={currentRound}
-              totalRounds={3}
-            />
-          </div>
+          <h1 className="text-sm font-semibold text-foreground">Interview</h1>
 
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-sm text-muted-foreground">
@@ -420,7 +456,7 @@ export default function InterviewPage() {
       </header>
 
       {/* Chat area */}
-      <main className="flex-1 relative z-10 overflow-hidden">
+      <main className="flex-1 relative overflow-hidden">
         <div className="h-full max-w-3xl mx-auto flex flex-col">
           {/* Messages */}
           <AIConversation className="flex-1 overflow-y-auto px-4 py-6">
@@ -643,10 +679,10 @@ export default function InterviewPage() {
 
           {/* Input area */}
           {currentStep !== 3 && (
-            <div className="p-4 border-t border-border/50 bg-white/50 backdrop-blur-sm">
-              {/* Text input for step 1 or text questions */}
+            <div className="p-4 border-t border-border bg-white">
+              {/* Text input for step 1, or step 2 when current question is text/absent (choice/multiselect use inline cards) */}
               {(currentStep === 1 ||
-                (currentQuestion?.type === "text" && currentStep === 2)) && (
+                (currentStep === 2 && currentQuestion?.type !== "choice" && currentQuestion?.type !== "multiselect")) && (
                 <MagicTextarea
                   value={currentInput}
                   onChange={setCurrentInput}

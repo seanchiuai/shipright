@@ -31,6 +31,7 @@ export const saveQuestions = mutation({
   args: {
     projectId: v.id("projects"),
     round: v.number(),
+    preamble: v.optional(v.string()),
     questions: v.array(
       v.object({
         id: v.string(),
@@ -51,13 +52,17 @@ export const saveQuestions = mutation({
       .first();
 
     if (existing) {
-      await ctx.db.patch(existing._id, { questions: args.questions });
+      await ctx.db.patch(existing._id, {
+        questions: args.questions,
+        ...(args.preamble ? { preamble: args.preamble } : {}),
+      });
       return existing._id;
     }
 
     return await ctx.db.insert("interviewSessions", {
       projectId: args.projectId,
       round: args.round,
+      preamble: args.preamble,
       questions: args.questions,
     });
   },
