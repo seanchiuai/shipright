@@ -258,8 +258,20 @@ export default function ProjectDetailsPage() {
       router.refresh();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to create repository";
-      if (message === "TEMPLATE_UNAVAILABLE") {
-        setError("Template is unavailable. Please try a different template.");
+      if (message.includes("TEMPLATE_UNAVAILABLE")) {
+        setError("Template unavailable. Re-matching with next best template...");
+        setMatchResult(null);
+        // Re-trigger matching
+        try {
+          const result = await matchTemplate({ projectId });
+          setMatchResult(result);
+          setError(null);
+        } catch (matchErr) {
+          setError("No alternative templates available. Please start over.");
+        }
+      } else if (message.includes("GitHub connection expired") || message.includes("401")) {
+        setError("GitHub connection expired. Please reconnect.");
+        router.push(`/connect-github?returnTo=/project/${projectId}`);
       } else {
         setError(message);
       }
