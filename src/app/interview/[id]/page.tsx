@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { UserButton, useUser } from "@clerk/nextjs";
 import { useSyncUser } from "@/hooks/useSyncUser";
 import { ArrowLeft, Pencil, Check, X, Plus, Trash2 } from "lucide-react";
+import Image from "next/image";
 import {
   ChatMessage,
   ChoiceGrid,
@@ -334,25 +335,53 @@ export default function InterviewPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      {/* Header */}
-      <header className="relative z-10 border-b border-border bg-white">
-        <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/dashboard")}
-            className="gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Dashboard</span>
-          </Button>
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Warm background */}
+      <div
+        className="fixed inset-0 -z-10"
+        style={{
+          background: "linear-gradient(135deg, #faf9f7 0%, #f5f0e8 50%, #f0ebe3 100%)",
+        }}
+      />
+      <div
+        className="fixed inset-0 -z-10 opacity-[0.03]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(28, 25, 23, 0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(28, 25, 23, 0.5) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
+        }}
+      />
 
-          <div className="flex items-center gap-3">
+      {/* Header */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/50">
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Back</span>
+            </button>
+            <div className="hidden sm:block w-px h-5 bg-border/50" />
+            <div className="hidden sm:flex items-center gap-2">
+              <Image src="/logo.png" alt="ShipRight" width={28} height={28} className="w-7 h-7" />
+              <span className="font-serif text-lg font-medium tracking-tight">ShipRight</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
             <span className="hidden sm:inline text-sm text-muted-foreground">
               {clerkUser.firstName || clerkUser.primaryEmailAddress?.emailAddress}
             </span>
-            <UserButton afterSignOutUrl="/" />
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "w-8 h-8 ring-2 ring-border hover:ring-foreground/20 transition-all",
+                },
+              }}
+            />
           </div>
         </div>
       </header>
@@ -360,7 +389,7 @@ export default function InterviewPage() {
       {/* Chat area */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto" ref={scrollRef}>
-          <AIConversation className="max-w-3xl mx-auto px-4 py-6 pb-4">
+          <AIConversation className="max-w-2xl mx-auto px-6 py-10 pb-6">
             {/* Seed phase — welcome message */}
             {phase === "seed" && (!messages || messages.length === 0) && (
               <ChatMessage
@@ -387,6 +416,7 @@ export default function InterviewPage() {
                     message={msg.content}
                     isAI={isAI}
                     delay={isAI ? 0.2 : 0}
+                    userImageUrl={!isAI ? clerkUser.imageUrl : undefined}
                   >
                     {/* Show choice options inline for the last AI message */}
                     {isAI &&
@@ -420,13 +450,13 @@ export default function InterviewPage() {
                               animate={{ opacity: 1 }}
                               transition={{ delay: 0.5 }}
                             >
-                              <Button
-                                size="sm"
+                              <button
                                 onClick={() => handleAnswer(multiselectValue)}
                                 disabled={multiselectValue.length === 0}
+                                className="inline-flex items-center gap-1.5 h-8 px-4 bg-foreground text-background text-sm font-medium rounded-lg hover:opacity-80 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
                               >
                                 Continue
-                              </Button>
+                              </button>
                             </motion.div>
                           )}
                         </motion.div>
@@ -443,34 +473,34 @@ export default function InterviewPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="w-1.5 h-1.5 rounded-full bg-white"
-                        animate={{ y: [0, -4, 0] }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 0.6,
-                          delay: i * 0.1,
-                        }}
-                      />
-                    ))}
-                  </div>
+                <div className="w-8 h-8 rounded-full bg-white border border-border/50 shadow-sm flex items-center justify-center">
+                  <Image src="/logo.png" alt="ShipRight" width={24} height={24} className="w-5 h-5 object-contain" />
                 </div>
-                <span className="text-sm text-muted-foreground">Thinking...</span>
+                <div className="flex gap-1 items-center">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-1 h-1 rounded-full bg-muted-foreground/40"
+                      animate={{ opacity: [0.3, 1, 0.3] }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 1.2,
+                        delay: i * 0.2,
+                      }}
+                    />
+                  ))}
+                </div>
               </motion.div>
             )}
 
             {/* Requirements summary */}
             {phase === "summary" && requirements && (
               <motion.div
-                className="bg-white rounded-2xl border border-border/50 shadow-sm p-6 space-y-4"
+                className="bg-white/80 backdrop-blur-sm rounded-2xl border border-border/50 p-6 space-y-4"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <h3 className="font-semibold text-lg">Here's what I understood</h3>
+                <h3 className="font-serif text-xl font-medium">Here&apos;s what I understood</h3>
 
                 {/* App Name */}
                 <div className="flex items-start justify-between p-3 rounded-lg bg-secondary/30">
@@ -705,14 +735,22 @@ export default function InterviewPage() {
                 )}
 
                 {/* Actions */}
-                <div className="flex justify-between pt-2">
-                  <Button variant="outline" size="sm" onClick={handleStartOver} disabled={loading}>
-                    Start Over
-                  </Button>
-                  <Button onClick={handleConfirm} disabled={loading} className="gap-2">
+                <div className="flex justify-between pt-4 border-t border-border/30">
+                  <button
+                    onClick={handleStartOver}
+                    disabled={loading}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                  >
+                    Start over
+                  </button>
+                  <button
+                    onClick={handleConfirm}
+                    disabled={loading}
+                    className="inline-flex items-center gap-2 h-9 px-5 bg-foreground text-background text-sm font-medium rounded-lg hover:opacity-80 transition-opacity disabled:opacity-50"
+                  >
                     {loading ? "Processing..." : "Find My Template"}
                     {!loading && <span>&rarr;</span>}
-                  </Button>
+                  </button>
                 </div>
               </motion.div>
             )}
@@ -721,8 +759,8 @@ export default function InterviewPage() {
 
         {/* Input area — pinned to bottom */}
         {phase !== "summary" && (
-          <div className="shrink-0 border-t border-border bg-white">
-            <div className="max-w-3xl mx-auto p-4">
+          <div className="shrink-0 border-t border-border/50 bg-background/80 backdrop-blur-md">
+            <div className="max-w-2xl mx-auto p-4 px-6">
               {/* Example idea chips for seed phase */}
               {phase === "seed" && (!messages || messages.length === 0) && !currentInput && (
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -730,7 +768,7 @@ export default function InterviewPage() {
                     <button
                       key={idea}
                       onClick={() => setCurrentInput(idea)}
-                      className="px-3 py-1.5 text-xs rounded-full border border-border/50 text-muted-foreground hover:border-primary/30 hover:text-foreground transition-colors"
+                      className="px-3 py-1.5 text-xs rounded-full border border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
                     >
                       {idea}
                     </button>
@@ -764,13 +802,13 @@ export default function InterviewPage() {
 
               {/* Finish early option */}
               {phase === "conversation" && !isComplete && messages && messages.length > 0 && (
-                <div className="mt-3 text-center">
+                <div className="mt-2 text-center">
                   <button
                     onClick={handleFinishEarly}
                     disabled={loading}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                    className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors disabled:opacity-50"
                   >
-                    I've shared enough, let's see templates &rarr;
+                    I&apos;ve shared enough, let&apos;s see templates &rarr;
                   </button>
                 </div>
               )}

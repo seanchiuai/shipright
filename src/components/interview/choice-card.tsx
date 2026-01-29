@@ -28,71 +28,62 @@ export function ChoiceCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "group relative w-full text-left p-4 rounded-xl border-2 transition-all duration-300",
-        "hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5",
+        "group relative w-full text-left px-4 py-3 rounded-xl border transition-all duration-200",
         selected
-          ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-          : "border-border/50 bg-white hover:border-primary/30"
+          ? "border-foreground bg-foreground/[0.03]"
+          : "border-border/60 bg-white/60 hover:border-foreground/30 hover:bg-white"
       )}
-      initial={{ opacity: 0, y: 15, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{
-        type: "spring",
-        stiffness: 400,
-        damping: 25,
+        duration: 0.3,
+        ease: [0.21, 0.47, 0.32, 0.98],
         delay,
       }}
       whileTap={{ scale: 0.98 }}
     >
-      {/* Selection indicator */}
-      <div
-        className={cn(
-          "absolute top-3 right-3 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300",
-          selected
-            ? "border-primary bg-primary"
-            : "border-border/50 group-hover:border-primary/50"
-        )}
-      >
-        {selected && (
-          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500 }}>
-            <Check className="w-3.5 h-3.5 text-white" />
-          </motion.div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="pr-8">
-        {icon && (
-          <div
-            className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center mb-3 transition-colors",
-              selected ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
-            )}
-          >
-            {icon}
-          </div>
-        )}
-        <p
+      <div className="flex items-center gap-3">
+        {/* Selection indicator */}
+        <div
           className={cn(
-            "text-sm font-medium transition-colors",
-            selected ? "text-primary" : "text-foreground"
+            "flex-shrink-0 w-5 h-5 rounded-full border flex items-center justify-center transition-all duration-200",
+            selected
+              ? "border-foreground bg-foreground"
+              : "border-border group-hover:border-foreground/40"
           )}
         >
-          {label}
-        </p>
-        {description && (
-          <p className="text-sm text-muted-foreground mt-1">{description}</p>
-        )}
-      </div>
+          {selected && (
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 500 }}>
+              <Check className="w-3 h-3 text-background" />
+            </motion.div>
+          )}
+        </div>
 
-      {/* Hover glow */}
-      <div
-        className={cn(
-          "absolute inset-0 rounded-xl opacity-0 transition-opacity pointer-events-none",
-          "bg-gradient-to-br from-primary/5 to-transparent",
-          selected ? "opacity-100" : "group-hover:opacity-50"
-        )}
-      />
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {icon && (
+            <div
+              className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-colors",
+                selected ? "bg-foreground/10 text-foreground" : "bg-muted text-muted-foreground"
+              )}
+            >
+              {icon}
+            </div>
+          )}
+          <p
+            className={cn(
+              "text-sm font-medium transition-colors",
+              selected ? "text-foreground" : "text-foreground/80"
+            )}
+          >
+            {label}
+          </p>
+          {description && (
+            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+          )}
+        </div>
+      </div>
     </motion.button>
   );
 }
@@ -119,7 +110,7 @@ export function ChoiceGrid({ options, selected, onChange, multiSelect = false }:
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       {options.map((option, index) => (
         <ChoiceCard
           key={option}
@@ -127,7 +118,7 @@ export function ChoiceGrid({ options, selected, onChange, multiSelect = false }:
           selected={selectedArray.includes(option)}
           onClick={() => handleClick(option)}
           multiSelect={multiSelect}
-          delay={index * 0.05}
+          delay={index * 0.04}
         />
       ))}
     </div>

@@ -11,6 +11,7 @@ interface ChatMessageProps {
   typewriter?: boolean;
   onTypewriterComplete?: () => void;
   delay?: number;
+  userImageUrl?: string;
   children?: React.ReactNode;
 }
 
@@ -21,6 +22,7 @@ export function ChatMessage({
   typewriter = false,
   onTypewriterComplete,
   delay = 0,
+  userImageUrl,
   children,
 }: ChatMessageProps) {
   const bubbleVariants = {
@@ -43,7 +45,7 @@ export function ChatMessage({
   };
 
   const content = (
-    <AIMessage role={isAI ? "assistant" : "user"}>
+    <AIMessage role={isAI ? "assistant" : "user"} userImageUrl={userImageUrl}>
       {typewriter ? (
         <TypewriterText
           text={message}

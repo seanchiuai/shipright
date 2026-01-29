@@ -3,15 +3,15 @@
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { User } from "lucide-react";
 
 export interface AIMessageProps extends React.HTMLAttributes<HTMLDivElement> {
   role: "assistant" | "user";
+  userImageUrl?: string;
   children: React.ReactNode;
 }
 
 const AIMessage = forwardRef<HTMLDivElement, AIMessageProps>(
-  ({ role, children, className, ...props }, ref) => {
+  ({ role, userImageUrl, children, className, ...props }, ref) => {
     const isAssistant = role === "assistant";
 
     return (
@@ -27,16 +27,18 @@ const AIMessage = forwardRef<HTMLDivElement, AIMessageProps>(
         {/* Avatar */}
         <div
           className={cn(
-            "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center",
+            "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
             isAssistant
               ? "bg-white border border-border/50 shadow-sm"
-              : "bg-gradient-to-br from-secondary to-secondary/70 text-foreground"
+              : "bg-foreground/[0.07]"
           )}
         >
           {isAssistant ? (
-            <Image src="/logo.png" alt="ShipRight" width={32} height={32} className="w-[90%] h-[90%] object-contain" />
+            <Image src="/logo.png" alt="ShipRight" width={24} height={24} className="w-5 h-5 object-contain" />
+          ) : userImageUrl ? (
+            <Image src={userImageUrl} alt="You" width={32} height={32} className="w-8 h-8 rounded-full object-cover" />
           ) : (
-            <User className="w-4 h-4" />
+            <span className="text-xs font-medium text-muted-foreground">You</span>
           )}
         </div>
 
@@ -45,15 +47,10 @@ const AIMessage = forwardRef<HTMLDivElement, AIMessageProps>(
           className={cn(
             "relative px-4 py-3 rounded-2xl",
             isAssistant
-              ? "bg-white border border-border/50 shadow-sm rounded-tl-sm"
-              : "bg-primary text-primary-foreground rounded-tr-sm"
+              ? "bg-white/80 backdrop-blur-sm border border-border/40 rounded-tl-sm"
+              : "bg-foreground text-background rounded-tr-sm"
           )}
         >
-          {/* Glow effect for AI messages */}
-          {isAssistant && (
-            <div className="absolute -inset-px rounded-2xl rounded-tl-sm bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-          )}
-
           <div className="relative">{children}</div>
         </div>
       </div>
