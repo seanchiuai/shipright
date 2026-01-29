@@ -24,7 +24,21 @@ export default defineSchema({
     matchScore: v.optional(v.number()),
     matchGaps: v.optional(v.array(v.string())),
     githubRepoUrl: v.optional(v.string()),
+    interviewPhase: v.optional(v.string()),  // "seed" | "conversation" | "summary"
   }).index("by_user", ["userId"]),
+
+  interviewMessages: defineTable({
+    projectId: v.id("projects"),
+    role: v.string(),                    // "user" | "assistant"
+    content: v.string(),
+    questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
+    options: v.optional(v.array(v.string())),
+    isSummary: v.optional(v.boolean()),
+    isComplete: v.optional(v.boolean()),
+    timestamp: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_timestamp", ["projectId", "timestamp"]),
 
   interviewSessions: defineTable({
     projectId: v.id("projects"),

@@ -1,11 +1,11 @@
 ---
 name: interview-flow
-description: AI-guided interview for extracting app requirements
+description: AI-guided conversational interview for extracting app requirements
 ---
 
 # Interview Flow
 
-AI-guided interview that extracts structured requirements from user's app idea.
+AI-guided conversational interview that extracts structured requirements from user's app idea.
 
 ## Where It Fits
 
@@ -13,25 +13,35 @@ AI-guided interview that extracts structured requirements from user's app idea.
 
 ## The Flow
 
-1. **Initial Input** - User describes app idea (500 char max)
-2. **AI Questions** - Gemini generates 3-5 questions per round
-3. **User Answers** - Chat-based UI with typewriter effect
-4. **Rounds** - Max 3 rounds to clarify requirements
-5. **Extract Requirements** - Gemini converts answers to structured JSON
-6. **User Confirms** - User reviews/edits requirements before proceeding
+1. **Seed Phase** - User describes app idea (500 char max) or clicks example chip
+2. **Conversation Phase** - AI asks one question at a time, dynamically picking question type
+3. **Summary Phase** - User reviews/edits extracted requirements before proceeding
 
-## Question Categories
+## Conversation Architecture
 
-Questions cover:
-- User types (who uses this app?)
-- Authentication needs (login? social auth? roles?)
-- Data/database needs (what data? realtime?)
-- Core features (what can users do?)
-- Integrations (payments? email? third-party APIs?)
+The interview uses a message-based conversational model (not batched rounds):
+
+- Messages stored in `interviewMessages` table (per-message, timestamped)
+- Project tracks phase via `interviewPhase` field: `"seed"` | `"conversation"` | `"summary"`
+- AI decides question type per turn: `choice`, `multiselect`, or `text`
+- Mini-summaries every 2-3 answers
+- AI sets `isComplete: true` when extraction checklist satisfied
+- Hard cap at 10 user exchanges
+- User can finish early via "I've shared enough" link
+
+## Extraction Checklist
+
+The AI covers these before signaling completion:
+- Core data objects and relationships
+- User actions (create, edit, delete, view, share)
+- Screens/pages and navigation flow
+- Authentication requirement and methods
+- Permissions model (private, shared, public, roles)
+- Automation or AI behavior
+- External integrations
+- In-scope vs out-of-scope
 
 ## Using Vercel AI SDK with Vertex AI
-
-We use the Vercel AI SDK with `@ai-sdk/google-vertex` provider for Gemini calls.
 
 ```typescript
 import { createVertex } from "@ai-sdk/google-vertex";
@@ -48,44 +58,48 @@ const vertex = createVertex({
   },
 });
 
-// Generate follow-up questions
 const { text } = await generateText({
   model: vertex("gemini-2.5-flash"),
-  prompt: `Based on this app idea: "${appIdea}"
-
-Generate 3-5 clarifying questions to understand the requirements.
-Format as JSON array: [{ "question": "...", "type": "text|select|multiselect", "options": [...] }]`,
+  system: CONVERSATION_SYSTEM_PROMPT,
+  messages: conversationHistory,
 });
-
-const questions = JSON.parse(text);
 ```
 
 **Model**: `gemini-2.5-flash`
-**Cost**: ~$0.003 per 3-round interview (10x cheaper than Claude)
 
 ## State Management
 
-- Save each round to `interviewSessions` table
-- Store final requirements in `projects.requirements`
-- Use Convex actions for all AI API calls
+- Messages stored in `interviewMessages` table (reactive query)
+- Phase tracked via `projects.interviewPhase`
+- Final requirements stored in `projects.requirements`
+- Legacy `interviewSessions` table kept for backward compat (unused for new interviews)
+- Convex actions for AI API calls
+
+## Key Files
+
+- `convex/schema.ts` - `interviewMessages` table, `interviewPhase` field
+- `convex/interviews.ts` - `getMessages`, `addMessage`, `clearMessages`
+- `convex/ai.ts` - `continueConversation`, `extractRequirements`
+- `convex/projects.ts` - `updateAppIdea`, `updateInterviewPhase`, `resetInterview`
+- `prompts/interview-conversation.ts` - `CONVERSATION_SYSTEM_PROMPT`
+- `prompts/requirements-extraction.ts` - `REQUIREMENTS_SYSTEM_PROMPT`
+- `src/app/interview/[id]/page.tsx` - Interview UI
 
 ## Requirements Schema
 
 See [reference.md](reference.md) for complete `Requirements` interface.
 
-## UX Notes
+## UX Components
 
-Step 2 interview uses chat-based UI:
 - `ChatMessage` for AI/user messages with typewriter effect
-- `AIConversation` wrapper for auto-scroll
-- `ChoiceGrid` for single/multi-select options
-- `MagicTextarea` for text input
-- `JourneyProgress` bar showing step/round
-- `CelebrationBurst` confetti on answer submission
+- `AIConversation` wrapper for layout
+- `ChoiceGrid` for single/multi-select options (rendered inline below AI message)
+- `MagicTextarea` for text input (pinned to bottom)
+- Typewriter only on unseen AI messages (tracks via `useRef`)
 
 ## Reference Files
 
-- [reference.md](reference.md) - Complete prompts, schemas, extraction logic
+- [reference.md](reference.md) - Code patterns, schemas, AI action examples
 
 ## External Documentation
 

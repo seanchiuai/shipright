@@ -37,13 +37,15 @@
 - [x] Build template scoring algorithm (AI-determined weights)
 - [x] Build template confirmation UI (what's included vs what will be built)
 
-### Phase 2: Interview Flow (2026-01-27)
-- [x] Build Step 1: App idea input (500 char textarea)
-- [x] Integrate Gemini API for question generation (via Vertex AI)
-- [x] Build Step 2: AI follow-up questions (multi-round support)
-- [x] Build Step 3: Requirements summary + inline edit
-- [x] Store interview sessions in Convex
-- [x] Extract structured requirements from interview
+### Phase 2: Interview Flow (2026-01-27, reworked 2026-01-28)
+- [x] Build seed phase: app idea input with example chips
+- [x] Integrate Gemini API for conversational interview (via Vertex AI)
+- [x] Build conversation phase: one question at a time, dynamic types, mini-summaries
+- [x] Build summary phase: editable features/user types, read-only auth/db/payments
+- [x] Store messages in interviewMessages table (per-message, reactive)
+- [x] Extract structured requirements from conversation transcript
+- [x] Rework: replace batched rounds with conversational flow
+- [x] Rework: remove confetti, encouragement toasts, confirmation turns
 
 ### Phase 1: UI + Authentication (2026-01-26)
 - [x] Initialize Next.js 14 + TypeScript + Tailwind project

@@ -45,38 +45,41 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] Typecheck passes
 - [x] Verify in browser
 
-### US-003: Interview Flow - Step 1 (App Idea)
-**Description:** As a user, I want to describe my app idea in plain language so that Shipwright understands what I'm building.
+### US-003: Interview Flow - Seed Phase (App Idea)
+**Description:** As a user, I want to describe my app idea in plain language so that Shipright understands what I'm building.
 
 **Acceptance Criteria:**
-- [x] Single text area with prompt: "Tell me about your app in one sentence"
+- [x] Single text area with prompt and example idea chips
 - [x] Character limit indicator (500 chars max)
-- [x] "Next" button submits and proceeds
+- [x] Submit triggers AI conversation (no separate confirmation step)
 - [x] Input saved to Convex project record
 - [x] Typecheck passes
 - [x] Verify in browser
 
-### US-004: Interview Flow - Step 2 (AI Follow-up Questions)
-**Description:** As a user, I want to answer clarifying questions so that Shipwright fully understands my requirements.
+### US-004: Interview Flow - Conversation Phase (AI Follow-up)
+**Description:** As a user, I want to have a natural conversation with the AI so that it fully understands my requirements.
 
 **Acceptance Criteria:**
-- [x] AI generates 3-5 follow-up questions based on Step 1 input
-- [x] Questions displayed as form fields (text inputs, dropdowns, or checkboxes as appropriate)
+- [x] AI asks one question at a time (not batched rounds)
+- [x] AI picks question type dynamically: choice, multiselect, or text
 - [x] Questions cover: user types, auth needs, data model, core features, integrations
-- [x] User can submit answers and see next round of questions if AI needs more clarity
-- [x] Maximum 3 rounds of questions before proceeding
-- [x] All answers saved to Convex project record
+- [x] Mini-summaries shown every 2-3 answers
+- [x] AI signals completion when extraction checklist satisfied (or 10-exchange cap)
+- [x] Messages stored per-message in interviewMessages table (reactive query)
+- [x] "I've shared enough" link to finish early
+- [x] Page reload resumes conversation from DB
 - [x] Typecheck passes
 - [x] Verify in browser
 
-### US-005: Interview Flow - Step 3 (Requirements Summary)
-**Description:** As a user, I want to see a summary of my requirements before Shipwright matches a template so that I can confirm accuracy.
+### US-005: Interview Flow - Summary Phase (Requirements Review)
+**Description:** As a user, I want to see a summary of my requirements before Shipright matches a template so that I can confirm accuracy.
 
 **Acceptance Criteria:**
 - [x] Display structured summary: app name, problem, user types, features, auth, database, integrations
-- [x] User can edit any field inline
-- [x] "Confirm & Find Template" button proceeds to matching
-- [x] "Start Over" button resets interview
+- [x] User can edit app name, problem statement inline
+- [x] User can add/edit/remove features and user types
+- [x] "Find My Template" button proceeds to matching
+- [x] "Start Over" button resets interview and clears messages
 - [x] Typecheck passes
 - [x] Verify in browser
 
@@ -235,11 +238,11 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - FR-3: Session persists via Clerk
 
 ### Interview Flow
-- FR-4: Interview begins with single open-ended question
-- FR-5: AI generates follow-up questions based on user input
-- FR-6: Maximum 3 rounds of follow-up questions
-- FR-7: Interview produces structured requirements object
-- FR-8: User can review and edit requirements before matching
+- FR-4: Interview begins with seed phase (open-ended idea input with example chips)
+- FR-5: AI conducts conversational interview, one question at a time with dynamic question types
+- FR-6: AI signals completion when checklist satisfied or 10-exchange cap reached
+- FR-7: Interview produces structured requirements object via extraction
+- FR-8: User can review and edit requirements (features, user types) before matching
 
 ### Template Matching
 - FR-9: Template index contains 10 curated templates (1 per capability category)

@@ -74,7 +74,7 @@ export function ChoiceCard({
         )}
         <p
           className={cn(
-            "font-medium transition-colors",
+            "text-sm font-medium transition-colors",
             selected ? "text-primary" : "text-foreground"
           )}
         >

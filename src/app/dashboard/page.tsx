@@ -9,7 +9,7 @@ import { api } from "../../../convex/_generated/api";
 import { useSyncUser } from "@/hooks/useSyncUser";
 import {
   ArrowRight,
-  Sparkles,
+  ArrowUp,
   Folder,
   Github,
   Clock,
@@ -485,7 +485,7 @@ export default function DashboardPage() {
               height={48}
               className="w-12 h-12"
             />
-            <span className="font-serif text-xl font-medium">ShipRight</span>
+            <span className="font-serif text-2xl font-medium">ShipRight</span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -534,11 +534,7 @@ export default function DashboardPage() {
             {/* Glow effect */}
             <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 rounded-2xl opacity-0 group-focus-within:opacity-100 blur-lg transition-opacity duration-300" />
 
-            <div className="relative bg-card/90 backdrop-blur-sm border border-border rounded-2xl p-5 flex items-start gap-4 shadow-sm transition-all group-focus-within:border-primary group-focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.15)]">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center flex-shrink-0">
-                <Sparkles className="w-5 h-5 text-primary" />
-              </div>
-
+            <div className="relative bg-card/90 backdrop-blur-sm border border-border rounded-2xl p-5 flex items-end gap-4 shadow-sm transition-all group-focus-within:border-primary group-focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.15)]">
               <textarea
                 ref={inputRef}
                 value={appIdea}
@@ -550,30 +546,27 @@ export default function DashboardPage() {
                   }
                 }}
                 placeholder="I want to build an app where people can..."
-                maxLength={500}
+                maxLength={5000}
                 disabled={creating}
-                className="flex-1 border-none outline-none text-base sm:text-lg resize-none bg-transparent min-h-[80px] leading-relaxed placeholder:text-muted-foreground disabled:opacity-50"
+                className="flex-1 border-none outline-none text-sm sm:text-base resize-none bg-transparent min-h-[80px] leading-relaxed placeholder:text-muted-foreground disabled:opacity-50"
               />
 
               <button
                 onClick={handleSubmit}
                 disabled={creating || !appIdea.trim()}
-                className="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center cursor-pointer transition-all flex-shrink-0 hover:bg-primary/90 hover:scale-105 hover:shadow-[0_6px_20px_rgba(240,140,58,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+                className="w-9 h-9 bg-primary/20 text-primary rounded-lg flex items-center justify-center cursor-pointer transition-all flex-shrink-0 hover:bg-primary/30 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 {creating ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                 ) : (
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowUp className="w-4 h-4" />
                 )}
               </button>
             </div>
 
-            <div className="flex items-center justify-between mt-3 px-2">
+            <div className="mt-3 px-2">
               <p className="text-xs text-muted-foreground">
                 Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">Enter</kbd> to submit
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {appIdea.length}/500
               </p>
             </div>
           </div>

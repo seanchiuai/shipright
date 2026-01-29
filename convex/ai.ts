@@ -3,13 +3,15 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { createVertex } from "@ai-sdk/google-vertex";
-import { generateText } from "ai";
+import { generateText, tool, stepCountIs } from "ai";
+import { z } from "zod";
 import { api } from "./_generated/api";
 import {
   QUESTION_SYSTEM_PROMPT,
   REQUIREMENTS_SYSTEM_PROMPT,
   ENCOURAGEMENT_SYSTEM_PROMPT,
   COMPLETION_SYSTEM_PROMPT,
+  CONVERSATION_SYSTEM_PROMPT,
 } from "../prompts";
 
 // Create Vertex AI provider with service account credentials
@@ -178,6 +180,103 @@ export const generateCompletionMessage = action({
   },
 });
 
+export const continueConversation = action({
+  args: {
+    projectId: v.id("projects"),
+    appIdea: v.string(),
+    history: v.array(v.object({
+      role: v.string(),
+      content: v.string(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const vertex = getVertexProvider();
+
+    const messages = [
+      { role: "user" as const, content: `The user wants to build: "${args.appIdea}"` },
+      ...args.history.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
+    ];
+
+    const { text } = await generateText({
+      model: vertex("gemini-2.5-flash"),
+      system: CONVERSATION_SYSTEM_PROMPT,
+      messages,
+      tools: {
+        searchWeb: tool({
+          description:
+            "Search the web for current info about a specific service, API, integration, or technical best practice. Only use when a user mentions a specific service by name or you need to verify technical feasibility.",
+          parameters: z.object({
+            query: z
+              .string()
+              .describe(
+                "Concise search query about the service or integration"
+              ),
+          }),
+          execute: async ({ query }) => {
+            const apiKey = process.env.TAVILY_API_KEY;
+            if (!apiKey) return "Web search not configured.";
+            const res = await fetch("https://api.tavily.com/search", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                api_key: apiKey,
+                query,
+                max_results: 3,
+                search_depth: "basic",
+                include_answer: "basic",
+              }),
+            });
+            if (!res.ok) return "Search failed.";
+            const data = await res.json();
+            let result = "";
+            if (data.answer) result += `Summary: ${data.answer}\n\n`;
+            if (data.results) {
+              result += data.results
+                .map(
+                  (r: { title: string; content: string }) =>
+                    `${r.title}: ${r.content}`
+                )
+                .join("\n\n");
+            }
+            return result || "No results found.";
+          },
+        }),
+      },
+      stopWhen: stepCountIs(2),
+    });
+
+    let parsed: {
+      content: string;
+      questionType?: "text" | "choice" | "multiselect" | null;
+      options?: string[] | null;
+      isSummary?: boolean;
+      isComplete?: boolean;
+    };
+
+    try {
+      parsed = parseJsonResponse(text) as typeof parsed;
+    } catch {
+      parsed = { content: text.trim(), questionType: null };
+    }
+
+    // Persist AI message
+    await ctx.runMutation(api.interviews.addMessage, {
+      projectId: args.projectId,
+      role: "assistant",
+      content: parsed.content,
+      ...(parsed.questionType ? { questionType: parsed.questionType as "text" | "choice" | "multiselect" } : {}),
+      ...(parsed.options ? { options: parsed.options } : {}),
+      ...(parsed.isSummary ? { isSummary: true } : {}),
+      ...(parsed.isComplete ? { isComplete: true } : {}),
+    });
+
+    return parsed;
+  },
+});
+
 export const extractRequirements = action({
   args: {
     projectId: v.id("projects"),
@@ -185,7 +284,6 @@ export const extractRequirements = action({
   handler: async (ctx, args) => {
     const vertex = getVertexProvider();
 
-    // Get project for app idea
     const project = await ctx.runQuery(api.projects.get, {
       projectId: args.projectId,
     });
@@ -194,19 +292,31 @@ export const extractRequirements = action({
       throw new Error("Project has no app idea");
     }
 
-    // Get all interview rounds
-    const rounds = await ctx.runQuery(api.interviews.getRounds, {
+    // Build transcript from interview messages
+    const messages = await ctx.runQuery(api.interviews.getMessages, {
       projectId: args.projectId,
     });
 
     let prompt = `App idea: "${project.appIdea}"`;
 
-    if (rounds.length > 0) {
-      prompt += "\n\nInterview data:\n";
-      for (const round of rounds) {
-        prompt += `\nRound ${round.round}:\n`;
-        prompt += `Questions: ${JSON.stringify(round.questions)}\n`;
-        prompt += `Answers: ${JSON.stringify(round.answers)}\n`;
+    if (messages.length > 0) {
+      prompt += "\n\nInterview transcript:\n";
+      for (const msg of messages) {
+        const label = msg.role === "assistant" ? "Interviewer" : "User";
+        prompt += `${label}: ${msg.content}\n`;
+      }
+    } else {
+      // Fallback to legacy interview rounds
+      const rounds = await ctx.runQuery(api.interviews.getRounds, {
+        projectId: args.projectId,
+      });
+      if (rounds.length > 0) {
+        prompt += "\n\nInterview data:\n";
+        for (const round of rounds) {
+          prompt += `\nRound ${(round as { round: number }).round}:\n`;
+          prompt += `Questions: ${JSON.stringify((round as { questions?: unknown }).questions)}\n`;
+          prompt += `Answers: ${JSON.stringify((round as { answers?: unknown }).answers)}\n`;
+        }
       }
     }
 
@@ -220,7 +330,6 @@ export const extractRequirements = action({
 
     const requirements = parseJsonResponse(text);
 
-    // Save requirements to project
     await ctx.runMutation(api.projects.updateRequirements, {
       projectId: args.projectId,
       requirements,

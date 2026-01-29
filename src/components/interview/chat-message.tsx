@@ -48,10 +48,10 @@ export function ChatMessage({
         <TypewriterText
           text={message}
           onComplete={onTypewriterComplete}
-          className="text-[15px] leading-relaxed"
+          className="text-sm leading-relaxed font-normal"
         />
       ) : (
-        <p className="text-[15px] leading-relaxed">{message}</p>
+        <p className="text-sm leading-relaxed font-normal">{message}</p>
       )}
       {children}
     </AIMessage>

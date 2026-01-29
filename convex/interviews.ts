@@ -89,3 +89,53 @@ export const saveAnswers = mutation({
     await ctx.db.patch(session._id, { answers: args.answers });
   },
 });
+
+// --- Message-based interview functions ---
+
+export const getMessages = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("interviewMessages")
+      .withIndex("by_project_timestamp", (q) => q.eq("projectId", args.projectId))
+      .order("asc")
+      .collect();
+  },
+});
+
+export const addMessage = mutation({
+  args: {
+    projectId: v.id("projects"),
+    role: v.string(),
+    content: v.string(),
+    questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
+    options: v.optional(v.array(v.string())),
+    isSummary: v.optional(v.boolean()),
+    isComplete: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("interviewMessages", {
+      projectId: args.projectId,
+      role: args.role,
+      content: args.content,
+      questionType: args.questionType,
+      options: args.options,
+      isSummary: args.isSummary,
+      isComplete: args.isComplete,
+      timestamp: Date.now(),
+    });
+  },
+});
+
+export const clearMessages = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query("interviewMessages")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const msg of messages) {
+      await ctx.db.delete(msg._id);
+    }
+  },
+});

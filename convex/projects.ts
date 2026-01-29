@@ -52,8 +52,7 @@ export const updateAppIdea = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
       appIdea: args.appIdea,
-      interviewStep: 2,
-      interviewRound: 1,
+      interviewPhase: "conversation",
     });
   },
 });
@@ -72,6 +71,18 @@ export const updateInterviewStep = mutation({
   },
 });
 
+export const updateInterviewPhase = mutation({
+  args: {
+    projectId: v.id("projects"),
+    phase: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      interviewPhase: args.phase,
+    });
+  },
+});
+
 export const updateRequirements = mutation({
   args: {
     projectId: v.id("projects"),
@@ -80,7 +91,7 @@ export const updateRequirements = mutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
       requirements: args.requirements,
-      interviewStep: 3,
+      interviewPhase: "summary",
     });
   },
 });
@@ -90,14 +101,22 @@ export const resetInterview = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    // Delete all interview sessions for this project
+    // Delete all interview sessions (legacy)
     const sessions = await ctx.db
       .query("interviewSessions")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
-
     for (const session of sessions) {
       await ctx.db.delete(session._id);
+    }
+
+    // Delete all interview messages
+    const messages = await ctx.db
+      .query("interviewMessages")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const msg of messages) {
+      await ctx.db.delete(msg._id);
     }
 
     // Reset project interview state
@@ -105,6 +124,7 @@ export const resetInterview = mutation({
       appIdea: undefined,
       interviewStep: 1,
       interviewRound: undefined,
+      interviewPhase: undefined,
       requirements: undefined,
     });
   },
