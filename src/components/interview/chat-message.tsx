@@ -25,35 +25,16 @@ export function ChatMessage({
   userImageUrl,
   children,
 }: ChatMessageProps) {
-  const bubbleVariants = {
-    hidden: {
-      opacity: 0,
-      y: 20,
-      scale: 0.95,
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        type: "spring" as const,
-        stiffness: 500,
-        damping: 30,
-        delay,
-      },
-    },
-  };
-
   const content = (
     <AIMessage role={isAI ? "assistant" : "user"} userImageUrl={userImageUrl}>
       {typewriter ? (
         <TypewriterText
           text={message}
           onComplete={onTypewriterComplete}
-          className="text-sm leading-relaxed font-normal"
+          className="font-normal"
         />
       ) : (
-        <p className="text-sm leading-relaxed font-normal">{message}</p>
+        <p className="font-normal">{message}</p>
       )}
       {children}
     </AIMessage>
@@ -65,10 +46,14 @@ export function ChatMessage({
 
   return (
     <motion.div
-      variants={bubbleVariants}
-      initial="hidden"
-      animate="visible"
-      className={isAI ? "self-start" : "self-end"}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.4,
+        ease: [0.25, 0.46, 0.45, 0.94],
+        delay,
+      }}
+      className={isAI ? "self-start w-full" : "self-end max-w-[80%]"}
     >
       {content}
     </motion.div>

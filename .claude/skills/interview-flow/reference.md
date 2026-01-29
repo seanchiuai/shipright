@@ -47,7 +47,6 @@ interviewMessages: defineTable({
   content: v.string(),
   questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
   options: v.optional(v.array(v.string())),
-  isSummary: v.optional(v.boolean()),
   isComplete: v.optional(v.boolean()),
   timestamp: v.number(),
 })
@@ -66,32 +65,22 @@ interviewPhase: v.optional(v.string()),  // "seed" | "conversation" | "summary"
 ```typescript
 interface Requirements {
   appName: string;
+  tagline: string;
+  appType: string;
   problemStatement: string;
-  userTypes: Array<{
-    name: string;
-    description: string;
-    isAdmin: boolean;
-  }>;
-  auth: {
-    needed: boolean;
-    methods: ("email" | "google" | "github")[];
-    hasRoles: boolean;
-    hasOrgs: boolean;
+  primaryUser: { type: string; coreNeed: string };
+  secondaryUsers: Array<{ type: string; coreNeed: string }>;
+  coreAction: string;
+  hasPayments: boolean;
+  paymentContext: string | null;
+  platform: string;
+  keyFeatures: string[];
+  constraints: {
+    timeline: string | null;
+    mustHave: string[];
+    mustNotHave: string[];
   };
-  database: {
-    needed: boolean;
-    realtime: boolean;
-  };
-  payments: {
-    needed: boolean;
-    model?: "one-time" | "subscription";
-  };
-  features: Array<{
-    name: string;
-    description: string;
-    priority: "must" | "should" | "could";
-  }>;
-  integrations: string[];
+  devAgentNotes: string;
 }
 ```
 
@@ -139,7 +128,6 @@ export const continueConversation = action({
       content: parsed.content,
       ...(parsed.questionType ? { questionType: parsed.questionType } : {}),
       ...(parsed.options ? { options: parsed.options } : {}),
-      ...(parsed.isSummary ? { isSummary: true } : {}),
       ...(parsed.isComplete ? { isComplete: true } : {}),
     });
 
@@ -157,7 +145,6 @@ The conversation prompt expects JSON output:
   "content": "Message text with \\n for line breaks",
   "questionType": "choice" | "multiselect" | "text" | null,
   "options": ["Option 1", "Option 2"] | null,
-  "isSummary": false,
   "isComplete": false
 }
 ```
@@ -181,7 +168,7 @@ export const extractRequirements = action({
 ```typescript
 // convex/interviews.ts
 getMessages(projectId)     // Query: all messages ordered by timestamp asc
-addMessage(projectId, role, content, questionType?, options?, isSummary?, isComplete?)
+addMessage(projectId, role, content, questionType?, options?, isComplete?)
 clearMessages(projectId)   // Delete all messages for project
 
 // convex/projects.ts

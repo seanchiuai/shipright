@@ -22,18 +22,18 @@ import {
 
 type Requirements = {
   appName: string;
+  tagline: string;
+  appType: string;
   problemStatement: string;
-  userTypes: Array<{ name: string; description: string; isAdmin: boolean }>;
-  auth: {
-    needed: boolean;
-    methods: string[];
-    hasRoles: boolean;
-    hasOrgs: boolean;
-  };
-  database: { needed: boolean; realtime: boolean };
-  payments: { needed: boolean; model?: string };
-  features: Array<{ name: string; description: string; priority: string }>;
-  integrations: string[];
+  primaryUser: { type: string; coreNeed: string };
+  secondaryUsers: Array<{ type: string; coreNeed: string }>;
+  coreAction: string;
+  hasPayments: boolean;
+  paymentContext: string | null;
+  platform: string;
+  keyFeatures: string[];
+  constraints: { timeline: string | null; mustHave: string[]; mustNotHave: string[] };
+  devAgentNotes: string;
 };
 
 export default function InterviewPage() {
@@ -188,7 +188,7 @@ export default function InterviewPage() {
 
         // Check if AI signals completion or we've hit the cap
         const newExchangeCount = exchangeCount + 1;
-        if (result.isComplete || newExchangeCount >= 10) {
+        if (result.isComplete || newExchangeCount >= 6) {
           await extractRequirements({ projectId });
         }
       } catch (e) {
@@ -249,10 +249,33 @@ export default function InterviewPage() {
     setEditingField(null);
   };
 
-  const saveFeatureEdit = async (index: number, name: string, description: string) => {
+  const saveUserEdit = async (index: number, type: string, coreNeed: string) => {
     if (!requirements) return;
-    const updated = { ...requirements, features: [...requirements.features] };
-    updated.features[index] = { ...updated.features[index], name, description };
+    const updated = { ...requirements, secondaryUsers: [...requirements.secondaryUsers] };
+    updated.secondaryUsers[index] = { type, coreNeed };
+    await updateRequirements({ projectId, requirements: updated });
+    setEditingField(null);
+  };
+
+  const addSecondaryUser = async () => {
+    if (!requirements) return;
+    const updated = {
+      ...requirements,
+      secondaryUsers: [...requirements.secondaryUsers, { type: "New User", coreNeed: "" }],
+    };
+    await updateRequirements({ projectId, requirements: updated });
+  };
+
+  const removeSecondaryUser = async (index: number) => {
+    if (!requirements) return;
+    const updated = { ...requirements, secondaryUsers: requirements.secondaryUsers.filter((_, i) => i !== index) };
+    await updateRequirements({ projectId, requirements: updated });
+  };
+
+  const saveFeatureEdit = async (index: number, value: string) => {
+    if (!requirements) return;
+    const updated = { ...requirements, keyFeatures: [...requirements.keyFeatures] };
+    updated.keyFeatures[index] = value;
     await updateRequirements({ projectId, requirements: updated });
     setEditingField(null);
   };
@@ -261,51 +284,28 @@ export default function InterviewPage() {
     if (!requirements) return;
     const updated = {
       ...requirements,
-      features: [...requirements.features, { name: "New Feature", description: "", priority: "could" as const }],
+      keyFeatures: [...requirements.keyFeatures, "New feature"],
     };
     await updateRequirements({ projectId, requirements: updated });
   };
 
   const removeFeature = async (index: number) => {
     if (!requirements) return;
-    const updated = { ...requirements, features: requirements.features.filter((_, i) => i !== index) };
-    await updateRequirements({ projectId, requirements: updated });
-  };
-
-  const saveUserTypeEdit = async (index: number, name: string, description: string) => {
-    if (!requirements) return;
-    const updated = { ...requirements, userTypes: [...requirements.userTypes] };
-    updated.userTypes[index] = { ...updated.userTypes[index], name, description };
-    await updateRequirements({ projectId, requirements: updated });
-    setEditingField(null);
-  };
-
-  const addUserType = async () => {
-    if (!requirements) return;
-    const updated = {
-      ...requirements,
-      userTypes: [...requirements.userTypes, { name: "New User", description: "", isAdmin: false }],
-    };
-    await updateRequirements({ projectId, requirements: updated });
-  };
-
-  const removeUserType = async (index: number) => {
-    if (!requirements) return;
-    const updated = { ...requirements, userTypes: requirements.userTypes.filter((_, i) => i !== index) };
+    const updated = { ...requirements, keyFeatures: requirements.keyFeatures.filter((_, i) => i !== index) };
     await updateRequirements({ projectId, requirements: updated });
   };
 
   // Loading state
   if (!isLoaded || convexUser === undefined || project === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "hsl(40, 22%, 97%)" }}>
         <motion.div
           className="flex flex-col items-center gap-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-muted-foreground">Loading your project...</span>
+          <div className="w-6 h-6 border-2 border-stone-300 border-t-stone-700 rounded-full animate-spin" />
+          <span className="text-[13px] text-stone-400">Loading your project...</span>
         </motion.div>
       </div>
     );
@@ -319,7 +319,7 @@ export default function InterviewPage() {
   if (!project) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Project not found</p>
+        <p className="text-[14px] text-stone-400">Project not found</p>
       </div>
     );
   }
@@ -338,50 +338,51 @@ export default function InterviewPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Warm background */}
+    <div className="min-h-screen flex flex-col">
+      {/* Warm paper background */}
       <div
         className="fixed inset-0 -z-10"
         style={{
-          background: "linear-gradient(135deg, #faf9f7 0%, #f5f0e8 50%, #f0ebe3 100%)",
+          background: "linear-gradient(168deg, hsl(40, 22%, 97%) 0%, hsl(35, 16%, 95%) 40%, hsl(30, 14%, 94%) 100%)",
         }}
       />
       <div
-        className="fixed inset-0 -z-10 opacity-[0.03]"
+        className="fixed inset-0 -z-10 opacity-[0.025]"
         style={{
-          backgroundImage:
-            "linear-gradient(rgba(28, 25, 23, 0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(28, 25, 23, 0.5) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+          backgroundSize: "200px 200px",
         }}
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-border/50">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/60 border-b border-stone-200/60">
+        <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 text-[13px] text-stone-400 hover:text-stone-700 transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Back</span>
             </button>
-            <div className="hidden sm:block w-px h-5 bg-border/50" />
+            <div className="hidden sm:block w-px h-4 bg-stone-200" />
             <div className="hidden sm:flex items-center gap-2">
-              <Image src="/logo.png" alt="ShipRight" width={28} height={28} className="w-7 h-7" />
-              <span className="font-serif text-lg font-medium tracking-tight">ShipRight</span>
+              <div className="w-6 h-6 rounded-full bg-stone-900 flex items-center justify-center">
+                <Image src="/logo.png" alt="ShipRight" width={16} height={16} className="w-3.5 h-3.5 object-contain brightness-0 invert" />
+              </div>
+              <span className="font-serif text-[15px] tracking-tight text-stone-700">ShipRight</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="hidden sm:inline text-sm text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline text-[13px] text-stone-400">
               {clerkUser.firstName || clerkUser.primaryEmailAddress?.emailAddress}
             </span>
             <UserButton
               afterSignOutUrl="/"
               appearance={{
                 elements: {
-                  avatarBox: "w-8 h-8 ring-2 ring-border hover:ring-foreground/20 transition-all",
+                  avatarBox: "w-7 h-7 ring-1 ring-stone-200 hover:ring-stone-300 transition-all",
                 },
               }}
             />
@@ -392,7 +393,7 @@ export default function InterviewPage() {
       {/* Chat area */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto" ref={scrollRef}>
-          <AIConversation className="max-w-2xl mx-auto px-6 py-10 pb-6">
+          <AIConversation className="max-w-2xl mx-auto px-6 pt-12 pb-6">
             {/* Seed phase — welcome message */}
             {phase === "seed" && (!messages || messages.length === 0) && (
               <ChatMessage
@@ -429,10 +430,10 @@ export default function InterviewPage() {
                       msg.options &&
                       isTypewriterDone && (
                         <motion.div
-                          className="mt-4"
-                          initial={{ opacity: 0, y: 10 }}
+                          className="mt-5 space-y-2"
+                          initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.3 }}
+                          transition={{ delay: 0.3, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
                         >
                           <ChoiceGrid
                             options={msg.options}
@@ -447,18 +448,20 @@ export default function InterviewPage() {
                             multiSelect={msg.questionType === "multiselect"}
                           />
                           {!customInputMode && (
-                            <ChoiceCard
-                              label="Something else"
-                              selected={false}
-                              onClick={() => setCustomInputMode(true)}
-                              icon={<Pencil className="w-4 h-4" />}
-                              multiSelect={msg.questionType === "multiselect"}
-                              delay={(msg.options?.length ?? 0) * 0.04}
-                            />
+                            <div className="pt-0.5">
+                              <ChoiceCard
+                                label="Something else"
+                                selected={false}
+                                onClick={() => setCustomInputMode(true)}
+                                icon={<Pencil className="w-3.5 h-3.5" />}
+                                multiSelect={msg.questionType === "multiselect"}
+                                delay={(msg.options?.length ?? 0) * 0.04}
+                              />
+                            </div>
                           )}
                           {msg.questionType === "multiselect" && (
                             <motion.div
-                              className="mt-3 flex justify-end"
+                              className="pt-2 flex justify-end"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               transition={{ delay: 0.5 }}
@@ -466,7 +469,7 @@ export default function InterviewPage() {
                               <button
                                 onClick={() => handleAnswer(multiselectValue)}
                                 disabled={multiselectValue.length === 0}
-                                className="inline-flex items-center gap-1.5 h-8 px-4 bg-foreground text-background text-sm font-medium rounded-lg hover:opacity-80 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="inline-flex items-center gap-1.5 h-8 px-4 bg-stone-800 text-white text-[13px] font-medium rounded-xl hover:bg-stone-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                               >
                                 Continue
                               </button>
@@ -482,23 +485,25 @@ export default function InterviewPage() {
             {/* Loading indicator */}
             {loading && (
               <motion.div
-                className="flex gap-3 items-center self-start"
-                initial={{ opacity: 0, y: 10 }}
+                className="flex gap-4 items-start self-start"
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
               >
-                <div className="w-8 h-8 rounded-full bg-white border border-border/50 shadow-sm flex items-center justify-center">
-                  <Image src="/logo.png" alt="ShipRight" width={24} height={24} className="w-5 h-5 object-contain" />
+                <div className="w-7 h-7 rounded-full bg-stone-900 flex items-center justify-center shadow-sm">
+                  <Image src="/logo.png" alt="ShipRight" width={20} height={20} className="w-4 h-4 object-contain brightness-0 invert" />
                 </div>
-                <div className="flex gap-1 items-center">
+                <div className="flex gap-1.5 items-center pt-2">
                   {[0, 1, 2].map((i) => (
                     <motion.div
                       key={i}
-                      className="w-1 h-1 rounded-full bg-muted-foreground/40"
-                      animate={{ opacity: [0.3, 1, 0.3] }}
+                      className="w-1.5 h-1.5 rounded-full bg-stone-400"
+                      animate={{ opacity: [0.2, 0.8, 0.2], scale: [0.85, 1, 0.85] }}
                       transition={{
                         repeat: Infinity,
-                        duration: 1.2,
+                        duration: 1.4,
                         delay: i * 0.2,
+                        ease: "easeInOut",
                       }}
                     />
                   ))}
@@ -509,16 +514,17 @@ export default function InterviewPage() {
             {/* Requirements summary */}
             {phase === "summary" && requirements && (
               <motion.div
-                className="bg-white/80 backdrop-blur-sm rounded-2xl border border-border/50 p-6 space-y-4"
-                initial={{ opacity: 0, y: 20 }}
+                className="bg-white/90 backdrop-blur-sm rounded-2xl border border-stone-200/80 p-6 space-y-4 shadow-sm"
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
-                <h3 className="font-serif text-xl font-medium">Here&apos;s what I understood</h3>
+                <h3 className="font-serif text-xl tracking-tight text-stone-800">Here&apos;s what I understood</h3>
 
                 {/* App Name */}
-                <div className="flex items-start justify-between p-3 rounded-lg bg-secondary/30">
+                <div className="flex items-start justify-between p-3 rounded-lg bg-stone-50/80">
                   <div className="flex-1">
-                    <p className="text-xs text-muted-foreground mb-1">App Name</p>
+                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">App Name</p>
                     {editingField === "appName" ? (
                       <div className="flex gap-2">
                         <Input
@@ -548,10 +554,34 @@ export default function InterviewPage() {
                   )}
                 </div>
 
+                {/* Type, Platform, Payments */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 rounded-lg bg-stone-50/80">
+                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Type</p>
+                    <p className="font-medium text-sm">{requirements.appType}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-stone-50/80">
+                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Platform</p>
+                    <p className="font-medium text-sm">{requirements.platform}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-stone-50/80">
+                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Payments</p>
+                    <p className="font-medium text-sm">
+                      {requirements.hasPayments ? (requirements.paymentContext || "Yes") : "None"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tagline */}
+                <div className="p-3 rounded-lg bg-stone-50/80">
+                  <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Tagline</p>
+                  <p className="text-sm italic text-stone-600">{requirements.tagline}</p>
+                </div>
+
                 {/* Problem */}
-                <div className="flex items-start justify-between p-3 rounded-lg bg-secondary/30">
+                <div className="flex items-start justify-between p-3 rounded-lg bg-stone-50/80">
                   <div className="flex-1">
-                    <p className="text-xs text-muted-foreground mb-1">Problem</p>
+                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Problem</p>
                     {editingField === "problemStatement" ? (
                       <div className="space-y-2">
                         <Input
@@ -583,38 +613,51 @@ export default function InterviewPage() {
                   )}
                 </div>
 
-                {/* Features — editable */}
-                <div className="p-3 rounded-lg bg-secondary/30">
+                {/* Core Action */}
+                <div className="p-3 rounded-lg bg-stone-50/80">
+                  <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Core Action</p>
+                  <p className="font-medium text-sm">{requirements.coreAction}</p>
+                </div>
+
+                {/* Primary User */}
+                <div className="p-3 rounded-lg bg-stone-50/80">
+                  <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Primary User</p>
+                  <p className="font-medium text-sm">{requirements.primaryUser.type}</p>
+                  <p className="text-[11px] text-stone-400 mt-0.5">{requirements.primaryUser.coreNeed}</p>
+                </div>
+
+                {/* Secondary Users — editable */}
+                <div className="p-3 rounded-lg bg-stone-50/80">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-muted-foreground">Features</p>
-                    <Button variant="ghost" size="sm" onClick={addFeature}>
+                    <p className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">Other Users</p>
+                    <Button variant="ghost" size="sm" onClick={addSecondaryUser}>
                       <Plus className="w-3 h-3 mr-1" /> Add
                     </Button>
                   </div>
                   <div className="space-y-2">
-                    {requirements.features.map((f, i) => (
+                    {requirements.secondaryUsers.map((u, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        {editingField === `feature-${i}` ? (
+                        {editingField === `user-${i}` ? (
                           <div className="flex-1 space-y-1">
                             <Input
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
-                              placeholder="Feature name"
+                              placeholder="User type"
                               className="h-7 text-sm"
                             />
                             <Input
-                              value={editValue.includes("||") ? editValue.split("||")[1] : f.description}
+                              value={editValue.includes("||") ? editValue.split("||")[1] : u.coreNeed}
                               onChange={(e) => {
                                 const name = editValue.includes("||") ? editValue.split("||")[0] : editValue;
                                 setEditValue(`${name}||${e.target.value}`);
                               }}
-                              placeholder="Description"
+                              placeholder="Core need"
                               className="h-7 text-sm"
                             />
                             <div className="flex gap-1">
                               <Button size="sm" variant="ghost" onClick={() => {
                                 const parts = editValue.split("||");
-                                saveFeatureEdit(i, parts[0], parts[1] || f.description);
+                                saveUserEdit(i, parts[0], parts[1] || u.coreNeed);
                               }}>
                                 <Check className="w-3 h-3" />
                               </Button>
@@ -626,14 +669,59 @@ export default function InterviewPage() {
                         ) : (
                           <>
                             <div className="flex-1">
-                              <span className="px-2 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
-                                {f.name}
-                              </span>
-                              {f.description && (
-                                <p className="text-xs text-muted-foreground mt-1 ml-2">{f.description}</p>
+                              <p className="font-medium text-sm">{u.type}</p>
+                              {u.coreNeed && (
+                                <p className="text-[11px] text-stone-400">{u.coreNeed}</p>
                               )}
                             </div>
-                            <Button variant="ghost" size="sm" onClick={() => { setEditingField(`feature-${i}`); setEditValue(f.name); }}>
+                            <Button variant="ghost" size="sm" onClick={() => { setEditingField(`user-${i}`); setEditValue(u.type); }}>
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => removeSecondaryUser(i)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                    {requirements.secondaryUsers.length === 0 && (
+                      <p className="text-[12px] text-stone-400 italic">No secondary users identified</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Key Features — editable */}
+                <div className="p-3 rounded-lg bg-stone-50/80">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">Key Features</p>
+                    <Button variant="ghost" size="sm" onClick={addFeature}>
+                      <Plus className="w-3 h-3 mr-1" /> Add
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {requirements.keyFeatures.map((f, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        {editingField === `feature-${i}` ? (
+                          <div className="flex-1 flex gap-1">
+                            <Input
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              placeholder="Feature"
+                              className="h-7 text-sm flex-1"
+                            />
+                            <Button size="sm" variant="ghost" onClick={() => saveFeatureEdit(i, editValue)}>
+                              <Check className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="flex-1 px-2.5 py-1 text-[12px] rounded-lg bg-stone-100 text-stone-700 font-medium">
+                              {f}
+                            </span>
+                            <Button variant="ghost" size="sm" onClick={() => { setEditingField(`feature-${i}`); setEditValue(f); }}>
                               <Pencil className="w-3 h-3" />
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => removeFeature(i)}>
@@ -646,120 +734,58 @@ export default function InterviewPage() {
                   </div>
                 </div>
 
-                {/* User Types — editable */}
-                <div className="p-3 rounded-lg bg-secondary/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-muted-foreground">User Types</p>
-                    <Button variant="ghost" size="sm" onClick={addUserType}>
-                      <Plus className="w-3 h-3 mr-1" /> Add
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {requirements.userTypes.map((u, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        {editingField === `userType-${i}` ? (
-                          <div className="flex-1 space-y-1">
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              placeholder="User type name"
-                              className="h-7 text-sm"
-                            />
-                            <Input
-                              value={editValue.includes("||") ? editValue.split("||")[1] : u.description}
-                              onChange={(e) => {
-                                const name = editValue.includes("||") ? editValue.split("||")[0] : editValue;
-                                setEditValue(`${name}||${e.target.value}`);
-                              }}
-                              placeholder="Description"
-                              className="h-7 text-sm"
-                            />
-                            <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => {
-                                const parts = editValue.split("||");
-                                saveUserTypeEdit(i, parts[0], parts[1] || u.description);
-                              }}>
-                                <Check className="w-3 h-3" />
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex-1">
-                              <p className="font-medium text-sm">{u.name}</p>
-                              {u.description && (
-                                <p className="text-xs text-muted-foreground">{u.description}</p>
-                              )}
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={() => { setEditingField(`userType-${i}`); setEditValue(u.name); }}>
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => removeUserType(i)}>
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
+                {/* Constraints */}
+                {(requirements.constraints.mustHave.length > 0 || requirements.constraints.mustNotHave.length > 0) && (
+                  <div className="p-3 rounded-lg bg-stone-50/80">
+                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Constraints</p>
+                    {requirements.constraints.mustHave.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-[11px] text-stone-500 mb-1">Must have:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {requirements.constraints.mustHave.map((c, i) => (
+                            <span key={i} className="px-2 py-0.5 text-[12px] rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              {c}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Read-only fields */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-lg bg-secondary/30">
-                    <p className="text-xs text-muted-foreground mb-1">Auth</p>
-                    <p className="font-medium text-sm">
-                      {requirements.auth.needed
-                        ? requirements.auth.methods.join(", ") || "Required"
-                        : "None"}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-secondary/30">
-                    <p className="text-xs text-muted-foreground mb-1">Database</p>
-                    <p className="font-medium text-sm">
-                      {requirements.database.needed
-                        ? requirements.database.realtime ? "Realtime" : "Standard"
-                        : "None"}
-                    </p>
-                  </div>
-                </div>
-
-                {requirements.payments.needed && (
-                  <div className="p-3 rounded-lg bg-secondary/30">
-                    <p className="text-xs text-muted-foreground mb-1">Payments</p>
-                    <p className="font-medium text-sm">{requirements.payments.model || "Required"}</p>
+                    )}
+                    {requirements.constraints.mustNotHave.length > 0 && (
+                      <div>
+                        <p className="text-[11px] text-stone-500 mb-1">Must not have:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {requirements.constraints.mustNotHave.map((c, i) => (
+                            <span key={i} className="px-2 py-0.5 text-[12px] rounded-md bg-red-50 text-red-700 border border-red-200">
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                {requirements.integrations.length > 0 && (
-                  <div className="p-3 rounded-lg bg-secondary/30">
-                    <p className="text-xs text-muted-foreground mb-1">Integrations</p>
-                    <div className="flex flex-wrap gap-1">
-                      {requirements.integrations.map((int, i) => (
-                        <span key={i} className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary">
-                          {int}
-                        </span>
-                      ))}
-                    </div>
+                {/* Dev Agent Notes */}
+                {requirements.devAgentNotes && (
+                  <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200/60">
+                    <p className="text-[11px] uppercase tracking-wider text-amber-600 mb-1.5 font-medium">Notes for Dev Agent</p>
+                    <p className="text-[12px] text-amber-800">{requirements.devAgentNotes}</p>
                   </div>
                 )}
 
                 {/* Actions */}
-                <div className="flex justify-between pt-4 border-t border-border/30">
+                <div className="flex justify-between items-center pt-4 border-t border-stone-200/60">
                   <button
                     onClick={handleStartOver}
                     disabled={loading}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                    className="text-[13px] text-stone-400 hover:text-stone-600 transition-colors disabled:opacity-50"
                   >
                     Start over
                   </button>
                   <button
                     onClick={handleConfirm}
                     disabled={loading}
-                    className="inline-flex items-center gap-2 h-9 px-5 bg-foreground text-background text-sm font-medium rounded-lg hover:opacity-80 transition-opacity disabled:opacity-50"
+                    className="inline-flex items-center gap-2 h-9 px-5 bg-stone-800 text-white text-[13px] font-medium rounded-xl hover:bg-stone-700 transition-colors disabled:opacity-50 shadow-sm"
                   >
                     {loading ? "Processing..." : "Find My Template"}
                     {!loading && <span>&rarr;</span>}
@@ -772,7 +798,7 @@ export default function InterviewPage() {
 
         {/* Input area — pinned to bottom */}
         {phase !== "summary" && (
-          <div className="shrink-0 border-t border-border/50 bg-background/80 backdrop-blur-md">
+          <div className="shrink-0 border-t border-stone-200/60 bg-white/50 backdrop-blur-xl">
             <div className="max-w-2xl mx-auto p-4 px-6">
               {/* Example idea chips for seed phase */}
               {phase === "seed" && (!messages || messages.length === 0) && !currentInput && (
@@ -781,7 +807,7 @@ export default function InterviewPage() {
                     <button
                       key={idea}
                       onClick={() => setCurrentInput(idea)}
-                      className="px-3 py-1.5 text-xs rounded-full border border-border/50 text-muted-foreground hover:text-foreground hover:border-foreground/20 transition-colors"
+                      className="px-3.5 py-1.5 text-[12px] rounded-full border border-stone-200 text-stone-500 hover:text-stone-700 hover:border-stone-400 hover:bg-white/80 transition-all duration-200"
                     >
                       {idea}
                     </button>
@@ -819,7 +845,7 @@ export default function InterviewPage() {
                   <button
                     onClick={handleFinishEarly}
                     disabled={loading}
-                    className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors disabled:opacity-50"
+                    className="text-[12px] text-stone-400 hover:text-stone-600 transition-colors disabled:opacity-50"
                   >
                     I&apos;ve shared enough, let&apos;s see templates &rarr;
                   </button>

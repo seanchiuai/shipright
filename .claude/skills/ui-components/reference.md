@@ -20,16 +20,15 @@ components/
 │   ├── button.tsx
 │   ├── card.tsx
 │   ├── input.tsx
-│   ├── ai-message.tsx          # Chat message bubble (accepts userImageUrl prop)
-│   └── ai-conversation.tsx     # Auto-scroll container
+│   ├── ai-message.tsx          # AI: editorial flowing text; User: dark pill bubble
+│   └── ai-conversation.tsx     # Auto-scroll container (gap-8 spacing)
 ├── interview/                  # Interview-specific
 │   ├── chat-message.tsx        # AI/user message wrapper
 │   ├── typewriter-text.tsx     # Typewriter effect
 │   ├── choice-card.tsx         # Choice selection UI
 │   ├── magic-textarea.tsx      # Animated text input
-│   ├── celebration.tsx         # Confetti + toast
 │   ├── journey-progress.tsx    # Progress indicator
-│   └── interview-background.tsx # Ambient animation
+│   └── interview-background.tsx # Warm paper background with subtle glows
 └── dashboard/                  # Dashboard components
     └── project-card.tsx
 
@@ -407,11 +406,14 @@ export function QuestionCard({ question, id, required }: QuestionCardProps) {
 ## Design Principles
 
 - **Warm Editorial Palette** - Cream backgrounds (`#faf8f5`), warm borders (`#e2ddd5`), dark foreground (`#1c1917`)
-- **Typography** - `font-serif` (Instrument Serif) for headings, `font-sans` (Instrument Sans) for body
-- **Clean & Minimal** - Focus on clarity, no flashy gradients in interactive areas
+- **Stone Color System** - Interview UI uses `stone-*` Tailwind classes (stone-50 through stone-900) for a cohesive warm palette
+- **Typography** - `font-serif` (Instrument Serif) for headings, `font-sans` (Instrument Sans) for body. Text sizes use explicit `text-[15px]`, `text-[13px]`, `text-[12px]`, `text-[11px]` for precision
+- **Clean & Minimal** - Focus on clarity, no flashy gradients or particle effects in interactive areas
 - **Consistent Spacing** - Use Tailwind spacing scale (4, 8, 16, 24)
 - **Accessible** - shadcn/ui built on Radix UI (accessible by default)
 - **Desktop-first for MVP** - Mobile-responsive but optimize for desktop
-- **Frosted Glass Headers** - `backdrop-blur-md bg-background/80` for sticky headers
-- **Dark CTAs** - Primary buttons use `bg-foreground text-background` style
-- **Subtle Focus States** - `shadow-[0_0_0_3px_rgba(28,25,23,0.06)]` instead of bright rings
+- **Frosted Glass Headers** - `backdrop-blur-xl bg-white/60` for sticky headers
+- **Dark CTAs** - Primary buttons use `bg-stone-800 text-white` with `rounded-xl`
+- **Subtle Focus States** - `shadow-[0_2px_12px_rgba(0,0,0,0.06)]` instead of bright rings
+- **AI Messages** - No bubble for AI (editorial flowing text with dark avatar), dark pill for user messages
+- **Paper Texture** - SVG noise texture overlay at very low opacity for tactile depth

@@ -25,7 +25,7 @@ const AIConversation = forwardRef<HTMLDivElement, AIConversationProps>(
     return (
       <div
         ref={ref}
-        className={cn("flex flex-col space-y-6 overflow-y-auto", className)}
+        className={cn("flex flex-col gap-8 overflow-y-auto", className)}
         {...props}
       >
         {children}

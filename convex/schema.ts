@@ -33,7 +33,6 @@ export default defineSchema({
     content: v.string(),
     questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
     options: v.optional(v.array(v.string())),
-    isSummary: v.optional(v.boolean()),
     isComplete: v.optional(v.boolean()),
     timestamp: v.number(),
   })

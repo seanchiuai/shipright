@@ -252,7 +252,6 @@ export const continueConversation = action({
       content: string;
       questionType?: "text" | "choice" | "multiselect" | null;
       options?: string[] | null;
-      isSummary?: boolean;
       isComplete?: boolean;
     };
 
@@ -269,7 +268,6 @@ export const continueConversation = action({
       content: parsed.content,
       ...(parsed.questionType ? { questionType: parsed.questionType as "text" | "choice" | "multiselect" } : {}),
       ...(parsed.options ? { options: parsed.options } : {}),
-      ...(parsed.isSummary ? { isSummary: true } : {}),
       ...(parsed.isComplete ? { isComplete: true } : {}),
     });
 

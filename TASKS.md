@@ -37,15 +37,15 @@
 - [x] Build template scoring algorithm (AI-determined weights)
 - [x] Build template confirmation UI (what's included vs what will be built)
 
-### Phase 2: Interview Flow (2026-01-27, reworked 2026-01-28)
+### Phase 2: Interview Flow (2026-01-27, reworked 2026-01-29)
 - [x] Build seed phase: app idea input with example chips
 - [x] Integrate Gemini API for conversational interview (via Vertex AI)
-- [x] Build conversation phase: one question at a time, dynamic types, mini-summaries
-- [x] Build summary phase: editable features/user types, read-only auth/db/payments
+- [x] Build conversation phase: 4-6 classification questions, ultra-casual style
+- [x] Build summary phase: editable users/features, read-only type/platform/payments
 - [x] Store messages in interviewMessages table (per-message, reactive)
-- [x] Extract structured requirements from conversation transcript
+- [x] Extract classification-focused requirements (appType, primaryUser, coreAction, etc.)
 - [x] Rework: replace batched rounds with conversational flow
-- [x] Rework: remove confetti, encouragement toasts, confirmation turns
+- [x] Rework: replace detailed extraction with fast classification (4-6 questions)
 
 ### Phase 1: UI + Authentication (2026-01-26)
 - [x] Initialize Next.js 14 + TypeScript + Tailwind project

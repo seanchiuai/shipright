@@ -110,7 +110,6 @@ export const addMessage = mutation({
     content: v.string(),
     questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
     options: v.optional(v.array(v.string())),
-    isSummary: v.optional(v.boolean()),
     isComplete: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -120,7 +119,6 @@ export const addMessage = mutation({
       content: args.content,
       questionType: args.questionType,
       options: args.options,
-      isSummary: args.isSummary,
       isComplete: args.isComplete,
       timestamp: Date.now(),
     });

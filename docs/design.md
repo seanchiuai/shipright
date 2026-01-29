@@ -127,7 +127,7 @@ After interview completes, everything is automatic until scaffolding is done.
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-Note: Step 2 uses chat-based UI with ChatMessage components, ChoiceGrid for selections, and MagicTextarea for text input. Includes typewriter effect for AI messages and confetti celebration on answer submission.
+Note: Step 2 uses chat-based UI with ChatMessage components, ChoiceGrid for selections, and MagicTextarea for text input. AI messages display as editorial flowing text (no bubble) with a dark avatar. User messages appear as dark stone-800 pills. Typewriter effect on unseen AI messages. Background uses warm paper gradient with SVG noise texture.
 
 ### Interview - Step 3 (Requirements Summary)
 
@@ -283,19 +283,22 @@ App
 ### Design Tokens
 
 ```css
-/* Colors - Dark theme */
---color-primary: #6366f1;      /* Indigo */
---color-success: #22c55e;      /* Green */
---color-warning: #f59e0b;      /* Amber */
---color-error: #ef4444;        /* Red */
+/* Colors - Warm editorial palette */
+--background: #faf8f5;         /* Off-white */
+--foreground: #1c1917;         /* Charcoal */
+--secondary: #f3ede4;          /* Light beige */
+--muted-foreground: #78716c;   /* Warm gray */
+--border: #e2ddd5;             /* Soft tan */
+--accent: #e8dfd3;             /* Warm cream */
+--destructive: #dc2626;        /* Red */
 
---color-bg: #09090b;           /* Near black */
---color-surface: #18181b;      /* Dark gray */
---color-border: #27272a;       /* Gray border */
-
---color-text: #fafafa;         /* White */
---color-text-muted: #a1a1aa;   /* Gray text */
+/* Amber accent family */
+--amber: #d97706;
+--amber-light: #fbbf24;
+--amber-dark: #b45309;
 ```
+
+Interview UI uses Tailwind `stone-*` utilities directly (stone-50 through stone-900) for a cohesive warm palette. Backgrounds use warm paper gradients with SVG noise texture.
 
 ### Component Styling
 

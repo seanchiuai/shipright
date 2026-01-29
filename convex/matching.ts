@@ -8,7 +8,6 @@ import { createVertex } from "@ai-sdk/google-vertex";
 import { generateObject } from "ai";
 import { z } from "zod";
 
-// Create Vertex AI provider with service account credentials
 function getVertexProvider() {
   return createVertex({
     project: process.env.GOOGLE_VERTEX_PROJECT,
@@ -22,7 +21,6 @@ function getVertexProvider() {
   });
 }
 
-// Schema for AI-generated weights
 const weightsSchema = z.object({
   auth: z.number().min(0).max(1),
   database: z.number().min(0).max(1),
@@ -40,21 +38,20 @@ type Weights = {
   ui: number;
 };
 
-// Requirements schema from interview
 type Requirements = {
   appName: string;
+  tagline: string;
+  appType: string;
   problemStatement: string;
-  userTypes: Array<{ name: string; description: string; isAdmin: boolean }>;
-  auth: {
-    needed: boolean;
-    methods: string[];
-    hasRoles: boolean;
-    hasOrgs: boolean;
-  };
-  database: { needed: boolean; realtime: boolean };
-  payments: { needed: boolean; model?: string };
-  features: Array<{ name: string; description: string; priority: string }>;
-  integrations: string[];
+  primaryUser: { type: string; coreNeed: string };
+  secondaryUsers: Array<{ type: string; coreNeed: string }>;
+  coreAction: string;
+  hasPayments: boolean;
+  paymentContext: string | null;
+  platform: string;
+  keyFeatures: string[];
+  constraints: { timeline: string | null; mustHave: string[]; mustNotHave: string[] };
+  devAgentNotes: string;
 };
 
 type Template = {
@@ -88,7 +85,6 @@ type MatchResult = {
   included: string[];
 };
 
-// V2 Types for tag-based matching
 type RankedTemplate = {
   slug: string;
   name: string;
@@ -107,7 +103,6 @@ type MatchResultV2 = {
   extractedTags: string[];
 };
 
-// Default weights (fallback if AI fails)
 const DEFAULT_WEIGHTS: Weights = {
   auth: 0.25,
   database: 0.25,
@@ -116,20 +111,32 @@ const DEFAULT_WEIGHTS: Weights = {
   ui: 0.1,
 };
 
-// AI-determined weights based on app context
+function requirementsSummary(req: Requirements): string {
+  const users = [req.primaryUser.type, ...req.secondaryUsers.map((u) => u.type)].join(", ");
+  return `App: ${req.appName} (${req.appType})
+Problem: ${req.problemStatement}
+Users: ${users}
+Core Action: ${req.coreAction}
+Platform: ${req.platform}
+Payments: ${req.hasPayments ? (req.paymentContext || "Yes") : "No"}
+Key Features: ${req.keyFeatures.join(", ")}${req.constraints.mustHave.length > 0 ? `\nMust Have: ${req.constraints.mustHave.join(", ")}` : ""}${req.constraints.mustNotHave.length > 0 ? `\nMust Not Have: ${req.constraints.mustNotHave.join(", ")}` : ""}`;
+}
+
+// Helper: check if any keyFeature mentions a keyword
+function featuresInclude(features: string[], ...keywords: string[]): boolean {
+  return features.some((f) => {
+    const lower = f.toLowerCase();
+    return keywords.some((k) => lower.includes(k));
+  });
+}
+
 async function determineWeights(requirements: Requirements): Promise<Weights> {
   try {
     const vertex = getVertexProvider();
 
     const prompt = `Analyze this app idea and determine the relative importance of each category for template matching.
 
-App: ${requirements.appName}
-Problem: ${requirements.problemStatement}
-User Types: ${requirements.userTypes.map((u) => u.name).join(", ")}
-Auth Needed: ${requirements.auth.needed}
-Database Needed: ${requirements.database.needed}, Realtime: ${requirements.database.realtime}
-Payments Needed: ${requirements.payments.needed}${requirements.payments.model ? ` (${requirements.payments.model})` : ""}
-Key Features: ${requirements.features.map((f) => f.name).join(", ")}
+${requirementsSummary(requirements)}
 
 Based on this app's nature, assign weights (must sum to 1.0) to each category:
 - auth: How important is authentication/authorization for this app?
@@ -150,7 +157,6 @@ Examples:
       prompt,
     });
 
-    // Normalize weights to ensure they sum to 1.0
     const sum = object.auth + object.database + object.payments + object.features + object.ui;
     if (Math.abs(sum - 1.0) > 0.01) {
       return {
@@ -175,66 +181,40 @@ Examples:
   }
 }
 
+// V1 scoring: infer needs from classification-level requirements
 function scoreAuth(
-  reqAuth: Requirements["auth"],
+  _requirements: Requirements,
   tmplAuth: TemplateCapabilities["auth"]
 ): number {
-  if (!reqAuth.needed && !tmplAuth.present) return 100;
-  if (!reqAuth.needed && tmplAuth.present) return 80;
-  if (reqAuth.needed && !tmplAuth.present) return 0;
-
-  let score = 100;
-
-  if (reqAuth.methods && reqAuth.methods.length > 0) {
-    const matchedProviders = reqAuth.methods.filter((m) =>
-      tmplAuth.providers.includes(m.toLowerCase())
-    );
-    score *= matchedProviders.length / reqAuth.methods.length;
-  }
-
-  if (reqAuth.hasRoles && !tmplAuth.hasRoles) score *= 0.7;
-  if (reqAuth.hasOrgs && !tmplAuth.hasOrgs) score *= 0.7;
-
-  return Math.round(score);
+  // Classification doesn't specify auth details — most apps need it.
+  // Prefer templates with auth present; don't penalize extras.
+  if (tmplAuth.present) return 90;
+  return 40;
 }
 
 function scoreDatabase(
-  reqDb: Requirements["database"],
+  _requirements: Requirements,
   tmplDb: TemplateCapabilities["database"]
 ): number {
-  if (!reqDb.needed && !tmplDb.present) return 100;
-  if (!reqDb.needed && tmplDb.present) return 80;
-  if (reqDb.needed && !tmplDb.present) return 0;
-
-  let score = 100;
-  if (reqDb.realtime && !tmplDb.realtime) score *= 0.5;
-
-  return Math.round(score);
+  // All apps need a database. Prefer present.
+  if (!tmplDb.present) return 20;
+  return 90;
 }
 
 function scorePayments(
-  reqPay: Requirements["payments"],
+  requirements: Requirements,
   tmplPay: TemplateCapabilities["payments"]
 ): number {
-  if (!reqPay.needed && !tmplPay.present) return 100;
-  if (!reqPay.needed && tmplPay.present) return 80;
-  if (reqPay.needed && !tmplPay.present) return 0;
-
-  let score = 100;
-  if (reqPay.model && tmplPay.models && !tmplPay.models.includes(reqPay.model)) {
-    score *= 0.6;
-  }
-
-  return Math.round(score);
+  if (!requirements.hasPayments && !tmplPay.present) return 100;
+  if (!requirements.hasPayments && tmplPay.present) return 80;
+  if (requirements.hasPayments && !tmplPay.present) return 0;
+  return 100;
 }
 
 function scoreFeatures(
-  reqFeatures: Requirements["features"],
+  requirements: Requirements,
   tmplFeatures: TemplateCapabilities["features"]
 ): number {
-  const mustFeatures = reqFeatures.filter((f) => f.priority === "must");
-  if (mustFeatures.length === 0) return 100;
-
   const featureKeywords: Record<string, keyof TemplateCapabilities["features"]> = {
     upload: "fileUploads",
     file: "fileUploads",
@@ -249,38 +229,32 @@ function scoreFeatures(
     gpt: "ai",
   };
 
+  let checked = 0;
   let matches = 0;
-  for (const feature of mustFeatures) {
-    const name = feature.name.toLowerCase();
+  for (const feature of requirements.keyFeatures) {
+    const lower = feature.toLowerCase();
     for (const [keyword, capability] of Object.entries(featureKeywords)) {
-      if (name.includes(keyword) && tmplFeatures[capability]) {
-        matches++;
+      if (lower.includes(keyword)) {
+        checked++;
+        if (tmplFeatures[capability]) matches++;
         break;
       }
     }
   }
 
-  // Base 50 + up to 50 bonus for matching features
-  return Math.round(50 + (matches / mustFeatures.length) * 50);
+  if (checked === 0) return 80;
+  return Math.round(50 + (matches / checked) * 50);
 }
 
 function scoreUI(
-  requirements: Requirements,
+  _requirements: Requirements,
   tmplUI: TemplateCapabilities["ui"]
 ): number {
   let score = 50;
-
-  if (tmplUI.framework === "shadcn") score += 25;
+  if (tmplUI.framework === "shadcn") score += 30;
   else if (tmplUI.framework === "tailwind") score += 15;
-
-  const hasAdmin = requirements.userTypes?.some((u) => u.isAdmin);
-  if (hasAdmin) {
-    score += tmplUI.hasAdminDashboard ? 25 : -15;
-  } else if (tmplUI.hasAdminDashboard) {
-    score += 10;
-  }
-
-  return Math.max(0, Math.min(100, score));
+  if (tmplUI.hasLandingPage) score += 10;
+  return Math.min(100, score);
 }
 
 function identifyGaps(
@@ -290,50 +264,36 @@ function identifyGaps(
   const gaps: string[] = [];
   const caps = template.capabilities;
 
-  if (requirements.auth.needed) {
-    if (!caps.auth.present) {
-      gaps.push("User authentication");
-    } else {
-      const missingProviders = requirements.auth.methods.filter(
-        (m) => !caps.auth.providers.includes(m.toLowerCase())
-      );
-      if (missingProviders.length > 0) {
-        gaps.push(`Auth providers: ${missingProviders.join(", ")}`);
-      }
-      if (requirements.auth.hasRoles && !caps.auth.hasRoles) {
-        gaps.push("User roles/permissions");
-      }
-      if (requirements.auth.hasOrgs && !caps.auth.hasOrgs) {
-        gaps.push("Organizations/teams");
-      }
-    }
-  }
-
-  if (requirements.database.needed && !caps.database.present) {
-    gaps.push("Database");
-  } else if (requirements.database.realtime && !caps.database.realtime) {
-    gaps.push("Real-time data sync");
-  }
-
-  if (requirements.payments.needed && !caps.payments.present) {
+  if (requirements.hasPayments && !caps.payments.present) {
     gaps.push("Payment processing");
   }
 
-  for (const feature of requirements.features) {
-    if (feature.priority !== "must") continue;
-    const name = feature.name.toLowerCase();
-
-    if (name.includes("upload") && !caps.features.fileUploads) {
+  for (const feature of requirements.keyFeatures) {
+    const lower = feature.toLowerCase();
+    if ((lower.includes("upload") || lower.includes("file") || lower.includes("image")) && !caps.features.fileUploads) {
       gaps.push("File uploads");
     }
-    if (name.includes("email") && !caps.features.email) {
+    if ((lower.includes("email") || lower.includes("notification")) && !caps.features.email) {
       gaps.push("Email notifications");
     }
-    if (name.includes("search") && !caps.features.search) {
+    if ((lower.includes("search") || lower.includes("find")) && !caps.features.search) {
       gaps.push("Search functionality");
     }
-    if ((name.includes("ai") || name.includes("chat")) && !caps.features.ai) {
+    if ((lower.includes("ai") || lower.includes("chat") || lower.includes("llm")) && !caps.features.ai) {
       gaps.push("AI/Chat features");
+    }
+  }
+
+  for (const must of requirements.constraints.mustHave) {
+    const lower = must.toLowerCase();
+    if (lower.includes("realtime") && !caps.database.realtime) {
+      gaps.push("Real-time data sync");
+    }
+    if (lower.includes("role") && !caps.auth.hasRoles) {
+      gaps.push("User roles/permissions");
+    }
+    if (lower.includes("org") && !caps.auth.hasOrgs) {
+      gaps.push("Organizations/teams");
     }
   }
 
@@ -399,16 +359,7 @@ async function extractTagsFromRequirements(
 
     const prompt = `Analyze these app requirements and select the most relevant tags from the available list.
 
-App: ${requirements.appName}
-Problem: ${requirements.problemStatement}
-User Types: ${requirements.userTypes.map((u) => `${u.name}${u.isAdmin ? " (admin)" : ""}`).join(", ")}
-
-Requirements:
-- Auth: ${requirements.auth.needed ? `Yes (methods: ${requirements.auth.methods.join(", ")}, roles: ${requirements.auth.hasRoles}, orgs: ${requirements.auth.hasOrgs})` : "No"}
-- Database: ${requirements.database.needed ? `Yes (realtime: ${requirements.database.realtime})` : "No"}
-- Payments: ${requirements.payments.needed ? `Yes (model: ${requirements.payments.model || "unspecified"})` : "No"}
-- Features: ${requirements.features.map((f) => `${f.name} (${f.priority})`).join(", ")}
-- Integrations: ${requirements.integrations.join(", ") || "none"}
+${requirementsSummary(requirements)}
 
 Available tags (hierarchical, e.g., "ai" is parent of "ai:openai"):
 ${availableTags.join(", ")}
@@ -424,13 +375,13 @@ Select 5-15 tags that best describe what this app needs. Include both specific t
     return object.tags.filter((tag) => availableTags.includes(tag));
   } catch (error) {
     console.error("Failed to extract tags via AI, using fallback:", error);
-    const tags: string[] = [];
-    if (requirements.auth.needed) tags.push("auth");
-    if (requirements.database.needed) tags.push("database");
-    if (requirements.database.realtime) tags.push("realtime");
-    if (requirements.payments.needed) tags.push("payments");
-    if (requirements.features.some((f) => f.name.toLowerCase().includes("ai"))) {
+    const tags: string[] = ["auth", "database"];
+    if (requirements.hasPayments) tags.push("payments");
+    if (featuresInclude(requirements.keyFeatures, "ai", "chat", "llm", "gpt")) {
       tags.push("ai");
+    }
+    if (featuresInclude(requirements.keyFeatures, "realtime", "real-time", "live")) {
+      tags.push("realtime");
     }
     return tags;
   }
@@ -512,16 +463,7 @@ async function rankCandidates(
 
     const prompt = `Rank these template candidates for the following app requirements.
 
-App: ${requirements.appName}
-Problem: ${requirements.problemStatement}
-User Types: ${requirements.userTypes.map((u) => `${u.name}${u.isAdmin ? " (admin)" : ""}`).join(", ")}
-
-Requirements:
-- Auth: ${requirements.auth.needed ? `Yes (methods: ${requirements.auth.methods.join(", ")}, roles: ${requirements.auth.hasRoles}, orgs: ${requirements.auth.hasOrgs})` : "No"}
-- Database: ${requirements.database.needed ? `Yes (realtime: ${requirements.database.realtime})` : "No"}
-- Payments: ${requirements.payments.needed ? `Yes (model: ${requirements.payments.model || "unspecified"})` : "No"}
-- Key Features: ${requirements.features.filter((f) => f.priority === "must").map((f) => f.name).join(", ")}
-- Integrations: ${requirements.integrations.join(", ") || "none"}
+${requirementsSummary(requirements)}
 
 Candidate Templates:
 ${candidateDescriptions}
@@ -676,10 +618,10 @@ export const matchTemplate = action({
       const caps = template.capabilities;
 
       const scoreBreakdown = {
-        auth: scoreAuth(requirements.auth, caps.auth),
-        database: scoreDatabase(requirements.database, caps.database),
-        payments: scorePayments(requirements.payments, caps.payments),
-        features: scoreFeatures(requirements.features, caps.features),
+        auth: scoreAuth(requirements, caps.auth),
+        database: scoreDatabase(requirements, caps.database),
+        payments: scorePayments(requirements, caps.payments),
+        features: scoreFeatures(requirements, caps.features),
         ui: scoreUI(requirements, caps.ui),
       };
 

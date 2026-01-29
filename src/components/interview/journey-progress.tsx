@@ -18,17 +18,16 @@ const steps = [
 ];
 
 export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3 }: JourneyProgressProps) {
-  // Map interview steps to journey steps (1->0, 2->1, 3->2, done->3)
   const journeyStep = currentStep - 1;
 
   return (
     <div className="relative">
       {/* Background track */}
-      <div className="absolute top-5 left-0 right-0 h-0.5 bg-border/50" />
+      <div className="absolute top-5 left-0 right-0 h-px bg-stone-200" />
 
       {/* Progress fill */}
       <motion.div
-        className="absolute top-5 left-0 h-0.5 bg-gradient-to-r from-primary to-primary/70"
+        className="absolute top-5 left-0 h-px bg-stone-800"
         initial={{ width: "0%" }}
         animate={{ width: `${(journeyStep / (steps.length - 1)) * 100}%` }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -48,20 +47,15 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
                 className={cn(
                   "relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300",
                   isComplete
-                    ? "bg-primary text-white"
+                    ? "bg-stone-800 text-white"
                     : isActive
-                      ? "bg-white border-2 border-primary text-primary shadow-lg shadow-primary/20"
-                      : "bg-white border-2 border-border/50 text-muted-foreground"
+                      ? "bg-white border-[1.5px] border-stone-800 text-stone-800 shadow-sm"
+                      : "bg-white border-[1.5px] border-stone-200 text-stone-400"
                 )}
                 animate={
                   isActive
                     ? {
-                        scale: [1, 1.05, 1],
-                        boxShadow: [
-                          "0 4px 20px rgba(240, 140, 58, 0.2)",
-                          "0 4px 30px rgba(240, 140, 58, 0.3)",
-                          "0 4px 20px rgba(240, 140, 58, 0.2)",
-                        ],
+                        scale: [1, 1.04, 1],
                       }
                     : {}
                 }
@@ -69,7 +63,7 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
                   isActive
                     ? {
                         repeat: Infinity,
-                        duration: 2,
+                        duration: 2.5,
                         ease: "easeInOut",
                       }
                     : {}
@@ -80,25 +74,23 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
                 {/* Active glow ring */}
                 {isActive && (
                   <motion.div
-                    className="absolute inset-0 rounded-full border-2 border-primary"
+                    className="absolute inset-0 rounded-full border border-stone-400"
                     initial={{ opacity: 0, scale: 1 }}
-                    animate={{ opacity: [0, 0.5, 0], scale: [1, 1.4, 1.4] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
+                    animate={{ opacity: [0, 0.3, 0], scale: [1, 1.4, 1.4] }}
+                    transition={{ repeat: Infinity, duration: 2.5 }}
                   />
                 )}
               </motion.div>
 
               {/* Label */}
-              <motion.span
+              <span
                 className={cn(
-                  "mt-2 text-xs font-medium transition-colors",
-                  isActive ? "text-primary" : isComplete ? "text-foreground" : "text-muted-foreground"
+                  "mt-2 text-[11px] font-medium tracking-wide transition-colors",
+                  isActive ? "text-stone-800" : isComplete ? "text-stone-700" : "text-stone-400"
                 )}
-                animate={isActive ? { y: [0, -2, 0] } : {}}
-                transition={isActive ? { repeat: Infinity, duration: 2 } : {}}
               >
                 {step.label}
-              </motion.span>
+              </span>
 
               {/* Round indicator for step 2 */}
               {index === 1 && currentStep === 2 && (
@@ -108,7 +100,7 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
                       key={i}
                       className={cn(
                         "w-1.5 h-1.5 rounded-full transition-colors",
-                        i < currentRound ? "bg-primary" : "bg-border"
+                        i < currentRound ? "bg-stone-800" : "bg-stone-200"
                       )}
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}

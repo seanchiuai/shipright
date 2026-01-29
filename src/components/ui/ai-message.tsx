@@ -18,41 +18,61 @@ const AIMessage = forwardRef<HTMLDivElement, AIMessageProps>(
       <div
         ref={ref}
         className={cn(
-          "flex gap-3 max-w-[85%]",
-          isAssistant ? "self-start" : "self-end flex-row-reverse",
+          "group relative",
+          isAssistant ? "self-start w-full" : "self-end max-w-[80%]",
           className
         )}
         {...props}
       >
-        {/* Avatar */}
-        <div
-          className={cn(
-            "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
-            isAssistant
-              ? "bg-white border border-border/50 shadow-sm"
-              : "bg-foreground/[0.07]"
-          )}
-        >
-          {isAssistant ? (
-            <Image src="/logo.png" alt="ShipRight" width={24} height={24} className="w-5 h-5 object-contain" />
-          ) : userImageUrl ? (
-            <Image src={userImageUrl} alt="You" width={32} height={32} className="w-8 h-8 rounded-full object-cover" />
-          ) : (
-            <span className="text-xs font-medium text-muted-foreground">You</span>
-          )}
-        </div>
-
-        {/* Bubble */}
-        <div
-          className={cn(
-            "relative px-4 py-3 rounded-2xl",
-            isAssistant
-              ? "bg-white/80 backdrop-blur-sm border border-border/40 rounded-tl-sm"
-              : "bg-foreground text-background rounded-tr-sm"
-          )}
-        >
-          <div className="relative">{children}</div>
-        </div>
+        {isAssistant ? (
+          /* AI: editorial flowing text — no bubble, just clean typography */
+          <div className="flex gap-4">
+            <div className="flex-shrink-0 pt-0.5">
+              <div className="w-7 h-7 rounded-full bg-stone-900 flex items-center justify-center shadow-sm">
+                <Image
+                  src="/logo.png"
+                  alt="ShipRight"
+                  width={20}
+                  height={20}
+                  className="w-4 h-4 object-contain brightness-0 invert"
+                />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <div className="relative text-[15px] leading-[1.7] text-stone-800 font-normal tracking-[-0.01em]">
+                {children}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* User: refined pill with warm tone */
+          <div className="flex justify-end">
+            <div className="flex items-end gap-2.5">
+              <div className="px-4 py-2.5 rounded-2xl rounded-br-md bg-stone-800 text-stone-50 shadow-sm">
+                <div className="text-[15px] leading-[1.6] tracking-[-0.01em]">
+                  {children}
+                </div>
+              </div>
+              {userImageUrl ? (
+                <div className="flex-shrink-0">
+                  <Image
+                    src={userImageUrl}
+                    alt="You"
+                    width={28}
+                    height={28}
+                    className="w-7 h-7 rounded-full object-cover ring-1 ring-stone-200"
+                  />
+                </div>
+              ) : (
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-stone-200 flex items-center justify-center">
+                  <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide">
+                    You
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

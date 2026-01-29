@@ -24,22 +24,20 @@ The interview uses a message-based conversational model (not batched rounds):
 - Messages stored in `interviewMessages` table (per-message, timestamped)
 - Project tracks phase via `interviewPhase` field: `"seed"` | `"conversation"` | `"summary"`
 - AI decides question type per turn: `choice`, `multiselect`, or `text`
-- Mini-summaries every 2-3 answers
-- AI sets `isComplete: true` when extraction checklist satisfied
-- Hard cap at 10 user exchanges
+- Ultra-casual texting style, max 15 words per response
+- AI sets `isComplete: true` when app is classified (usually 4-6 exchanges)
+- Hard cap at 6 user exchanges
 - User can finish early via "I've shared enough" link
 
-## Extraction Checklist
+## Classification Flow
 
-The AI covers these before signaling completion:
-- Core data objects and relationships
-- User actions (create, edit, delete, view, share)
-- Screens/pages and navigation flow
-- Authentication requirement and methods
-- Permissions model (private, shared, public, roles)
-- Automation or AI behavior
-- External integrations
-- In-scope vs out-of-scope
+The AI covers these (adapting to context, skipping what's obvious):
+- What is it? (restate + confirm)
+- Who's it for?
+- Core action users take
+- Does money change hands?
+- Mobile, web, or both?
+- Dealbreakers or must-haves
 
 ## Using Vercel AI SDK with Vertex AI
 
