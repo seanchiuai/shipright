@@ -130,6 +130,20 @@ export const resetInterview = mutation({
   },
 });
 
+export const updateGitHubRepo = mutation({
+  args: {
+    projectId: v.id("projects"),
+    repoUrl: v.string(),
+    repoFullName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      githubRepoUrl: args.repoUrl,
+      status: "building",
+    });
+  },
+});
+
 export const setMatchedTemplate = mutation({
   args: {
     projectId: v.id("projects"),

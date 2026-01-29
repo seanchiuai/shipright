@@ -71,3 +71,37 @@ export const syncUser = mutation({
     });
   },
 });
+
+// Save encrypted GitHub token for authenticated user
+export const saveGitHubToken = mutation({
+  args: { encryptedToken: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(user._id, { githubToken: args.encryptedToken });
+  },
+});
+
+// Remove GitHub token (disconnect)
+export const removeGitHubToken = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(user._id, { githubToken: undefined });
+  },
+});

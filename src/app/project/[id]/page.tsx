@@ -140,11 +140,13 @@ export default function ProjectDetailsPage() {
   const templates = useQuery(api.templates.list, {});
 
   const matchTemplate = useAction(api.matching.matchTemplate);
+  const cloneTemplate = useAction(api.github.cloneTemplate);
   const resetInterview = useMutation(api.projects.resetInterview);
 
   const [matching, setMatching] = useState(false);
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const matchedTemplate =
     project?.templateId && templates
@@ -224,8 +226,46 @@ export default function ProjectDetailsPage() {
   }
 
   async function handleCreateRepository() {
-    // Phase 4: GitHub integration will be implemented here
-    alert("GitHub repository creation coming in Phase 4!");
+    if (!convexUser?.githubToken) {
+      router.push(`/connect-github?returnTo=/project/${projectId}`);
+      return;
+    }
+
+    if (!matchResult || !project) return;
+
+    setCreating(true);
+    setError(null);
+
+    try {
+      // Extract owner/repo from sourceUrl (e.g. "https://github.com/owner/repo")
+      const sourceUrl = matchResult.template.sourceUrl;
+      const urlParts = new URL(sourceUrl).pathname.split("/").filter(Boolean);
+      const templateRepoFullName = `${urlParts[0]}/${urlParts[1]}`;
+
+      // Generate repo name from project name
+      const repoName = project.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+
+      const result = await cloneTemplate({
+        projectId,
+        templateRepoFullName,
+        newRepoName: repoName || "shipright-app",
+      });
+
+      // Redirect to project page (will now show "building" status with repo link)
+      router.refresh();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to create repository";
+      if (message === "TEMPLATE_UNAVAILABLE") {
+        setError("Template is unavailable. Please try a different template.");
+      } else {
+        setError(message);
+      }
+    } finally {
+      setCreating(false);
+    }
   }
 
   if (!isLoaded || convexUser === undefined || project === undefined) {
@@ -453,9 +493,18 @@ export default function ProjectDetailsPage() {
                 <RefreshCw className="h-4 w-4" />
                 Try Different Template
               </Button>
-              <Button onClick={handleCreateRepository} className="gap-2">
-                Create My Repository
-                <ArrowRight className="h-4 w-4" />
+              <Button onClick={handleCreateRepository} className="gap-2" disabled={creating}>
+                {creating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creating Repository...
+                  </>
+                ) : (
+                  <>
+                    Create My Repository
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
               </Button>
             </div>
           </div>
