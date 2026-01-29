@@ -19,13 +19,15 @@ export function CelebrationBurst({
     if (!trigger) return;
 
     const particleCount =
-      intensity === "subtle" ? 30 : intensity === "medium" ? 60 : 100;
+      intensity === "subtle" ? 8 : intensity === "medium" ? 20 : 50;
 
     confetti({
       particleCount,
-      spread: 70,
-      colors: ["#0066ff", "#8b5cf6", "#06b6d4", "#22c55e", "#f59e0b", "#ec4899"],
-      origin: { y: 0.6 },
+      spread: 50,
+      colors: ["#f08c3a", "#8b5cf6", "#22c55e"],
+      origin: { y: 0.7 },
+      gravity: 1.2,
+      scalar: 0.8,
       disableForReducedMotion: true,
     });
 

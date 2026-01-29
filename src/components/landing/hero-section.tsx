@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { ArrowRight } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
@@ -10,14 +9,11 @@ import { api } from "../../../convex/_generated/api";
 import { useSyncUser } from "@/hooks/useSyncUser";
 
 const placeholders = [
-  "Vertical AI B2B SaaS for enterprise workflows",
-  "Uber for laundry but make it agentic",
-  "Disrupting the $4.2T spreadsheet industry",
-  "AI-powered AI for your AI",
-  "WeWork meets Theranos meets integrity",
-  "LinkedIn but people are honest",
-  "Airbnb for your garage (seriously)",
-  "A pivot-ready MVP with synergy",
+  "A marketplace for local artisans",
+  "Project management for freelancers",
+  "Subscription box analytics dashboard",
+  "Community platform for dog owners",
+  "Booking system for fitness trainers",
 ];
 
 export function HeroSection() {
@@ -33,7 +29,6 @@ export function HeroSection() {
   const updateAppIdea = useMutation(api.projects.updateAppIdea);
   const generateQuestions = useAction(api.ai.generateInterviewQuestions);
 
-  // Typing effect
   useEffect(() => {
     let placeholderIndex = 0;
     let charIndex = 0;
@@ -67,7 +62,6 @@ export function HeroSection() {
     }
 
     typeEffect();
-
     return () => clearTimeout(timeoutId);
   }, []);
 
@@ -75,15 +69,12 @@ export function HeroSection() {
     if (!appIdea.trim()) return;
 
     if (!isSignedIn) {
-      // Store idea in localStorage and redirect to sign in
       localStorage.setItem("pendingAppIdea", appIdea.trim());
       router.push("/dashboard");
       return;
     }
 
-    // User is signed in, create project directly
     if (!convexUser) {
-      // User not synced yet, store idea and redirect
       localStorage.setItem("pendingAppIdea", appIdea.trim());
       router.push("/dashboard");
       return;
@@ -112,103 +103,68 @@ export function HeroSection() {
   };
 
   return (
-    <section className="py-20 md:py-24 text-center relative">
-      <div className="max-w-[1140px] mx-auto px-6">
+    <section className="pt-24 pb-20 md:pt-36 md:pb-28">
+      <div className="max-w-3xl mx-auto px-6 text-center">
+        {/* Tagline */}
+        <p className="text-sm font-medium tracking-widest uppercase text-muted-foreground mb-6">
+          The on-ramp to vibe coding
+        </p>
+
         {/* Headline */}
-        <motion.h1
-          className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-normal leading-tight mb-6 tracking-tight"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          The missing piece for
+        <h1 className="font-serif text-[2.75rem] sm:text-6xl md:text-7xl leading-[1.08] tracking-tight mb-6">
+          From app idea to
           <br />
-          <em className="text-primary">vibe coding</em>
-        </motion.h1>
+          <em className="italic">architecture</em>
+        </h1>
 
         {/* Subhead */}
-        <motion.p
-          className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          Turn ideas into{" "}
-          <strong className="text-foreground font-semibold">
-            plans and architecture
-          </strong>{" "}
-          ready to vibe code.
-        </motion.p>
+        <p className="text-lg md:text-xl text-muted-foreground max-w-lg mx-auto mb-12 leading-relaxed">
+          Describe what you want to build. Get a GitHub repo with plans,
+          structure, and scaffolding ready to vibe code.
+        </p>
 
-        {/* Input box */}
-        <motion.div
-          className="max-w-[720px] mx-auto mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <div className="bg-card border border-border rounded-2xl p-5 flex items-start gap-4 shadow-sm transition-all focus-within:border-primary focus-within:shadow-[0_4px_30px_rgba(0,102,255,0.15),0_0_0_1px_#0066ff]">
-            <svg
-              className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-            >
-              <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
+        {/* Input */}
+        <div className="max-w-xl mx-auto">
+          <div className="relative bg-white border border-border rounded-xl p-1 transition-all focus-within:border-foreground/30 focus-within:shadow-[0_0_0_3px_rgba(28,25,23,0.06)]">
             <textarea
               ref={textareaRef}
               value={appIdea}
               onChange={(e) => setAppIdea(e.target.value)}
               placeholder={placeholder}
               disabled={isSubmitting}
-              className="flex-1 border-none outline-none text-lg resize-none bg-transparent min-h-[80px] leading-relaxed placeholder:text-muted-foreground disabled:opacity-50"
+              rows={3}
+              className="w-full px-4 pt-4 pb-2 text-base resize-none bg-transparent border-none outline-none placeholder:text-muted-foreground/50 disabled:opacity-50"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   handleSubmit();
                 }
               }}
             />
-            <button
-              onClick={handleSubmit}
-              disabled={!appIdea.trim() || isSubmitting}
-              className="w-[52px] h-[52px] bg-primary text-white border-none rounded-full flex items-center justify-center cursor-pointer transition-all flex-shrink-0 hover:bg-[#0052cc] hover:scale-110 hover:shadow-[0_6px_20px_rgba(0,102,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              {isSubmitting ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <ArrowRight className="w-5 h-5" />
-              )}
-            </button>
+            <div className="flex items-center justify-between px-3 pb-3">
+              <span className="text-xs text-muted-foreground/60">
+                {appIdea.trim() ? "Cmd + Enter to submit" : ""}
+              </span>
+              <button
+                onClick={handleSubmit}
+                disabled={!appIdea.trim() || isSubmitting}
+                className="h-9 px-5 bg-foreground text-background text-sm font-medium rounded-lg flex items-center gap-2 transition-all hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <div className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Start building
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-        </motion.div>
 
-        {/* Social proof */}
-        <motion.div
-          className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-6 border-t border-border max-w-md mx-auto"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <div className="flex -space-x-2">
-            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-xs border-2 border-background">
-              S
-            </div>
-            <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-semibold text-xs border-2 border-background">
-              M
-            </div>
-            <div className="w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center font-semibold text-xs border-2 border-background">
-              J
-            </div>
-            <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center font-semibold text-xs border-2 border-background">
-              +
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Join <strong className="text-foreground">50+</strong> founders building with ShipRight
+          <p className="text-xs text-muted-foreground/60 mt-4">
+            No credit card required. You own every line of code.
           </p>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

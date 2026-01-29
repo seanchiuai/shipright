@@ -433,7 +433,7 @@ export default function InterviewPage() {
 
       {/* Header */}
       <header className="relative z-10 border-b border-border bg-white">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
@@ -444,9 +444,7 @@ export default function InterviewPage() {
             <span className="hidden sm:inline">Dashboard</span>
           </Button>
 
-          <h1 className="text-sm font-semibold text-foreground">Interview</h1>
-
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <span className="hidden sm:inline text-sm text-muted-foreground">
               {clerkUser.firstName || clerkUser.primaryEmailAddress?.emailAddress}
             </span>
@@ -456,10 +454,9 @@ export default function InterviewPage() {
       </header>
 
       {/* Chat area */}
-      <main className="flex-1 relative overflow-hidden">
-        <div className="h-full max-w-3xl mx-auto flex flex-col">
-          {/* Messages */}
-          <AIConversation className="flex-1 overflow-y-auto px-4 py-6">
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          <AIConversation className="max-w-3xl mx-auto px-4 py-6 pb-4">
             {/* Step 1: Initial prompt */}
             {currentStep === 1 && messages.length === 0 && (
               <ChatMessage
@@ -676,10 +673,12 @@ export default function InterviewPage() {
             )}
 
           </AIConversation>
+        </div>
 
-          {/* Input area */}
-          {currentStep !== 3 && (
-            <div className="p-4 border-t border-border bg-white">
+        {/* Input area — pinned to bottom */}
+        {currentStep !== 3 && (
+          <div className="shrink-0 border-t border-border bg-white">
+            <div className="max-w-3xl mx-auto p-4">
               {/* Text input for step 1, or step 2 when current question is text/absent (choice/multiselect use inline cards) */}
               {(currentStep === 1 ||
                 (currentStep === 2 && currentQuestion?.type !== "choice" && currentQuestion?.type !== "multiselect")) && (
@@ -720,8 +719,8 @@ export default function InterviewPage() {
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );

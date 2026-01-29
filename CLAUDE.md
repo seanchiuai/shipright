@@ -81,11 +81,11 @@ DAYTONA_API_KEY=dtn_...
 DAYTONA_API_URL=https://api.daytona.io
 ```
 
-## Boundaries
+## Hard Rules
 
 **Always:**
 - Test every change before committing
-- Commit after every small change (if a test has not been ran, mark commit as "untested" in the commit message)
+- Always commit after every small change
 - Sacrifice grammar for conciseness
 - Follow vercel react best practices
 - Only work on current phase

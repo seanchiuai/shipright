@@ -6,17 +6,13 @@ import { useEffect } from "react";
 import {
   Header,
   HeroSection,
-  DemoSection,
-  WhatYouGet,
   HowItWorks,
+  WhatYouGet,
   Comparison,
-  SocialProof,
-  BuildingInPublic,
   PricingSection,
   FAQSection,
   FinalCTA,
   Footer,
-  GradientBackground,
 } from "@/components/landing";
 
 export default function LandingPage() {
@@ -38,21 +34,18 @@ export default function LandingPage() {
   }
 
   return (
-    <GradientBackground className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <Header />
       <main>
         <HeroSection />
-        <DemoSection />
-        <WhatYouGet />
         <HowItWorks />
+        <WhatYouGet />
         <Comparison />
-        <SocialProof />
-        <BuildingInPublic />
         <PricingSection />
         <FAQSection />
         <FinalCTA />
       </main>
       <Footer />
-    </GradientBackground>
+    </div>
   );
 }

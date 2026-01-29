@@ -1,132 +1,111 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Check, Folder, FileText } from "lucide-react";
+import { Folder, FileText } from "lucide-react";
 
 const features = [
   {
-    title: "Understand how your app works",
-    description: "explains like your 10 year old",
+    file: "CLAUDE.md",
+    label: "AI context",
+    description: "Gives AI agents complete understanding of your project. No more error loops from missing context.",
   },
   {
-    title: "AI picks your template",
-    description: "customized to your app",
+    file: "TASKS.md",
+    label: "Backlog",
+    description: "A clear roadmap of what to build next. No more staring at a blank screen.",
   },
   {
-    title: "GitHub repo you own",
-    description: "you own your code",
-  },
-  {
-    title: "Vibe code ready",
-    description: "AI optimized scaffolding from top vibe coders",
+    file: "PRD.md",
+    label: "Requirements",
+    description: "Documents the why behind features. You and AI stay aligned as the project grows.",
   },
 ];
 
 export function WhatYouGet() {
   return (
-    <section id="what-you-get" className="py-20">
-      <div className="max-w-[1140px] mx-auto px-6">
-        <div className="grid lg:grid-cols-2 gap-12 items-start">
-          {/* Left side - Features */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <div className="mb-8">
-              <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-normal mb-4">
-                What you get in your repo
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                Everything AI needs to understand your project from day one.
-              </p>
-            </div>
+    <section id="features" className="py-24 md:py-32 bg-[#1c1917] text-[#faf8f5]">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="grid lg:grid-cols-2 gap-16 items-start">
+          {/* Left - Content */}
+          <div>
+            <p className="text-sm font-medium tracking-widest uppercase text-[#a8a29e] mb-3">
+              What you get
+            </p>
+            <h2 className="font-serif text-3xl md:text-4xl lg:text-[2.75rem] leading-tight tracking-tight mb-6">
+              Everything AI needs to understand your project
+            </h2>
+            <p className="text-[#a8a29e] text-lg leading-relaxed mb-12">
+              Your repo comes with scaffolding files that turn any AI coding tool into an expert on your specific project.
+            </p>
 
-            <div className="space-y-5">
-              {features.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  className="flex gap-4"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+            <div className="space-y-8">
+              {features.map((feature) => (
+                <div key={feature.file} className="flex gap-4">
+                  <div className="w-10 h-10 rounded-lg bg-[#292524] flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-4 h-4 text-[#a8a29e]" />
                   </div>
                   <div>
-                    <strong className="font-semibold">{feature.title}</strong>{" "}
-                    <span className="text-muted-foreground">
-                      — {feature.description}
-                    </span>
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="font-mono text-sm font-medium">{feature.file}</span>
+                      <span className="text-[0.6875rem] px-2 py-0.5 rounded-full bg-[#292524] text-[#a8a29e] font-medium">
+                        {feature.label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#78716c] leading-relaxed">
+                      {feature.description}
+                    </p>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.div>
+          </div>
 
-          {/* Right side - File tree */}
-          <motion.div
-            className="bg-card border border-border rounded-2xl p-8 font-mono text-sm transition-all hover:shadow-[0_8px_32px_rgba(0,102,255,0.1)] relative overflow-hidden"
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            {/* Top accent line on hover */}
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-
-            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-5 font-sans">
-              Your Generated Repo
+          {/* Right - File tree */}
+          <div className="bg-[#0c0a09] border border-[#292524] rounded-xl p-8 font-mono text-sm">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#292524]" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#292524]" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#292524]" />
+              <span className="text-xs text-[#57534e] ml-2">~/my-saas-app</span>
             </div>
 
-            <div className="space-y-1.5">
-              {/* Root folder */}
-              <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-[#78716c] py-0.5">
                 <Folder className="w-4 h-4" />
-                my-saas-app/
+                <span>my-saas-app/</span>
               </div>
 
-              {/* Indented items */}
-              <div className="ml-5 space-y-1.5">
-                <div className="flex items-center gap-2 text-green-600 font-medium">
+              <div className="ml-5 space-y-1">
+                <div className="flex items-center gap-2 py-0.5 text-emerald-400">
                   <FileText className="w-4 h-4" />
-                  CLAUDE.md
-                  <span className="text-[0.6875rem] bg-accent text-primary px-2 py-0.5 rounded-full ml-auto font-sans">
-                    AI context
-                  </span>
+                  <span>CLAUDE.md</span>
                 </div>
-                <div className="flex items-center gap-2 text-green-600 font-medium">
+                <div className="flex items-center gap-2 py-0.5 text-emerald-400">
                   <FileText className="w-4 h-4" />
-                  TASKS.md
-                  <span className="text-[0.6875rem] bg-accent text-primary px-2 py-0.5 rounded-full ml-auto font-sans">
-                    Backlog
-                  </span>
+                  <span>TASKS.md</span>
                 </div>
-                <div className="flex items-center gap-2 text-green-600 font-medium">
+                <div className="flex items-center gap-2 py-0.5 text-emerald-400">
                   <FileText className="w-4 h-4" />
-                  PRD.md
-                  <span className="text-[0.6875rem] bg-accent text-primary px-2 py-0.5 rounded-full ml-auto font-sans">
-                    Requirements
-                  </span>
+                  <span>PRD.md</span>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 py-0.5 text-[#57534e]">
                   <Folder className="w-4 h-4" />
-                  skills/
+                  <span>skills/</span>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 py-0.5 text-[#57534e]">
                   <Folder className="w-4 h-4" />
-                  src/
+                  <span>src/</span>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="flex items-center gap-2 py-0.5 text-[#57534e]">
                   <FileText className="w-4 h-4" />
-                  package.json
+                  <span>package.json</span>
+                </div>
+                <div className="flex items-center gap-2 py-0.5 text-[#57534e]">
+                  <FileText className="w-4 h-4" />
+                  <span>tsconfig.json</span>
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

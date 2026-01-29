@@ -20,7 +20,7 @@ export function BuildingInPublic() {
       <div className="max-w-[1140px] mx-auto px-6">
         <div className="container">
           <motion.div
-            className="follow-card bg-card border border-border rounded-[28px] p-8 sm:p-10 text-center transition-all duration-300 relative overflow-hidden hover:border-primary hover:shadow-[0_20px_60px_rgba(0,102,255,0.12)] hover:-translate-y-1"
+            className="follow-card bg-card border border-border rounded-[28px] p-8 sm:p-10 text-center transition-all duration-300 relative overflow-hidden hover:border-primary hover:shadow-[0_20px_60px_rgba(240,140,58,0.12)] hover:-translate-y-1"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -31,7 +31,7 @@ export function BuildingInPublic() {
               className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] opacity-70"
               style={{
                 background:
-                  "radial-gradient(circle at center, rgba(0, 102, 255, 0.10) 0%, transparent 55%)",
+                  "radial-gradient(circle at center, rgba(240, 140, 58, 0.10) 0%, transparent 55%)",
                 animation: "rotateGlow 22s linear infinite",
               }}
             />

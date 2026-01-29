@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
@@ -10,116 +9,113 @@ const plans = [
     name: "Starter",
     description: "For solo builders",
     price: "$15",
-    period: "/month",
+    period: "/mo",
     features: ["Template matching", "GitHub repo generation", "AI scaffolding files"],
-    cta: "Start building",
-    ctaVariant: "default" as const,
     featured: false,
   },
   {
     name: "Pro",
     description: "For serious builders",
     price: "$30",
-    period: "/month",
+    period: "/mo",
     features: ["Everything in Starter", "Custom template requests", "Priority support"],
-    cta: "Start building",
-    ctaVariant: "default" as const,
     featured: true,
-    badge: "Most Popular",
+    badge: "Popular",
   },
   {
     name: "Enterprise",
     description: "For teams",
     price: "Custom",
     period: "",
-    features: ["Everything in Pro", "Team collaboration", "Dedicated support", "Custom integrations"],
-    cta: "Contact us",
-    ctaVariant: "secondary" as const,
+    features: [
+      "Everything in Pro",
+      "Team collaboration",
+      "Dedicated support",
+      "Custom integrations",
+    ],
     featured: false,
   },
 ];
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="py-20">
-      <div className="max-w-[1140px] mx-auto px-6">
-        {/* Section header */}
-        <motion.div
-          className="text-center mb-12"
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-        >
-          <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-normal mb-4">
-            Simple pricing. No surprises.
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            Start building today. Cancel anytime.
+    <section id="pricing" className="py-24 md:py-32 bg-secondary/50">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="text-center mb-16">
+          <p className="text-sm font-medium tracking-widest uppercase text-muted-foreground mb-3">
+            Pricing
           </p>
-        </motion.div>
+          <h2 className="font-serif text-3xl md:text-4xl lg:text-[2.75rem] leading-tight tracking-tight">
+            Simple pricing, no surprises
+          </h2>
+        </div>
 
-        {/* Pricing grid */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-[960px] mx-auto">
-          {plans.map((plan, index) => (
-            <motion.div
-              key={index}
-              className={`bg-card border rounded-2xl p-8 flex flex-col transition-all duration-300 relative ${
+        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          {plans.map((plan) => (
+            <div
+              key={plan.name}
+              className={`rounded-xl p-8 flex flex-col relative ${
                 plan.featured
-                  ? "border-primary shadow-[0_8px_32px_rgba(0,102,255,0.12)]"
-                  : "border-border hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.08)]"
+                  ? "bg-foreground text-background ring-1 ring-foreground"
+                  : "bg-white border border-border"
               }`}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              {/* Badge */}
               {plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-semibold px-4 py-1 rounded-full">
+                <span className="absolute top-4 right-4 text-[0.6875rem] font-medium px-2.5 py-1 rounded-full bg-background text-foreground">
                   {plan.badge}
-                </div>
+                </span>
               )}
 
-              {/* Header */}
               <div className="mb-6">
-                <div className="text-lg font-semibold mb-1">{plan.name}</div>
-                <div className="text-sm text-muted-foreground">{plan.description}</div>
+                <h3 className="text-lg font-semibold mb-0.5">{plan.name}</h3>
+                <p className={`text-sm ${plan.featured ? "text-background/60" : "text-muted-foreground"}`}>
+                  {plan.description}
+                </p>
               </div>
 
-              {/* Price */}
-              <div className="flex items-baseline gap-1 mb-6">
-                <span className="text-4xl font-bold">{plan.price}</span>
+              <div className="flex items-baseline gap-0.5 mb-8">
+                <span className="text-4xl font-semibold tracking-tight">
+                  {plan.price}
+                </span>
                 {plan.period && (
-                  <span className="text-muted-foreground">{plan.period}</span>
+                  <span className={`text-sm ${plan.featured ? "text-background/60" : "text-muted-foreground"}`}>
+                    {plan.period}
+                  </span>
                 )}
               </div>
 
-              {/* Features */}
-              <ul className="space-y-2 mb-8 flex-1">
-                {plan.features.map((feature, i) => (
+              <ul className="space-y-2.5 mb-8 flex-1">
+                {plan.features.map((feature) => (
                   <li
-                    key={i}
-                    className="flex items-start gap-2.5 text-[0.9375rem] text-muted-foreground"
+                    key={feature}
+                    className={`flex items-start gap-2.5 text-sm ${
+                      plan.featured ? "text-background/80" : "text-muted-foreground"
+                    }`}
                   >
-                    <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" strokeWidth={2.5} />
+                    <Check
+                      className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                        plan.featured ? "text-emerald-400" : "text-emerald-600"
+                      }`}
+                      strokeWidth={2.5}
+                    />
                     {feature}
                   </li>
                 ))}
               </ul>
 
-              {/* CTA */}
               <SignInButton mode="modal">
                 <Button
-                  className={`w-full rounded-full font-semibold ${
-                    plan.featured ? "glow-button" : ""
+                  className={`w-full rounded-lg font-medium ${
+                    plan.featured
+                      ? "bg-background text-foreground hover:bg-background/90"
+                      : ""
                   }`}
-                  variant={plan.ctaVariant}
+                  variant={plan.featured ? "secondary" : "default"}
                 >
-                  {plan.cta}
+                  Get started
                 </Button>
               </SignInButton>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

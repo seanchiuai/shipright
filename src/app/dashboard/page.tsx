@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser, UserButton } from "@clerk/nextjs";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { motion, useInView } from "framer-motion";
@@ -56,7 +56,7 @@ function DashboardBackground() {
         speedX: (Math.random() - 0.5) * 0.2,
         speedY: (Math.random() - 0.5) * 0.2,
         opacity: Math.random() * 0.2 + 0.05,
-        hue: Math.random() * 40 + 210,
+        hue: Math.random() * 20 + 30,
       };
     }
 
@@ -97,7 +97,7 @@ function DashboardBackground() {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `hsla(220, 70%, 50%, ${0.06 * (1 - dist / 80)})`;
+            ctx.strokeStyle = `hsla(35, 90%, 55%, ${0.06 * (1 - dist / 80)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -140,7 +140,7 @@ function DashboardBackground() {
         className="fixed inset-0 -z-20"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(0, 102, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 102, 255, 0.03) 1px, transparent 1px)",
+            "linear-gradient(rgba(240, 140, 58, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(240, 140, 58, 0.03) 1px, transparent 1px)",
           backgroundSize: "60px 60px",
           animation: "gridMove 20s linear infinite",
         }}
@@ -155,7 +155,7 @@ function DashboardBackground() {
           width: "500px",
           height: "500px",
           background:
-            "radial-gradient(circle, rgba(0, 102, 255, 0.12) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(240, 140, 58, 0.12) 0%, transparent 70%)",
           filter: "blur(80px)",
           animation: "float1 8s ease-in-out infinite",
         }}
@@ -250,9 +250,9 @@ function StatusBadge({ status }: { status: string }) {
     },
     building: {
       label: "Building",
-      color: "text-blue-600",
-      bg: "bg-blue-50",
-      glow: "shadow-[0_0_12px_rgba(0,102,255,0.2)]",
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+      glow: "shadow-[0_0_12px_rgba(240,140,58,0.2)]",
     },
     complete: {
       label: "Complete",
@@ -300,7 +300,7 @@ function ProjectCard({
       {/* Glow effect on hover */}
       <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur transition-opacity duration-300" />
 
-      <div className="relative bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-6 transition-all duration-300 group-hover:border-primary/30 group-hover:shadow-[0_8px_30px_rgba(0,102,255,0.12)] group-hover:-translate-y-1">
+      <div className="relative bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-6 transition-all duration-300 group-hover:border-primary/30 group-hover:shadow-[0_8px_30px_rgba(240,140,58,0.12)] group-hover:-translate-y-1">
         <div className="flex items-start justify-between mb-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center group-hover:from-primary/20 group-hover:to-purple-500/20 transition-colors">
             <Folder className="w-6 h-6 text-primary" />
@@ -402,7 +402,6 @@ export default function DashboardPage() {
   );
   const createProject = useMutation(api.projects.create);
   const updateAppIdea = useMutation(api.projects.updateAppIdea);
-  const generateQuestions = useAction(api.ai.generateInterviewQuestions);
 
   async function submitIdea(idea: string) {
     if (!convexUser || !idea.trim()) return;
@@ -415,12 +414,7 @@ export default function DashboardPage() {
 
       await updateAppIdea({ projectId, appIdea: idea.trim() });
 
-      await generateQuestions({
-        projectId,
-        appIdea: idea.trim(),
-        round: 1,
-      });
-
+      // Navigate immediately — interview page handles AI generation
       router.push(`/interview/${projectId}`);
     } catch (error) {
       console.error("Failed to create project:", error);
@@ -540,7 +534,7 @@ export default function DashboardPage() {
             {/* Glow effect */}
             <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 rounded-2xl opacity-0 group-focus-within:opacity-100 blur-lg transition-opacity duration-300" />
 
-            <div className="relative bg-card/90 backdrop-blur-sm border border-border rounded-2xl p-5 flex items-start gap-4 shadow-sm transition-all group-focus-within:border-primary group-focus-within:shadow-[0_4px_30px_rgba(0,102,255,0.15)]">
+            <div className="relative bg-card/90 backdrop-blur-sm border border-border rounded-2xl p-5 flex items-start gap-4 shadow-sm transition-all group-focus-within:border-primary group-focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.15)]">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center flex-shrink-0">
                 <Sparkles className="w-5 h-5 text-primary" />
               </div>
@@ -564,7 +558,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleSubmit}
                 disabled={creating || !appIdea.trim()}
-                className="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center cursor-pointer transition-all flex-shrink-0 hover:bg-primary/90 hover:scale-105 hover:shadow-[0_6px_20px_rgba(0,102,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+                className="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center cursor-pointer transition-all flex-shrink-0 hover:bg-primary/90 hover:scale-105 hover:shadow-[0_6px_20px_rgba(240,140,58,0.3)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
               >
                 {creating ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -24,7 +24,7 @@ export function SocialProof() {
             className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%]"
             style={{
               background:
-                "radial-gradient(circle at center, rgba(0, 102, 255, 0.05) 0%, transparent 50%)",
+                "radial-gradient(circle at center, rgba(240, 140, 58, 0.05) 0%, transparent 50%)",
               animation: "rotateGlow 20s linear infinite",
             }}
           />
@@ -44,7 +44,7 @@ export function SocialProof() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <div className="bg-card border border-border rounded-2xl p-7 text-center transition-all hover:border-primary hover:shadow-[0_10px_30px_rgba(0,102,255,0.1)] hover:-translate-y-0.5">
+            <div className="bg-card border border-border rounded-2xl p-7 text-center transition-all hover:border-primary hover:shadow-[0_10px_30px_rgba(240,140,58,0.1)] hover:-translate-y-0.5">
               <p className="text-lg leading-relaxed mb-4">
                 &ldquo;ShipRight got me from idea to code in minutes. No more decision paralysis about tech stacks or project structure.&rdquo;
               </p>

@@ -58,9 +58,9 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
                     ? {
                         scale: [1, 1.05, 1],
                         boxShadow: [
-                          "0 4px 20px rgba(0, 102, 255, 0.2)",
-                          "0 4px 30px rgba(0, 102, 255, 0.3)",
-                          "0 4px 20px rgba(0, 102, 255, 0.2)",
+                          "0 4px 20px rgba(240, 140, 58, 0.2)",
+                          "0 4px 30px rgba(240, 140, 58, 0.3)",
+                          "0 4px 20px rgba(240, 140, 58, 0.2)",
                         ],
                       }
                     : {}

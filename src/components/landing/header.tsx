@@ -1,93 +1,68 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useState, useEffect } from "react";
 import { SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
 export function Header() {
-  const { scrollY } = useScroll();
-  const backgroundColor = useTransform(
-    scrollY,
-    [0, 50],
-    ["rgba(250, 249, 247, 0)", "rgba(250, 249, 247, 0.8)"]
-  );
-  const borderOpacity = useTransform(scrollY, [0, 50], [0, 1]);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <motion.header
-      className="sticky top-0 z-50 backdrop-blur-sm"
-      style={{ backgroundColor }}
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "bg-background/90 backdrop-blur-md border-b border-border"
+          : "bg-transparent"
+      }`}
     >
-      <motion.div
-        className="absolute inset-x-0 bottom-0 h-px bg-border"
-        style={{ opacity: borderOpacity }}
-      />
-      <div className="max-w-[1140px] mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <motion.a
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <a
           href="#"
-          className="flex items-center gap-2 font-bold text-xl text-foreground no-underline"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
+          className="flex items-center gap-2.5 font-semibold text-lg tracking-tight"
         >
           <Image
             src="/logo.png"
             alt="ShipRight"
             width={32}
-            height={32}
-            className="w-8 h-8"
+            height={24}
+            className="w-8 h-auto"
           />
           ShipRight
-        </motion.a>
+        </a>
 
-        {/* Navigation */}
-        <motion.nav
-          className="hidden md:flex items-center gap-8"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <a
-            href="#features"
-            className="text-[0.9375rem] font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Benefits
-          </a>
-          <a
-            href="#how-it-works"
-            className="text-[0.9375rem] font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            How it works
-          </a>
-          <a
-            href="#pricing"
-            className="text-[0.9375rem] font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Pricing
-          </a>
-          <a
-            href="#faq"
-            className="text-[0.9375rem] font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            FAQ
-          </a>
-        </motion.nav>
+        <nav className="hidden md:flex items-center gap-8">
+          {[
+            ["How it works", "#how-it-works"],
+            ["Features", "#features"],
+            ["Pricing", "#pricing"],
+            ["FAQ", "#faq"],
+          ].map(([label, href]) => (
+            <a
+              key={href}
+              href={href}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
 
-        {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <SignInButton mode="modal">
-            <Button className="glow-button rounded-full px-6 font-semibold">
-              Start Building
-            </Button>
-          </SignInButton>
-        </motion.div>
+        <SignInButton mode="modal">
+          <Button
+            variant="default"
+            className="rounded-full px-5 text-sm font-medium h-9"
+          >
+            Get started
+          </Button>
+        </SignInButton>
       </div>
-    </motion.header>
+    </header>
   );
 }

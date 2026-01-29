@@ -74,7 +74,7 @@ export function ValueProp() {
           {benefits.map((benefit, index) => (
             <motion.div
               key={index}
-              className="bg-card border border-border rounded-2xl p-7 transition-all duration-300 relative overflow-hidden group hover:border-primary hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,102,255,0.1)]"
+              className="bg-card border border-border rounded-2xl p-7 transition-all duration-300 relative overflow-hidden group hover:border-primary hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(240,140,58,0.1)]"
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -84,7 +84,7 @@ export function ValueProp() {
               <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
               {/* Icon */}
-              <div className="w-12 h-12 bg-accent rounded-[14px] flex items-center justify-center text-primary mb-5 relative z-10 transition-all group-hover:bg-primary group-hover:text-white group-hover:shadow-[0_4px_15px_rgba(0,102,255,0.3)]">
+              <div className="w-12 h-12 bg-accent rounded-[14px] flex items-center justify-center text-primary mb-5 relative z-10 transition-all group-hover:bg-primary group-hover:text-white group-hover:shadow-[0_4px_15px_rgba(240,140,58,0.3)]">
                 <benefit.icon className="w-6 h-6" />
               </div>
 

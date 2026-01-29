@@ -66,7 +66,7 @@ export function ChatMessage({
       variants={bubbleVariants}
       initial="hidden"
       animate="visible"
-      className="contents"
+      className={isAI ? "self-start" : "self-end"}
     >
       {content}
     </motion.div>
