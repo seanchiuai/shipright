@@ -55,12 +55,12 @@ npx shadcn@latest add button card input form label
 
 ```
 components/
-├── ui/              # shadcn/ui (auto-generated) + custom (ai-message, ai-conversation)
-├── interview/       # Interview-specific (chat-message, choice-card, magic-textarea, etc.)
+├── ui/              # shadcn/ui (auto-generated) + custom (ai-message, ai-conversation, loading-spinner)
+├── interview/       # Interview-specific (chat-message, choice-card, magic-textarea, loading-dots, requirements-summary, interview-input-area, etc.)
+├── dashboard/       # Dashboard-specific (project-card, status-badge, empty-state, loading-skeleton, dashboard-background, stagger-container)
+├── landing/         # Landing page (hero-section)
 └── app-navbar.tsx   # Global navigation component
 ```
-
-Note: Dashboard project cards are defined inline in `/src/app/dashboard/page.tsx`
 
 ## Styling Approach
 

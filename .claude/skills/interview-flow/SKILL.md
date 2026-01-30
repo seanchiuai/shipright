@@ -94,6 +94,9 @@ See [reference.md](reference.md) for complete `Requirements` interface.
 - `AIConversation` - Wrapper for layout
 - `ChoiceCard` / `ChoiceGrid` - Single/multi-select options (rendered inline below AI message)
 - `MagicTextarea` - Text input (pinned to bottom)
+- `LoadingDots` - Bouncing dots indicator during AI response
+- `RequirementsSummary` - Editable requirements display (summary phase)
+- `InterviewInputArea` - Bottom input area with example chips, text input, finish early
 - `JourneyProgress` - 4-step progress indicator (Idea → Questions → Review → Build)
 - `InterviewBackground` - Warm gradient background with subtle animations
 - Typewriter only on unseen AI messages (tracks via `useRef`)

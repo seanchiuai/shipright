@@ -43,7 +43,7 @@ GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\
 ```typescript
 interviewMessages: defineTable({
   projectId: v.id("projects"),
-  role: v.string(),                    // "user" | "assistant"
+  role: v.union(v.literal("user"), v.literal("assistant")),
   content: v.string(),
   questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
   options: v.optional(v.array(v.string())),
@@ -57,7 +57,7 @@ interviewMessages: defineTable({
 ### projects.interviewPhase
 
 ```typescript
-interviewPhase: v.optional(v.string()),  // "seed" | "conversation" | "summary"
+interviewPhase: v.optional(v.union(v.literal("seed"), v.literal("conversation"), v.literal("summary"))),
 ```
 
 ## Requirements Schema
@@ -188,7 +188,6 @@ export const extractRequirements = action({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     // Reads from interviewMessages table
-    // Falls back to legacy interviewSessions if no messages
     // Builds transcript and sends to Gemini with REQUIREMENTS_SYSTEM_PROMPT
     // Saves structured requirements to project via updateRequirements
   },
@@ -222,8 +221,6 @@ const [currentInput, setCurrentInput] = useState("");
 const [loading, setLoading] = useState(false);
 const [isTypewriterDone, setIsTypewriterDone] = useState(true);
 const [multiselectValue, setMultiselectValue] = useState<string[]>([]);
-const [customInputMode, setCustomInputMode] = useState(false);
-
 // Derived
 const phase = project?.interviewPhase || "seed";
 const isComplete = messages?.some((m) => m.isComplete);
@@ -265,13 +262,16 @@ export { ChoiceCard, ChoiceGrid } from "./choice-card";
 export { JourneyProgress } from "./journey-progress";
 export { MagicTextarea } from "./magic-textarea";
 export { InterviewBackground } from "./interview-background";
+export { LoadingDots } from "./loading-dots";
+export { RequirementsSummary } from "./requirements-summary";
+export { InterviewInputArea } from "./interview-input-area";
 
 // Re-export shadcn AI components for convenience
 export { AIMessage } from "@/components/ui/ai-message";
 export { AIConversation } from "@/components/ui/ai-conversation";
 ```
 
-Import like: `import { TypewriterText, ChoiceGrid, JourneyProgress } from "@/components/interview";`
+Import like: `import { ChatMessage, ChoiceGrid, LoadingDots, RequirementsSummary, InterviewInputArea } from "@/components/interview";`
 
 ## Sources
 

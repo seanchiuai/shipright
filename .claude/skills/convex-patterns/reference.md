@@ -23,10 +23,10 @@ export default defineSchema({
   projects: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    status: v.string(), // "interview" | "matching" | "matched" | "building" | "complete"
-    interviewStep: v.optional(v.number()), // 1, 2, or 3
-    interviewRound: v.optional(v.number()), // For step 2: 1-3
-    appIdea: v.optional(v.string()), // Step 1 input
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("complete")),
+    interviewStep: v.optional(v.number()),
+    interviewRound: v.optional(v.number()),
+    appIdea: v.optional(v.string()),
     requirements: v.optional(v.any()),
     templateId: v.optional(v.string()),
     templateName: v.optional(v.string()),
@@ -34,12 +34,12 @@ export default defineSchema({
     matchGaps: v.optional(v.array(v.string())),
     githubRepoUrl: v.optional(v.string()),
     githubRepoFullName: v.optional(v.string()),
-    interviewPhase: v.optional(v.string()),  // "seed" | "conversation" | "summary"
+    interviewPhase: v.optional(v.union(v.literal("seed"), v.literal("conversation"), v.literal("summary"))),
   }).index("by_user", ["userId"]),
 
   interviewMessages: defineTable({
     projectId: v.id("projects"),
-    role: v.string(),                    // "user" | "assistant"
+    role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
     options: v.optional(v.array(v.string())),
@@ -64,7 +64,7 @@ export default defineSchema({
   }).index("by_project", ["projectId"]).index("by_project_round", ["projectId", "round"]),
 
   templates: defineTable({
-    slug: v.optional(v.string()), // Unique identifier for sync (optional for backwards compat)
+    slug: v.optional(v.string()),
     name: v.string(),
     description: v.string(),
     sourceUrl: v.string(),
@@ -101,11 +101,115 @@ Set the env var in Convex:
 npx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-app.clerk.accounts.dev
 ```
 
+## Shared Backend Helpers (convex/lib/)
+
+### Auth Helpers
+
+```typescript
+// convex/lib/auth.ts
+import { QueryCtx, MutationCtx } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
+
+export async function getAuthenticatedUser(ctx: QueryCtx | MutationCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Not authenticated");
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
+    .first();
+  if (!user) throw new Error("User not found");
+
+  return user;
+}
+
+export async function getOwnedProject(
+  ctx: QueryCtx | MutationCtx,
+  projectId: Id<"projects">
+) {
+  const user = await getAuthenticatedUser(ctx);
+  const project = await ctx.db.get(projectId);
+  if (!project) throw new Error("Project not found");
+  if (project.userId !== user._id) throw new Error("Access denied");
+  return { user, project };
+}
+```
+
+### Cascade Delete Helper
+
+```typescript
+// convex/lib/cascade.ts
+import { MutationCtx } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
+
+export async function deleteProjectData(ctx: MutationCtx, projectId: Id<"projects">) {
+  const messages = await ctx.db
+    .query("interviewMessages")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .collect();
+  for (const msg of messages) {
+    await ctx.db.delete(msg._id);
+  }
+
+  const sessions = await ctx.db
+    .query("interviewSessions")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .collect();
+  for (const session of sessions) {
+    await ctx.db.delete(session._id);
+  }
+}
+```
+
+### Shared Vertex AI Provider
+
+```typescript
+// convex/lib/vertex.ts
+import { createVertex } from "@ai-sdk/google-vertex";
+
+export function getVertexProvider() {
+  return createVertex({
+    project: process.env.GOOGLE_VERTEX_PROJECT,
+    location: process.env.GOOGLE_VERTEX_LOCATION || "us-central1",
+    googleAuthOptions: {
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      },
+    },
+  });
+}
+```
+
+### Constants
+
+```typescript
+// convex/lib/constants.ts (also mirrored at src/lib/constants.ts)
+export const PROJECT_STATUS = {
+  INTERVIEW: "interview",
+  MATCHING: "matching",
+  MATCHED: "matched",
+  BUILDING: "building",
+  COMPLETE: "complete",
+} as const;
+
+export const INTERVIEW_PHASE = {
+  SEED: "seed",
+  CONVERSATION: "conversation",
+  SUMMARY: "summary",
+} as const;
+
+export const MESSAGE_ROLE = {
+  USER: "user",
+  ASSISTANT: "assistant",
+} as const;
+```
+
 ## User Functions (JWT-Verified)
 
 ```typescript
 // convex/users.ts
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 // Get current user from verified JWT
@@ -148,8 +252,8 @@ export const syncUser = mutation({
   },
 });
 
-// Lookup helpers
-export const getByEmail = query({
+// Internal-only lookup helpers (not exposed to frontend)
+export const getByEmail = internalQuery({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -159,7 +263,7 @@ export const getByEmail = query({
   },
 });
 
-export const getByClerkId = query({
+export const getByClerkId = internalQuery({
   args: { clerkUserId: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -210,13 +314,17 @@ Queries are read-only. Use `ctx.db.query()`:
 // convex/projects.ts
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthenticatedUser } from "./lib/auth";
 
+// List derives userId from JWT — no client-provided ID
 export const list = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
     return await ctx.db
       .query("projects")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
       .collect();
   },
 });
@@ -231,31 +339,37 @@ export const get = query({
 
 ## Mutation Pattern
 
-Mutations can read and write. Use `ctx.db.insert()`, `patch()`, `delete()`:
+Mutations can read and write. All mutations use auth helpers for ownership checks:
 
 ```typescript
 // convex/projects.ts
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { PROJECT_STATUS } from "./lib/constants";
+import { getAuthenticatedUser, getOwnedProject } from "./lib/auth";
+import { deleteProjectData } from "./lib/cascade";
 
+// Create derives userId from JWT — no client-provided ID
 export const create = mutation({
-  args: { userId: v.id("users"), name: v.string() },
+  args: { name: v.string() },
   handler: async (ctx, args) => {
-    const projectId = await ctx.db.insert("projects", {
-      userId: args.userId,
+    const user = await getAuthenticatedUser(ctx);
+    return await ctx.db.insert("projects", {
+      userId: user._id,
       name: args.name,
-      status: "interview",
+      status: PROJECT_STATUS.INTERVIEW,
+      interviewStep: 1,
     });
-    return projectId;
   },
 });
 
 export const updateStatus = mutation({
   args: {
     projectId: v.id("projects"),
-    status: v.string(),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("complete")),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, { status: args.status });
   },
 });
@@ -266,6 +380,7 @@ export const updateAppIdea = mutation({
     appIdea: v.string(),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, {
       appIdea: args.appIdea,
       interviewPhase: "conversation",
@@ -273,26 +388,13 @@ export const updateAppIdea = mutation({
   },
 });
 
-export const updateInterviewStep = mutation({
-  args: {
-    projectId: v.id("projects"),
-    step: v.number(),
-    round: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.projectId, {
-      interviewStep: args.step,
-      ...(args.round !== undefined && { interviewRound: args.round }),
-    });
-  },
-});
-
 export const updateInterviewPhase = mutation({
   args: {
     projectId: v.id("projects"),
-    phase: v.string(),
+    phase: v.union(v.literal("seed"), v.literal("conversation"), v.literal("summary")),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, {
       interviewPhase: args.phase,
     });
@@ -304,25 +406,9 @@ export const resetInterview = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    // Delete all interview sessions (legacy)
-    const sessions = await ctx.db
-      .query("interviewSessions")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    for (const session of sessions) {
-      await ctx.db.delete(session._id);
-    }
+    await getOwnedProject(ctx, args.projectId);
+    await deleteProjectData(ctx, args.projectId);
 
-    // Delete all interview messages
-    const messages = await ctx.db
-      .query("interviewMessages")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    for (const msg of messages) {
-      await ctx.db.delete(msg._id);
-    }
-
-    // Reset project interview state
     await ctx.db.patch(args.projectId, {
       appIdea: undefined,
       interviewStep: 1,
@@ -339,6 +425,7 @@ export const rename = mutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, { name: args.name });
   },
 });
@@ -348,25 +435,8 @@ export const remove = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    // Delete interview messages
-    const messages = await ctx.db
-      .query("interviewMessages")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    for (const msg of messages) {
-      await ctx.db.delete(msg._id);
-    }
-
-    // Delete interview sessions
-    const sessions = await ctx.db
-      .query("interviewSessions")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    for (const session of sessions) {
-      await ctx.db.delete(session._id);
-    }
-
-    // Delete the project
+    await getOwnedProject(ctx, args.projectId);
+    await deleteProjectData(ctx, args.projectId);
     await ctx.db.delete(args.projectId);
   },
 });
@@ -385,7 +455,7 @@ export const setMatchedTemplate = mutation({
       templateName: args.templateName,
       matchScore: args.matchScore,
       matchGaps: args.matchGaps,
-      status: "matched",
+      status: PROJECT_STATUS.MATCHED,
     });
   },
 });
@@ -399,22 +469,9 @@ Actions call external APIs and interact with database via queries/mutations:
 // convex/ai.ts
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { createVertex } from "@ai-sdk/google-vertex";
 import { generateText } from "ai";
 import { api } from "./_generated/api";
-
-function getVertexProvider() {
-  return createVertex({
-    project: process.env.GOOGLE_VERTEX_PROJECT,
-    location: process.env.GOOGLE_VERTEX_LOCATION || "us-central1",
-    googleAuthOptions: {
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
-        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      },
-    },
-  });
-}
+import { getVertexProvider } from "./lib/vertex";
 
 export const generateInterviewQuestions = action({
   args: {
@@ -477,14 +534,14 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 export function ProjectsList() {
-  // Query - reactive, JWT provides auth
+  // Query - reactive, JWT provides auth (no userId needed)
   const user = useQuery(api.users.current);
   const projects = useQuery(
     api.projects.list,
-    user ? { userId: user._id } : "skip"
+    user ? {} : "skip"
   );
 
-  // Mutation
+  // Mutation (no userId needed — derived from JWT server-side)
   const createProject = useMutation(api.projects.create);
 
   // Action
@@ -508,6 +565,7 @@ export function ProjectsList() {
 - `useQuery` returns `undefined` while loading
 - JWT automatically passed via `ConvexProviderWithClerk`
 - `ctx.auth.getUserIdentity()` available in all functions
+- `projects.list` and `projects.create` derive userId from JWT — no client-provided IDs
 
 ## Environment Variables
 
@@ -524,42 +582,13 @@ ANTHROPIC_API_KEY=sk-ant-...  # Fallback (rare cases)
 
 ## Common Patterns for Shipright
 
-### Saving Interview Questions
-
-```typescript
-export const saveQuestions = mutation({
-  args: {
-    projectId: v.id("projects"),
-    round: v.number(),
-    questions: v.array(v.string()),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.insert("interviewSessions", {
-      projectId: args.projectId,
-      round: args.round,
-      userInput: "",
-      aiQuestions: args.questions,
-    });
-  },
-});
-```
-
 ### Getting User Projects (with auth check)
 
 ```typescript
 export const listMyProjects = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
-      .first();
-
-    if (!user) return [];
-
+    const user = await getAuthenticatedUser(ctx);
     return await ctx.db
       .query("projects")
       .withIndex("by_user", (q) => q.eq("userId", user._id))
@@ -592,7 +621,7 @@ export const getMessages = query({
 export const addMessage = mutation({
   args: {
     projectId: v.id("projects"),
-    role: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
     options: v.optional(v.array(v.string())),
@@ -672,37 +701,27 @@ export const extractRequirements = action({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    // Analyzes interview messages to extract structured requirements
-    // Saves to project.requirements
+    // Reads from interviewMessages table
+    // Sends to Gemini with REQUIREMENTS_SYSTEM_PROMPT
+    // Saves structured requirements to project via updateRequirements
   },
 });
 ```
 
-### Template Matching Actions
+### Template Matching Action
 
 ```typescript
 // convex/matching.ts
 
-// V2 matching algorithm with tag-based filtering + AI ranking
-export const matchTemplateV2 = action({
-  args: {
-    projectId: v.id("projects"),
-  },
-  handler: async (ctx, args) => {
-    // 1. Extract tags from requirements using AI
-    // 2. Filter templates by tag overlap
-    // 3. Rank top candidates with AI
-    // Returns { topMatches, bestMatch, extractedTags }
-  },
-});
-
-// V1 matching algorithm with weighted scoring
+// Weighted scoring algorithm with AI-determined weights
 export const matchTemplate = action({
   args: {
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
-    // Legacy matching algorithm using capability scoring
+    // 1. AI determines category weights based on app context
+    // 2. Score each template across 5 categories: auth, database, payments, features, ui
+    // 3. Return best match with score, breakdown, gaps, included
     // Returns { template, score, scoreBreakdown, weights, gaps, included }
   },
 });

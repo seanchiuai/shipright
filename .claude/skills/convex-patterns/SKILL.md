@@ -52,9 +52,17 @@ const clerkUserId = identity.subject; // Clerk user ID
 
 See [reference.md](reference.md) for complete schema with tables:
 - `users` - User accounts (synced from Clerk)
-- `projects` - User projects
-- `interviewSessions` - Interview rounds and questions
+- `projects` - User projects (status/phase use union literal types)
+- `interviewMessages` - Per-message conversation history
+- `interviewSessions` - Legacy round-based questions (used by hero-section demo)
 - `templates` - Template library
+
+## Shared Backend Helpers (convex/lib/)
+
+- `convex/lib/auth.ts` - `getAuthenticatedUser(ctx)`, `getOwnedProject(ctx, projectId)` — JWT-based auth + ownership checks
+- `convex/lib/cascade.ts` - `deleteProjectData(ctx, projectId)` — deletes messages + sessions
+- `convex/lib/vertex.ts` - `getVertexProvider()` — shared Vertex AI provider config
+- `convex/lib/constants.ts` - `PROJECT_STATUS`, `INTERVIEW_PHASE`, `MESSAGE_ROLE` enums
 
 ## User Storage
 

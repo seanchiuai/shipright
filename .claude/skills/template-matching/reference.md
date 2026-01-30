@@ -1,6 +1,6 @@
 # Template Matching Reference
 
-Complete template schema, two-stage matching algorithm, and template index.
+Complete template schema, weighted scoring algorithm, and template index.
 
 ## Template Schema
 
@@ -27,109 +27,125 @@ interface Template {
 }
 ```
 
-## V2 Two-Stage Matching Algorithm
+## Weighted Scoring Algorithm
 
 See `convex/matching.ts` for full implementation.
 
-### Stage 1: Tag Extraction
+### Weight Determination (AI)
 
 ```typescript
-async function extractTagsFromRequirements(requirements: Requirements): Promise<string[]> {
+import { getVertexProvider } from "./lib/vertex";
+
+async function determineWeights(requirements: Requirements): Promise<Weights> {
+  const vertex = getVertexProvider();
+
   const { object } = await generateObject({
     model: vertex("gemini-2.0-flash"),
-    schema: tagExtractionSchema,
-    prompt: `Analyze requirements and select relevant tags from: ${availableTags.join(", ")}`,
+    schema: weightsSchema,
+    prompt: `Analyze this app and assign weights (sum to 1.0) for: auth, database, payments, features, ui`,
   });
-  return object.tags.filter((tag) => availableTags.includes(tag));
-}
-```
 
-### Stage 2: Tag Filtering
-
-```typescript
-function calculateTagOverlap(userTags: string[], templateTags: string[]): number {
-  let totalScore = 0;
-  for (const userTag of userTags) {
-    if (templateTags.includes(userTag)) {
-      totalScore += 1.0; // Exact match
-    } else if (tmplTag.startsWith(userTag + ":")) {
-      totalScore += 0.7; // User tag is parent
-    } else if (userTag.startsWith(tmplTag + ":")) {
-      totalScore += 0.5; // Template tag is parent
-    } else if (sameParent) {
-      totalScore += 0.3; // Same category
-    }
+  // Normalize if sum != 1.0
+  const sum = object.auth + object.database + object.payments + object.features + object.ui;
+  if (Math.abs(sum - 1.0) > 0.01) {
+    return { auth: object.auth / sum, database: object.database / sum, ... };
   }
-  return totalScore / userTags.length;
-}
-
-function filterTemplatesByTags(templates, userTags) {
-  return templates
-    .filter(t => tagScore >= 0.3 || hasExactMatch)
-    .sort((a, b) => b.tagScore - a.tagScore)
-    .slice(0, 20);
+  return object;
 }
 ```
 
-### Stage 3: AI Ranking
+### Category Scoring Functions
 
 ```typescript
-async function rankCandidates(candidates, requirements): Promise<RankedTemplate[]> {
-  const { object } = await generateObject({
-    model: vertex("gemini-2.0-flash"),
-    schema: rankingSchema,
-    prompt: `Rank these templates for the requirements. Return top 5 with score, reasoning, pros, cons.`,
-  });
+function scoreAuth(_requirements, tmplAuth): number {
+  if (tmplAuth.present) return 90;
+  return 40;
+}
 
-  return object.rankings.map(ranking => ({
-    score: Math.round(candidate.tagScore * 40 + ranking.score * 0.6), // 40% tag + 60% AI
-    tagScore, aiScore, reasoning, pros, cons, template,
-  }));
+function scoreDatabase(_requirements, tmplDb): number {
+  if (!tmplDb.present) return 20;
+  return 90;
+}
+
+function scorePayments(requirements, tmplPay): number {
+  if (!requirements.hasPayments && !tmplPay.present) return 100;
+  if (!requirements.hasPayments && tmplPay.present) return 80;
+  if (requirements.hasPayments && !tmplPay.present) return 0;
+  return 100;
+}
+
+function scoreFeatures(requirements, tmplFeatures): number {
+  // Keyword matching: upload/file/image → fileUploads, email/notification → email, etc.
+  // Returns 50 + (matches/checked) * 50, or 80 if no feature keywords found
+}
+
+function scoreUI(_requirements, tmplUI): number {
+  let score = 50;
+  if (tmplUI.framework === "shadcn") score += 30;
+  else if (tmplUI.framework === "tailwind") score += 15;
+  if (tmplUI.hasLandingPage) score += 10;
+  return Math.min(100, score);
 }
 ```
 
-### matchTemplateV2 Action
+### matchTemplate Action
 
 ```typescript
-export const matchTemplateV2 = action({
+export const matchTemplate = action({
   args: { projectId: v.id("projects") },
-  handler: async (ctx, args): Promise<MatchResultV2> => {
-    const extractedTags = await extractTagsFromRequirements(requirements);
-    let candidates = filterTemplatesByTags(templates, extractedTags);
-    if (candidates.length === 0) {
-      candidates = templates.map(t => ({ template: t, tagScore: 0 }));
+  handler: async (ctx, args): Promise<MatchResult> => {
+    const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+    const requirements = project.requirements;
+    const templates = await ctx.runQuery(api.templates.list, {});
+
+    // AI determines weights
+    const weights = await determineWeights(requirements);
+
+    // Score each template
+    for (const template of templates) {
+      const scoreBreakdown = {
+        auth: scoreAuth(requirements, template.capabilities.auth),
+        database: scoreDatabase(requirements, template.capabilities.database),
+        payments: scorePayments(requirements, template.capabilities.payments),
+        features: scoreFeatures(requirements, template.capabilities.features),
+        ui: scoreUI(requirements, template.capabilities.ui),
+      };
+      const totalScore = Math.round(
+        scoreBreakdown.auth * weights.auth +
+        scoreBreakdown.database * weights.database +
+        scoreBreakdown.payments * weights.payments +
+        scoreBreakdown.features * weights.features +
+        scoreBreakdown.ui * weights.ui
+      );
     }
-    const rankedMatches = await rankCandidates(candidates, requirements);
+
+    // Fallback to "Minimal Starter" if best score < 50
+    if (bestMatch.score < 50) {
+      bestMatch = templates.find(t => t.name === "Minimal Starter") || bestMatch;
+    }
 
     await ctx.runMutation(api.projects.setMatchedTemplate, {
-      projectId, templateId: bestMatch.template._id, templateName: bestMatch.template.name, matchScore, matchGaps,
+      projectId, templateId, templateName, matchScore, matchGaps,
     });
 
-    return { topMatches: rankedMatches, bestMatch: rankedMatches[0], extractedTags };
+    return bestMatch;
   },
 });
 ```
 
-## V1 Legacy Scoring (Backwards Compatible)
+## Gap Detection
 
 ```typescript
-// AI determines weights dynamically based on app context
-const weights = await determineWeights(requirements);
+function identifyGaps(requirements, template): string[] {
+  // Checks for missing: payments, file uploads, email, search, AI/chat
+  // Also checks constraints.mustHave for: realtime, roles, organizations
+  return [...new Set(gaps)];
+}
 
-const scores = {
-  auth: scoreAuth(requirements.auth, template.capabilities.auth),
-  database: scoreDatabase(requirements.database, template.capabilities.database),
-  payments: scorePayments(requirements.payments, template.capabilities.payments),
-  features: scoreFeatures(requirements.features, template.capabilities.features),
-  ui: scoreUI(requirements, template.capabilities.ui),
-};
-
-const totalScore =
-  scores.auth * weights.auth +
-  scores.database * weights.database +
-  scores.payments * weights.payments +
-  scores.features * weights.features +
-  scores.ui * weights.ui;
+function identifyIncluded(template): string[] {
+  // Lists what's included: auth providers, database type, payments, UI features, etc.
+  return included;
+}
 ```
 
 ## Template Index
@@ -148,21 +164,3 @@ const totalScore =
 | e-commerce | `type:ecommerce`, `payments:stripe`, `ui:tailwind` | intermediate |
 | admin-dashboard | `type:internal`, `auth:roles`, `ui:shadcn`, `ui:dashboard` | intermediate |
 | multi-tenant-saas | `type:saas`, `type:b2b`, `database:drizzle`, `auth:clerk`, `auth:orgs`, `payments:stripe`, `ui:shadcn` | advanced |
-
-## Tag Taxonomy
-
-See `data/tags-taxonomy.json`:
-
-```json
-{
-  "allTags": [
-    "ai", "ai:openai", "ai:anthropic", "ai:streaming",
-    "payments", "payments:stripe", "payments:stripe:subscriptions",
-    "auth", "auth:clerk", "auth:nextauth", "auth:roles", "auth:orgs",
-    "database", "database:convex", "database:prisma", "database:drizzle",
-    "realtime", "realtime:convex", "realtime:websocket",
-    "ui", "ui:shadcn", "ui:tailwind", "ui:dashboard",
-    "type:saas", "type:ecommerce", "type:internal", "type:b2b"
-  ]
-}
-```
