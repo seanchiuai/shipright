@@ -112,6 +112,34 @@ export const continueConversation = action({
       model: vertex("gemini-2.5-flash"),
       system: CONVERSATION_SYSTEM_PROMPT,
       messages,
+      tools: {
+        searchWeb: {
+          description: "Search the web for current info about a specific service, API, integration, or technical best practice. Only use when a user mentions a specific service by name or you need to verify technical feasibility.",
+          inputSchema: z.object({
+            query: z.string().describe("Concise search query about the service or integration"),
+          }),
+          execute: async ({ query }: { query: string }) => {
+            // Tavily API integration for web search
+            const apiKey = process.env.TAVILY_API_KEY;
+            if (!apiKey) return "Web search not configured.";
+            const res = await fetch("https://api.tavily.com/search", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                api_key: apiKey,
+                query,
+                max_results: 3,
+                search_depth: "basic",
+                include_answer: "basic",
+              }),
+            });
+            if (!res.ok) return "Search failed.";
+            const data = await res.json();
+            return data.answer || data.results?.map(r => `${r.title}: ${r.content}`).join("\n\n") || "No results found.";
+          },
+        },
+      },
+      stopWhen: stepCountIs(2),
     });
 
     let parsed;
@@ -135,6 +163,8 @@ export const continueConversation = action({
   },
 });
 ```
+
+**Note**: The AI can use the `searchWeb` tool (Tavily API) to look up current info about services, APIs, or integrations when users mention specific technologies.
 
 ## AI Response Format
 
@@ -220,6 +250,26 @@ try {
 
 - Gemini 2.5 Flash: ~$0.075/million input tokens, ~$0.30/million output tokens
 - Conversational interview (~8 turns): ~$0.004 per interview
+
+## Component Exports
+
+Interview components use a barrel export pattern for clean imports:
+
+```typescript
+// src/components/interview/index.ts
+export { TypewriterText } from "./typewriter-text";
+export { ChatMessage } from "./chat-message";
+export { ChoiceCard, ChoiceGrid } from "./choice-card";
+export { JourneyProgress } from "./journey-progress";
+export { MagicTextarea } from "./magic-textarea";
+export { InterviewBackground } from "./interview-background";
+
+// Re-export shadcn AI components for convenience
+export { AIMessage } from "@/components/ui/ai-message";
+export { AIConversation } from "@/components/ui/ai-conversation";
+```
+
+Import like: `import { TypewriterText, ChoiceGrid, JourneyProgress } from "@/components/interview";`
 
 ## Sources
 

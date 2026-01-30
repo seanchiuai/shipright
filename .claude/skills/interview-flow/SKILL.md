@@ -89,10 +89,13 @@ See [reference.md](reference.md) for complete `Requirements` interface.
 
 ## UX Components
 
-- `ChatMessage` for AI/user messages with typewriter effect
-- `AIConversation` wrapper for layout
-- `ChoiceGrid` for single/multi-select options (rendered inline below AI message)
-- `MagicTextarea` for text input (pinned to bottom)
+- `TypewriterText` - Animated text component with typewriter effect and blinking cursor
+- `ChatMessage` - AI/user messages with typewriter effect
+- `AIConversation` - Wrapper for layout
+- `ChoiceCard` / `ChoiceGrid` - Single/multi-select options (rendered inline below AI message)
+- `MagicTextarea` - Text input (pinned to bottom)
+- `JourneyProgress` - 4-step progress indicator (Idea → Questions → Review → Build)
+- `InterviewBackground` - Warm gradient background with subtle animations
 - Typewriter only on unseen AI messages (tracks via `useRef`)
 
 ## Reference Files
