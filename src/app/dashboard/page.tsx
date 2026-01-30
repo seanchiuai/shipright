@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser, UserButton } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
@@ -17,7 +17,7 @@ import {
   ChevronRight,
   Plus,
 } from "lucide-react";
-import Image from "next/image";
+import { AppNavbar } from "@/components/app-navbar";
 
 // Animated gradient background component
 function DashboardBackground() {
@@ -469,41 +469,7 @@ export default function DashboardPage() {
     <div className="min-h-screen">
       <DashboardBackground />
 
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="sticky top-0 z-50 backdrop-blur-md bg-background/70 border-b border-border/50"
-      >
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Image
-              src="/logo.png"
-              alt="ShipRight"
-              width={48}
-              height={48}
-              className="w-12 h-12"
-            />
-            <span className="font-serif text-2xl font-medium">ShipRight</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="hidden sm:inline text-sm text-muted-foreground">
-              {clerkUser.fullName ||
-                clerkUser.primaryEmailAddress?.emailAddress}
-            </span>
-            <UserButton
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: "w-9 h-9 ring-2 ring-border hover:ring-primary/50 transition-all",
-                },
-              }}
-            />
-          </div>
-        </div>
-      </motion.header>
+      <AppNavbar />
 
       <main className="max-w-6xl mx-auto px-6 py-12">
         {/* Hero section */}

@@ -12,7 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
+import { AppNavbar } from "@/components/app-navbar";
 import { useSyncUser } from "@/hooks/useSyncUser";
 import {
   Github,
@@ -90,19 +91,7 @@ export default function ConnectGitHubPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => router.push("/dashboard")}>
-            Shipright
-          </Button>
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-sm">
-              {clerkUser.fullName || clerkUser.primaryEmailAddress?.emailAddress}
-            </span>
-            <UserButton afterSignOutUrl="/" />
-          </div>
-        </div>
-      </header>
+      <AppNavbar />
 
       <main className="max-w-lg mx-auto px-4 py-16">
         {error && (

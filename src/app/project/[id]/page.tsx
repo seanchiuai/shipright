@@ -14,7 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
+import { AppNavbar } from "@/components/app-navbar";
 import { useSyncUser } from "@/hooks/useSyncUser";
 import {
   Check,
@@ -237,10 +238,6 @@ export default function ProjectDetailsPage() {
     setError(null);
 
     try {
-      const sourceUrl = matchResult.template.sourceUrl;
-      const urlParts = new URL(sourceUrl).pathname.split("/").filter(Boolean);
-      const templateRepoFullName = `${urlParts[0]}/${urlParts[1]}`;
-
       const repoName = project.name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
@@ -248,7 +245,7 @@ export default function ProjectDetailsPage() {
 
       await cloneTemplate({
         projectId,
-        templateRepoFullName,
+        templateSourceUrl: matchResult.template.sourceUrl,
         newRepoName: repoName || "shipright-app",
       });
 
@@ -292,13 +289,7 @@ export default function ProjectDetailsPage() {
   if (!project) {
     return (
       <div className="min-h-screen">
-        <header className="border-b border-border">
-          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Button variant="ghost" onClick={() => router.push("/dashboard")}>
-              Shipright
-            </Button>
-          </div>
-        </header>
+        <AppNavbar />
         <main className="max-w-5xl mx-auto px-4 py-8">
           <Card className="p-8 text-center">
             <p className="text-muted-foreground">Project not found</p>
@@ -324,19 +315,7 @@ export default function ProjectDetailsPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => router.push("/dashboard")}>
-            Shipright
-          </Button>
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-sm">
-              {clerkUser.fullName || clerkUser.primaryEmailAddress?.emailAddress}
-            </span>
-            <UserButton afterSignOutUrl="/" />
-          </div>
-        </div>
-      </header>
+      <AppNavbar title={project.name} />
 
       <main className="max-w-5xl mx-auto px-4 py-8">
         <Button

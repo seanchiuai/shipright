@@ -8,10 +8,11 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { useSyncUser } from "@/hooks/useSyncUser";
-import { ArrowLeft, Pencil, Check, X, Plus, Trash2 } from "lucide-react";
+import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
+import { AppNavbar } from "@/components/app-navbar";
 import {
   ChatMessage,
   ChoiceCard,
@@ -354,41 +355,7 @@ export default function InterviewPage() {
         }}
       />
 
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/60 border-b border-stone-200/60">
-        <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="flex items-center gap-1.5 text-[13px] text-stone-400 hover:text-stone-700 transition-colors"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Back</span>
-            </button>
-            <div className="hidden sm:block w-px h-4 bg-stone-200" />
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="w-6 h-6 rounded-full bg-stone-900 flex items-center justify-center">
-                <Image src="/logo.png" alt="ShipRight" width={16} height={16} className="w-3.5 h-3.5 object-contain brightness-0 invert" />
-              </div>
-              <span className="font-serif text-[15px] tracking-tight text-stone-700">ShipRight</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-[13px] text-stone-400">
-              {clerkUser.firstName || clerkUser.primaryEmailAddress?.emailAddress}
-            </span>
-            <UserButton
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: "w-7 h-7 ring-1 ring-stone-200 hover:ring-stone-300 transition-all",
-                },
-              }}
-            />
-          </div>
-        </div>
-      </header>
+      <AppNavbar title={project?.name} />
 
       {/* Chat area */}
       <main className="flex-1 flex flex-col overflow-hidden">
