@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { PROJECT_STATUS } from "./lib/constants";
 import { getAuthenticatedUser, getOwnedProject } from "./lib/auth";
+import { deleteProjectData } from "./lib/cascade";
 
 export const list = query({
   args: {},
@@ -110,24 +111,7 @@ export const resetInterview = mutation({
   },
   handler: async (ctx, args) => {
     await getOwnedProject(ctx, args.projectId);
-
-    // Delete all interview sessions (legacy)
-    const sessions = await ctx.db
-      .query("interviewSessions")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    for (const session of sessions) {
-      await ctx.db.delete(session._id);
-    }
-
-    // Delete all interview messages
-    const messages = await ctx.db
-      .query("interviewMessages")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    for (const msg of messages) {
-      await ctx.db.delete(msg._id);
-    }
+    await deleteProjectData(ctx, args.projectId);
 
     // Reset project interview state
     await ctx.db.patch(args.projectId, {
@@ -172,26 +156,7 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     await getOwnedProject(ctx, args.projectId);
-
-    // Delete interview messages
-    const messages = await ctx.db
-      .query("interviewMessages")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    for (const msg of messages) {
-      await ctx.db.delete(msg._id);
-    }
-
-    // Delete interview sessions
-    const sessions = await ctx.db
-      .query("interviewSessions")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
-    for (const session of sessions) {
-      await ctx.db.delete(session._id);
-    }
-
-    // Delete the project
+    await deleteProjectData(ctx, args.projectId);
     await ctx.db.delete(args.projectId);
   },
 });

@@ -4,22 +4,9 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 import { TemplateCapabilities } from "./templates";
-import { createVertex } from "@ai-sdk/google-vertex";
 import { generateObject } from "ai";
 import { z } from "zod";
-
-function getVertexProvider() {
-  return createVertex({
-    project: process.env.GOOGLE_VERTEX_PROJECT,
-    location: process.env.GOOGLE_VERTEX_LOCATION || "us-central1",
-    googleAuthOptions: {
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
-        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      },
-    },
-  });
-}
+import { getVertexProvider } from "./lib/vertex";
 
 const weightsSchema = z.object({
   auth: z.number().min(0).max(1),

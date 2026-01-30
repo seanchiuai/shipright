@@ -2,7 +2,6 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { createVertex } from "@ai-sdk/google-vertex";
 import { generateText, stepCountIs } from "ai";
 import { z } from "zod";
 import { api } from "./_generated/api";
@@ -11,20 +10,7 @@ import {
   REQUIREMENTS_SYSTEM_PROMPT,
   CONVERSATION_SYSTEM_PROMPT,
 } from "../prompts";
-
-// Create Vertex AI provider with service account credentials
-function getVertexProvider() {
-  return createVertex({
-    project: process.env.GOOGLE_VERTEX_PROJECT,
-    location: process.env.GOOGLE_VERTEX_LOCATION || "us-central1",
-    googleAuthOptions: {
-      credentials: {
-        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
-        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      },
-    },
-  });
-}
+import { getVertexProvider } from "./lib/vertex";
 
 // Parse JSON that might be wrapped in markdown code blocks or extra text
 function parseJsonResponse(text: string): unknown {
