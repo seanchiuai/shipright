@@ -333,6 +333,44 @@ export const resetInterview = mutation({
   },
 });
 
+export const rename = mutation({
+  args: {
+    projectId: v.id("projects"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, { name: args.name });
+  },
+});
+
+export const remove = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    // Delete interview messages
+    const messages = await ctx.db
+      .query("interviewMessages")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const msg of messages) {
+      await ctx.db.delete(msg._id);
+    }
+
+    // Delete interview sessions
+    const sessions = await ctx.db
+      .query("interviewSessions")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const session of sessions) {
+      await ctx.db.delete(session._id);
+    }
+
+    // Delete the project
+    await ctx.db.delete(args.projectId);
+  },
+});
+
 export const setMatchedTemplate = mutation({
   args: {
     projectId: v.id("projects"),

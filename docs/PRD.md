@@ -78,8 +78,8 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] Display structured summary: app name, problem, user types, features, auth, database, integrations
 - [x] User can edit app name, problem statement inline
 - [x] User can add/edit/remove features and user types
-- [x] "Find My Template" button proceeds to matching
-- [x] "Start Over" button resets interview and clears messages
+- [x] "Build My App" button proceeds to matching
+- [x] "Continue Conversation" button returns to conversation phase
 - [x] Typecheck passes
 - [x] Verify in browser
 
