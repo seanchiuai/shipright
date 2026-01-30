@@ -15,12 +15,13 @@ export default defineSchema({
   projects: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    status: v.string(), // "interview" | "matching" | "building" | "complete"
+    status: v.string(), // "interview" | "matching" | "matched" | "building" | "complete"
     interviewStep: v.optional(v.number()), // 1, 2, or 3
     interviewRound: v.optional(v.number()), // For step 2: 1-3
     appIdea: v.optional(v.string()), // Step 1 input
     requirements: v.optional(v.any()),
     templateId: v.optional(v.string()),
+    templateName: v.optional(v.string()),
     matchScore: v.optional(v.number()),
     matchGaps: v.optional(v.array(v.string())),
     githubRepoUrl: v.optional(v.string()),

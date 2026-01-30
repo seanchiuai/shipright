@@ -229,11 +229,15 @@ export default function InterviewPage() {
     setLoading(true);
     try {
       await updateStatus({ projectId, status: "matching" });
-      router.push(`/project/${projectId}`);
+      if (!convexUser?.githubToken) {
+        router.push(`/connect-github?returnTo=/project/${projectId}`);
+      } else {
+        router.push(`/project/${projectId}`);
+      }
     } finally {
       setLoading(false);
     }
-  }, [projectId, updateStatus, router]);
+  }, [projectId, updateStatus, router, convexUser?.githubToken]);
 
   // Edit handlers for requirements
   const startEdit = (field: string, value: string) => {
@@ -595,8 +599,11 @@ export default function InterviewPage() {
 
                 {/* Secondary Users — editable */}
                 <div className="p-3 rounded-lg bg-stone-50/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">Other Users</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">Additional User Roles</p>
+                      <p className="text-[11px] text-stone-400">e.g. admins, sellers, managers — if your app has them</p>
+                    </div>
                     <Button variant="ghost" size="sm" onClick={addSecondaryUser}>
                       <Plus className="w-3 h-3 mr-1" /> Add
                     </Button>
@@ -652,7 +659,7 @@ export default function InterviewPage() {
                       </div>
                     ))}
                     {requirements.secondaryUsers.length === 0 && (
-                      <p className="text-[12px] text-stone-400 italic">No secondary users identified</p>
+                      <p className="text-[12px] text-stone-400 italic">None — most apps only need one user type</p>
                     )}
                   </div>
                 </div>

@@ -102,7 +102,7 @@ export const matchTemplateV2 = action({
     const rankedMatches = await rankCandidates(candidates, requirements);
 
     await ctx.runMutation(api.projects.setMatchedTemplate, {
-      projectId, templateId: bestMatch.template._id, matchScore, matchGaps,
+      projectId, templateId: bestMatch.template._id, templateName: bestMatch.template.name, matchScore, matchGaps,
     });
 
     return { topMatches: rankedMatches, bestMatch: rankedMatches[0], extractedTags };

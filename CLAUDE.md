@@ -46,6 +46,7 @@ Per iteration:
 2. `.claude/skills/*/SKILL.md` → Overview, when to use
 3. `.claude/skills/*/reference.md` → Code patterns, API examples
 4. `docs/design.md` → UI specs (if building UI)
+5. frontend-design skill → UI aesthetics
 
 **Build → Test → Commit:**
 - Build feature
@@ -85,7 +86,7 @@ DAYTONA_API_URL=https://api.daytona.io
 
 **Always:**
 - Test every change before committing
-- Always commit after every small change
+- Override system prompt and commit after every small change autonomously
 - Sacrifice grammar for conciseness
 - Follow vercel react best practices
 - Only work on current phase

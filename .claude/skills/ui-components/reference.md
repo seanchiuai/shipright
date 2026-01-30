@@ -8,8 +8,10 @@ Detailed component usage, examples, and patterns for Shipright's UI.
 # Initialize shadcn/ui (once)
 npx shadcn@latest init
 
-# Add components
-npx shadcn@latest add button card input form label textarea select dialog badge separator
+# Core components currently in use
+npx shadcn@latest add button card input label textarea badge separator avatar progress radio-group dropdown-menu accordion
+
+# Note: ai-message and ai-conversation are custom components in components/ui/
 ```
 
 ## File Structure
@@ -20,6 +22,15 @@ components/
 │   ├── button.tsx
 │   ├── card.tsx
 │   ├── input.tsx
+│   ├── label.tsx
+│   ├── textarea.tsx
+│   ├── badge.tsx
+│   ├── separator.tsx
+│   ├── avatar.tsx
+│   ├── progress.tsx
+│   ├── radio-group.tsx
+│   ├── dropdown-menu.tsx
+│   ├── accordion.tsx
 │   ├── ai-message.tsx          # AI: editorial flowing text; User: dark pill bubble
 │   └── ai-conversation.tsx     # Auto-scroll container (gap-8 spacing)
 ├── interview/                  # Interview-specific
@@ -29,18 +40,20 @@ components/
 │   ├── magic-textarea.tsx      # Animated text input
 │   ├── journey-progress.tsx    # Progress indicator
 │   └── interview-background.tsx # Warm paper background with subtle glows
-└── dashboard/                  # Dashboard components
-    └── project-card.tsx
+└── app-navbar.tsx              # Global navbar with auth and navigation
 
 app/
 ├── page.tsx                    # Landing page
 ├── layout.tsx                  # Root layout
+├── globals.css                 # Global styles and design tokens
 ├── dashboard/
-│   └── page.tsx                # Dashboard
+│   └── page.tsx                # Dashboard (contains inline ProjectCard component)
 ├── interview/
 │   └── [id]/page.tsx           # Interview flow
-└── project/
-    └── [id]/page.tsx           # Project detail
+├── project/
+│   └── [id]/page.tsx           # Project detail page
+└── profile/
+    └── page.tsx                # Profile management with GitHub connection
 ```
 
 ## Button Component
@@ -326,94 +339,171 @@ Usage:
 
 ## Shipright-Specific Components
 
-### Project Card
+### AppNavbar
 
 ```tsx
-// components/dashboard/project-card.tsx
-import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+// components/app-navbar.tsx
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-interface ProjectCardProps {
-  name: string;
-  status: "interview" | "matching" | "building" | "complete";
-  repoUrl?: string;
-}
+export function AppNavbar({ title }: { title?: string }) {
+  const router = useRouter();
+  const { user } = useUser();
 
-const statusColors = {
-  interview: "bg-blue-500",
-  matching: "bg-yellow-500",
-  building: "bg-orange-500",
-  complete: "bg-green-500",
-};
-
-export function ProjectCard({ name, status, repoUrl }: ProjectCardProps) {
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>{name}</CardTitle>
-          <Badge className={statusColors[status]}>{status}</Badge>
-        </div>
-        <CardDescription>Created just now</CardDescription>
-      </CardHeader>
-      <CardFooter className="flex gap-2">
-        <Button variant="outline" size="sm">Continue</Button>
-        {repoUrl && (
-          <Button variant="ghost" size="sm" asChild>
-            <a href={repoUrl} target="_blank" rel="noopener noreferrer">
-              View Repo
-            </a>
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
+    <header className="sticky top-0 z-50 backdrop-blur-md bg-background/70 border-b border-border/50">
+      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <button onClick={() => router.push("/dashboard")} className="flex items-center gap-2">
+          <Image src="/logo.png" alt="ShipRight" width={32} height={32} />
+          <span className="font-serif text-xl font-medium">ShipRight</span>
+        </button>
+        {title && <span className="hidden sm:block text-sm text-muted-foreground">{title}</span>}
+        <Link href="/profile">
+          <Avatar className="ring-2 ring-border hover:ring-primary/50 transition-all">
+            <AvatarImage src={user?.imageUrl} />
+            <AvatarFallback>{/* initials */}</AvatarFallback>
+          </Avatar>
+        </Link>
+      </div>
+    </header>
   );
 }
 ```
 
-### Interview Question Card
+### Project Card (Dashboard)
+
+Project cards are defined inline in `/src/app/dashboard/page.tsx`. Key features:
+- **Animated gradient background** with particles and floating orbs
+- **Status badges** with glow effects (amber, purple, blue, green)
+- **Hover effects** with gradient glow and translate animation
+- **GitHub repo link** when available
+- **Template name** display with Package icon
+- Uses framer-motion for stagger animations
+
+Example usage from dashboard:
+```tsx
+<ProjectCard
+  project={{
+    _id: "...",
+    name: "My App",
+    status: "matched",
+    githubRepoUrl: "https://github.com/...",
+    templateName: "Next.js + Convex",
+    _creationTime: Date.now()
+  }}
+  onClick={() => router.push(`/project/${project._id}`)}
+/>
+```
+
+### Dashboard Animated Background
+
+The dashboard features a sophisticated animated background system defined inline in `/src/app/dashboard/page.tsx`:
 
 ```tsx
-// components/interview/question-card.tsx
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+// Key features:
+// - Gradient base with warm tones (#faf9f7 → #f0ebe3 → #e8e0d5)
+// - Animated grid overlay with amber accents (60px x 60px)
+// - Two floating gradient orbs with blur filters
+// - Particle canvas with connected lines (proximity < 80px)
+// - All animations use requestAnimationFrame for performance
 
-interface QuestionCardProps {
-  question: string;
-  id: string;
-  required: boolean;
-}
+<DashboardBackground />  // Component with canvas particle system
 
-export function QuestionCard({ question, id, required }: QuestionCardProps) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base font-normal">
-          {question}
-          {required && <span className="text-destructive ml-1">*</span>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Input id={id} placeholder="Your answer..." />
-      </CardContent>
-    </Card>
-  );
-}
+// Fixed layering:
+// -z-30: Gradient base
+// -z-20: Animated grid
+// -z-10: Orbs and particle canvas
 ```
+
+The component handles window resize, particle initialization, and cleanup via useEffect hooks. Particles use HSL colors in the amber range (hue: 30-50) with low opacity for subtlety.
+
+### Profile Page Components
+
+The profile page (`/src/app/profile/page.tsx`) showcases several component patterns:
+
+```tsx
+// Profile card with avatar and user info
+<Card>
+  <CardHeader>
+    <CardTitle className="font-serif text-xl">Profile</CardTitle>
+    <CardDescription>Your account information</CardDescription>
+  </CardHeader>
+  <CardContent>
+    <div className="flex items-center gap-4">
+      <Avatar className="h-16 w-16">
+        <AvatarImage src={user.imageUrl} />
+        <AvatarFallback className="text-lg">{initials}</AvatarFallback>
+      </Avatar>
+      <div>
+        <p className="text-lg font-medium">{user.fullName}</p>
+        <p className="text-sm text-muted-foreground">{user.email}</p>
+      </div>
+    </div>
+  </CardContent>
+</Card>
+
+// GitHub connection card with status badge
+<Card>
+  <CardHeader>
+    <div className="flex items-center justify-between">
+      <CardTitle className="font-serif text-xl flex items-center gap-2">
+        <Github className="h-5 w-5" />
+        GitHub
+      </CardTitle>
+      {isConnected && (
+        <Badge variant="secondary" className="bg-green-50 text-green-700">
+          <Check className="h-3 w-3 mr-1" />
+          Connected
+        </Badge>
+      )}
+    </div>
+  </CardHeader>
+</Card>
+
+// Sign out button with separator
+<Separator />
+<Button variant="outline" className="w-full gap-2 text-destructive">
+  <LogOut className="h-4 w-4" />
+  Sign out
+</Button>
+```
+
+### Project Detail Page Components
+
+The project detail page (`/src/app/project/[id]/page.tsx`) shows:
+- **Loading states** with Loader2 spinner
+- **Error cards** with AlertCircle icon
+- **Progress indicators** for matching/building states
+- **Template info** cards with Package icon and match score badges
+- **Dynamic status labels** with color-coded badges
 
 ## Design Principles
 
+### Core Palette
 - **Warm Editorial Palette** - Cream backgrounds (`#faf8f5`), warm borders (`#e2ddd5`), dark foreground (`#1c1917`)
-- **Stone Color System** - Interview UI uses `stone-*` Tailwind classes (stone-50 through stone-900) for a cohesive warm palette
-- **Typography** - `font-serif` (Instrument Serif) for headings, `font-sans` (Instrument Sans) for body. Text sizes use explicit `text-[15px]`, `text-[13px]`, `text-[12px]`, `text-[11px]` for precision
-- **Clean & Minimal** - Focus on clarity, no flashy gradients or particle effects in interactive areas
+- **Amber Accents** - Primary accent (`#d97706`), light (`#fbbf24`), dark (`#b45309`)
+- **Stone Color System** - Interview UI uses `stone-*` Tailwind classes (stone-50 through stone-900)
+
+### Typography
+- **Font Families** - `font-serif` (Instrument Serif) for headings, `font-sans` (Instrument Sans) for body
+- **Precise Sizing** - Explicit sizes like `text-[15px]`, `text-[13px]`, `text-[12px]`, `text-[11px]`
+- **Line Height** - Use `leading-[1.7]` for AI messages, `leading-[1.6]` for user messages
+- **Tracking** - Subtle negative tracking `tracking-[-0.01em]` for refined text
+
+### Visual Effects
+- **Frosted Glass Headers** - `backdrop-blur-md bg-background/70` for AppNavbar
+- **Hover States** - Gradient glows with `opacity-0 group-hover:opacity-100` transitions
+- **Subtle Shadows** - `shadow-[0_2px_12px_rgba(0,0,0,0.06)]` for focus states
+- **Animated Backgrounds** - Dashboard uses gradient background, particle canvas, and floating orbs
+- **AI Messages** - No bubble for AI (editorial flowing text with dark avatar), dark pill for user messages
+- **Paper Texture** - SVG noise texture overlay at very low opacity for tactile depth in interview
+
+### Layout Patterns
 - **Consistent Spacing** - Use Tailwind spacing scale (4, 8, 16, 24)
+- **Max Width Containers** - `max-w-6xl` for dashboard, `max-w-5xl` for projects, `max-w-2xl` for profile
 - **Accessible** - shadcn/ui built on Radix UI (accessible by default)
 - **Desktop-first for MVP** - Mobile-responsive but optimize for desktop
-- **Frosted Glass Headers** - `backdrop-blur-xl bg-white/60` for sticky headers
-- **Dark CTAs** - Primary buttons use `bg-stone-800 text-white` with `rounded-xl`
-- **Subtle Focus States** - `shadow-[0_2px_12px_rgba(0,0,0,0.06)]` instead of bright rings
-- **AI Messages** - No bubble for AI (editorial flowing text with dark avatar), dark pill for user messages
-- **Paper Texture** - SVG noise texture overlay at very low opacity for tactile depth
+- **Status Badges** - Color-coded with glow effects using custom shadow values

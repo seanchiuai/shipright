@@ -13,11 +13,13 @@ shadcn/ui is **not a component library**. It's a collection of re-usable compone
 
 ## Where It's Used in Shipright
 
-- **Phase 1**: Landing page, auth UI (sign-in buttons)
-- **Phase 2**: Interview forms, question cards
+- **Phase 1**: Landing page, auth UI (sign-in buttons), AppNavbar
+- **Phase 2**: Interview forms, AI conversation UI (ai-message, ai-conversation)
 - **Phase 3**: Template match results, selection UI
-- **Phase 4**: Repository creation UI, connection status
-- **All phases**: Buttons, cards, inputs, forms
+- **Phase 4**: Repository creation UI, connection status, GitHub integration
+- **Dashboard**: Project cards with animated backgrounds, status badges
+- **Profile**: User profile, avatar, GitHub connection management
+- **All phases**: Buttons, cards, inputs, forms, badges, separators
 
 ## Installation
 
@@ -40,18 +42,25 @@ npx shadcn@latest add button card input form label
 | `button` | Actions, CTAs | `npx shadcn@latest add button` |
 | `card` | Project cards, containers | `npx shadcn@latest add card` |
 | `input` | Text fields | `npx shadcn@latest add input` |
-| `form` | Interview forms | `npx shadcn@latest add form` |
+| `textarea` | Multi-line input | `npx shadcn@latest add textarea` |
 | `label` | Form labels | `npx shadcn@latest add label` |
+| `badge` | Status indicators, tags | `npx shadcn@latest add badge` |
+| `avatar` | User profile images | `npx shadcn@latest add avatar` |
+| `separator` | Visual dividers | `npx shadcn@latest add separator` |
+| `progress` | Loading bars | `npx shadcn@latest add progress` |
+| `ai-message` | AI/user chat bubbles | Custom in `components/ui/` |
+| `ai-conversation` | Chat container | Custom in `components/ui/` |
 
 ## Component Organization
 
 ```
 components/
-├── ui/              # shadcn/ui (auto-generated)
-├── interview/       # Interview-specific
-├── dashboard/       # Dashboard components
-└── shared/          # Reusable components
+├── ui/              # shadcn/ui (auto-generated) + custom (ai-message, ai-conversation)
+├── interview/       # Interview-specific (chat-message, choice-card, magic-textarea, etc.)
+└── app-navbar.tsx   # Global navigation component
 ```
+
+Note: Dashboard project cards are defined inline in `/src/app/dashboard/page.tsx`
 
 ## Styling Approach
 

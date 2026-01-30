@@ -16,7 +16,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - Match user requirements to the best-fit curated template from a library of 10 categories
 - Generate a GitHub repository with the selected template + agentic scaffolding files
 - Produce CLAUDE.md, TASKS.md, and PRD.md files that enable effective AI-assisted development
-- Provide clear confirmation flow before any repo creation
+- Show template selection and GitHub URL on dashboard during build
 
 ---
 
@@ -95,15 +95,15 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] Matching logic runs as Convex action
 - [x] Typecheck passes
 
-### US-007: Template Selection Confirmation
-**Description:** As a user, I want to see the matched template and confirm before Shipwright creates my repository.
+### US-007: Template Selection Visibility
+**Description:** As a user, I want to see which template was matched on my dashboard so I know what's being used for scaffolding.
 
 **Acceptance Criteria:**
-- [x] Display matched template: name, description, included features
+- [x] Dashboard shows matched template name during/after build
 - [x] Show "What's included" checklist (auth, database, payments, etc.)
 - [x] Show "What will be built" list (features from requirements not in template)
-- [x] "Create My Repository" button proceeds to repo generation
-- [x] "Try Different Template" button (future: manual selection, for now: restart interview)
+- [x] Repo creation starts automatically after matching (no confirmation step)
+- [x] GitHub URL shown on dashboard as soon as repo is created
 - [x] Typecheck passes
 - [x] Verify in browser
 
@@ -117,7 +117,8 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] Template files fetched via GitHub API and committed to new repo
 - [x] If template unavailable, re-run matching with next best template
 - [x] Initial commit with message: "Initial commit from Shipright template: {templateName}"
-- [x] Flow is autonomous - no user confirmation required for repo creation
+- [x] Repo creation starts automatically after matching — no user confirmation required
+- [x] GitHub URL shown on dashboard immediately after repo is created
 - [ ] Success screen shown after scaffolding complete (Phase 6)
 - [x] Typecheck passes
 
@@ -384,7 +385,7 @@ interface Requirements {
 - User can go from "I have an app idea" to "I have a GitHub repo" in under 10 minutes
 - 80%+ of users complete the interview flow without abandoning
 - Generated CLAUDE.md files enable effective AI-assisted development (qualitative)
-- Template match satisfaction: users confirm matched template on first try 70%+ of the time
+- Template match satisfaction: users accept matched template without restarting 70%+ of the time
 
 ---
 

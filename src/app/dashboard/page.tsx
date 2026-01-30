@@ -16,6 +16,7 @@ import {
   Zap,
   ChevronRight,
   Plus,
+  Package,
 } from "lucide-react";
 import { AppNavbar } from "@/components/app-navbar";
 
@@ -248,6 +249,12 @@ function StatusBadge({ status }: { status: string }) {
       bg: "bg-purple-50",
       glow: "shadow-[0_0_12px_rgba(139,92,246,0.2)]",
     },
+    matched: {
+      label: "Creating Repo",
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      glow: "shadow-[0_0_12px_rgba(59,130,246,0.2)]",
+    },
     building: {
       label: "Building",
       color: "text-amber-600",
@@ -287,6 +294,7 @@ function ProjectCard({
     name: string;
     status: string;
     githubRepoUrl?: string;
+    templateName?: string;
     _creationTime: number;
   };
   onClick: () => void;
@@ -312,10 +320,17 @@ function ProjectCard({
           {project.name}
         </h3>
 
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <div className={`flex items-center gap-2 text-sm text-muted-foreground ${project.templateName ? "mb-1" : "mb-4"}`}>
           <Clock className="w-4 h-4" />
           <span>{new Date(project._creationTime).toLocaleDateString()}</span>
         </div>
+
+        {project.templateName && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+            <Package className="w-4 h-4" />
+            <span className="truncate">{project.templateName}</span>
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-4 border-t border-border/50">
           {project.githubRepoUrl ? (
@@ -498,9 +513,9 @@ export default function DashboardPage() {
         >
           <div className="relative group">
             {/* Glow effect */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 rounded-2xl opacity-0 group-focus-within:opacity-100 blur-lg transition-opacity duration-300" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 rounded-2xl opacity-100 blur-lg transition-opacity duration-300" />
 
-            <div className="relative bg-card/90 backdrop-blur-sm border border-border rounded-2xl p-5 flex items-end gap-4 shadow-sm transition-all group-focus-within:border-primary group-focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.15)]">
+            <div className="relative bg-card/90 backdrop-blur-sm border border-primary/30 rounded-2xl p-5 flex items-end gap-4 shadow-[0_4px_30px_rgba(240,140,58,0.12)] transition-all group-focus-within:border-primary group-focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.15)]">
               <textarea
                 ref={inputRef}
                 value={appIdea}

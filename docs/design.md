@@ -6,6 +6,114 @@ UI design for Shipright MVP. User flow is linear: Landing → Clerk Sign-in → 
 
 ---
 
+## Design Identity
+
+**One-liner:** Warm editorial minimalism — a thoughtful publication, not a SaaS dashboard.
+
+Shipright should feel like sitting in a well-lit room with a notebook. The interface recedes so the user's idea stays front and center. Every surface evokes paper, ink, and natural warmth. Nothing blinks for attention. Nothing feels "techy." The product earns trust through restraint.
+
+### Mood References
+
+- The typography of Stripe's blog
+- The warmth of a Kinfolk magazine spread
+- The calm density of Linear's UI
+- The conversational ease of ChatGPT's input area
+
+### Core Principles
+
+1. **Content over chrome.** The user's words are the main character. UI elements exist to frame them, never compete.
+2. **Warmth over sterility.** Cream backgrounds, serif headlines, soft shadows. Cold grays and electric blues are banned.
+3. **Calm motion.** Animation serves comprehension (entrance reveals, loading feedback). Never decorative wobble or bounce.
+4. **Earned density.** Start sparse. Add detail only when the user progresses deeper (landing → dashboard → interview).
+5. **One focal point per screen.** Each page has exactly one primary action. Secondary actions are visually quieter.
+
+### Personality Attributes
+
+| Attribute | Yes | No |
+|-----------|-----|-----|
+| Tone | Confident, direct, concise | Hype-y, exclamatory, corporate |
+| Type | Serif headlines, clean sans body | All-caps headings, decorative fonts |
+| Color | Warm neutrals, amber accents | Neon, saturated primaries, gradients-as-decoration |
+| Spacing | Generous, breathable | Cramped, "above the fold" packing |
+| Borders | Thin, warm-tinted (`stone-200`) | Thick, cold gray, double borders |
+| Shadows | Barely-there, warm-shifted | Drop shadows, hard edges |
+| Corners | Soft (`rounded-xl` to `rounded-2xl`) | Sharp 0px or extreme pill on rectangles |
+| Icons | Lucide, 1px stroke, stone-500 | Filled icons, colored icons, emoji |
+
+---
+
+## Design Rules
+
+These are non-negotiable constraints for any new UI work.
+
+### Color
+
+- Background is always `#faf8f5` (warm off-white) or `white` for elevated cards. Never `gray-50`, `slate-50`, or pure `#f5f5f5`.
+- Text is `stone-900` for headings, `stone-700` for body, `stone-500` for secondary/muted. Never `gray-*` or `zinc-*`.
+- The only accent color is amber (`#d97706` family). Use it for progress indicators, active states, and CTAs that need emphasis — sparingly.
+- Destructive actions use `red-600`. No other reds.
+- Status colors: amber = in progress, green = complete, blue = building, purple = matching. These appear only in badges/indicators, never as page-level color.
+
+### Typography
+
+- **Headlines:** Instrument Serif, 400 weight. Tight tracking (`tracking-tight`). Used for page titles and hero text only.
+- **Body:** Instrument Sans, 400-500 weight. 15px base with `leading-[1.7]`. Subtle negative tracking (`tracking-[-0.01em]`).
+- **Labels/Caps:** Instrument Sans, 11px, `uppercase tracking-wider`, `stone-500`. For metadata, step indicators, timestamps.
+- **Mono:** JetBrains Mono for any code or technical strings.
+- Never use font weights above 600. Hierarchy comes from size and serif/sans contrast, not boldness.
+- Max line width: ~65 characters for body text. Use `max-w-2xl` or `max-w-3xl` for content columns.
+
+### Spacing
+
+- Sections separated by `py-24` minimum on desktop. The page should breathe.
+- Card internal padding: `p-6`. Never less than `p-4`.
+- Related elements: `gap-2` to `gap-4`. Unrelated groups: `gap-8` or more.
+- The interview chat uses `gap-8` between messages to give each thought room.
+
+### Borders & Surfaces
+
+- Card borders: `border border-stone-200`. One pixel, warm-tinted. Never `border-gray-200`.
+- Card radius: `rounded-xl` (12px) to `rounded-2xl` (16px). Consistency matters more than variety.
+- Shadows: `shadow-sm` only. On hover, allow `shadow-md` with warm shift. Never `shadow-lg` or `shadow-xl`.
+- Input radius: `rounded-2xl`. Focus state adds a soft glow: `shadow-[0_0_0_3px_rgba(28,25,23,0.06)]`.
+- Glassmorphism (backdrop-blur + transparency) is reserved for fixed navbars and the chat input bar. Not for cards.
+
+### Motion
+
+- Default duration: 300ms. Max: 500ms. Anything longer feels sluggish.
+- Easing: `[0.25, 0.46, 0.45, 0.94]` — smooth deceleration, editorial feel.
+- Entrance pattern: fade in + translate Y (8-20px). Stagger 40-100ms per item.
+- Hover: subtle `scale(0.985)` press or `-translate-y-1` lift. Never both.
+- The typewriter effect (30ms/char) is exclusive to AI chat messages. Do not use elsewhere.
+- Always respect `prefers-reduced-motion`. All animations collapse to instant.
+
+### Texture & Depth
+
+- Backgrounds use a multi-stop warm gradient: `linear-gradient(168deg, hsl(40,22%,97%) 0%, hsl(35,16%,95%) 40%, hsl(30,14%,94%) 100%)`.
+- SVG fractal noise overlay at `opacity-[0.025]` gives a paper-grain feel. Present on all full-page backgrounds.
+- Ambient gradient orbs (blurred radial circles) add atmospheric depth on landing/dashboard. Keep them slow (8-15s animation), desaturated, and below content.
+- These textures are subtle. If you can describe them without looking hard, they're too strong.
+
+### Chat / Conversational UI
+
+- AI messages: no bubble. Text flows editorially at 15px/1.7 line-height. Dark 28px avatar circle.
+- User messages: dark pill (`bg-stone-800 text-stone-50`), `rounded-2xl rounded-br-md` (one sharp corner to indicate direction).
+- Choice cards: white bg, `rounded-xl`, 18px circular checkbox. Selected state = dark border + shadow + subtle bg tint.
+- Input bar: fixed bottom, `bg-white/50 backdrop-blur-xl`, circular submit button.
+- "Something else" always available as an escape hatch from choices to free text.
+
+### Do Not
+
+- Add gradients to buttons or cards (flat color only).
+- Use colored backgrounds for sections (stick to off-white/white).
+- Put more than one primary CTA per screen.
+- Use toast notifications for success — use inline confirmation or page transition.
+- Add hover tooltips — if something needs explanation, the label should be clearer.
+- Use skeleton loaders that don't match the final layout shape.
+- Introduce new colors without updating this document.
+
+---
+
 ## User Flow
 
 ```
@@ -158,7 +266,7 @@ Note: Step 2 uses chat-based UI with ChatMessage components, ChoiceGrid for sele
 │    │  Payments: None                                   [Edit]   │  │
 │    └────────────────────────────────────────────────────────────┘  │
 │                                                                    │
-│                      [Start Over]     [Confirm & Build →]          │
+│                      [Start Over]     [Find My Template →]          │
 │                                                                    │
 └────────────────────────────────────────────────────────────────────┘
 ```
@@ -346,5 +454,5 @@ Using shadcn/ui components with Tailwind. See ui-components skill for patterns.
 
 ---
 
-**Document Version:** 2.0 (MVP rewrite)
-**Updated:** 2026-01-25
+**Document Version:** 3.0 (added design identity, principles, rules)
+**Updated:** 2026-01-29

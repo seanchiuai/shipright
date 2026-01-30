@@ -12,9 +12,9 @@ import { v } from "convex/values";
 export default defineSchema({
   users: defineTable({
     clerkUserId: v.string(),
-    email: v.optional(v.string()),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
+    email: v.optional(v.string()),
     githubToken: v.optional(v.string()),
   })
     .index("by_clerk_id", ["clerkUserId"])
@@ -23,22 +23,23 @@ export default defineSchema({
   projects: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    status: v.string(), // "interview" | "matching" | "building" | "complete"
-    interviewStep: v.optional(v.number()),
-    interviewRound: v.optional(v.number()),
-    appIdea: v.optional(v.string()),
+    status: v.string(), // "interview" | "matching" | "matched" | "building" | "complete"
+    interviewStep: v.optional(v.number()), // 1, 2, or 3
+    interviewRound: v.optional(v.number()), // For step 2: 1-3
+    appIdea: v.optional(v.string()), // Step 1 input
     requirements: v.optional(v.any()),
     templateId: v.optional(v.string()),
+    templateName: v.optional(v.string()),
     matchScore: v.optional(v.number()),
     matchGaps: v.optional(v.array(v.string())),
     githubRepoUrl: v.optional(v.string()),
     githubRepoFullName: v.optional(v.string()),
-    interviewPhase: v.optional(v.string()), // "seed" | "conversation" | "summary"
+    interviewPhase: v.optional(v.string()),  // "seed" | "conversation" | "summary"
   }).index("by_user", ["userId"]),
 
   interviewMessages: defineTable({
     projectId: v.id("projects"),
-    role: v.string(), // "user" | "assistant"
+    role: v.string(),                    // "user" | "assistant"
     content: v.string(),
     questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
     options: v.optional(v.array(v.string())),
@@ -55,16 +56,15 @@ export default defineSchema({
     questions: v.optional(v.array(v.object({
       id: v.string(),
       question: v.string(),
-      type: v.string(),
+      type: v.string(), // "text" | "choice" | "multiselect"
       options: v.optional(v.array(v.string())),
       required: v.optional(v.boolean()),
     }))),
-    answers: v.optional(v.any()),
-  }).index("by_project", ["projectId"])
-    .index("by_project_round", ["projectId", "round"]),
+    answers: v.optional(v.any()), // Record<string, string | string[]>
+  }).index("by_project", ["projectId"]).index("by_project_round", ["projectId", "round"]),
 
   templates: defineTable({
-    slug: v.optional(v.string()),
+    slug: v.optional(v.string()), // Unique identifier for sync (optional for backwards compat)
     name: v.string(),
     description: v.string(),
     sourceUrl: v.string(),
@@ -168,6 +168,38 @@ export const getByClerkId = query({
       .first();
   },
 });
+
+export const saveGitHubToken = mutation({
+  args: { encryptedToken: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(user._id, { githubToken: args.encryptedToken });
+  },
+});
+
+export const removeGitHubToken = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkUserId", identity.subject))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(user._id, { githubToken: undefined });
+  },
+});
 ```
 
 ## Query Pattern
@@ -219,9 +251,104 @@ export const create = mutation({
 });
 
 export const updateStatus = mutation({
-  args: { projectId: v.id("projects"), status: v.string() },
+  args: {
+    projectId: v.id("projects"),
+    status: v.string(),
+  },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, { status: args.status });
+  },
+});
+
+export const updateAppIdea = mutation({
+  args: {
+    projectId: v.id("projects"),
+    appIdea: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      appIdea: args.appIdea,
+      interviewPhase: "conversation",
+    });
+  },
+});
+
+export const updateInterviewStep = mutation({
+  args: {
+    projectId: v.id("projects"),
+    step: v.number(),
+    round: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      interviewStep: args.step,
+      ...(args.round !== undefined && { interviewRound: args.round }),
+    });
+  },
+});
+
+export const updateInterviewPhase = mutation({
+  args: {
+    projectId: v.id("projects"),
+    phase: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      interviewPhase: args.phase,
+    });
+  },
+});
+
+export const resetInterview = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    // Delete all interview sessions (legacy)
+    const sessions = await ctx.db
+      .query("interviewSessions")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const session of sessions) {
+      await ctx.db.delete(session._id);
+    }
+
+    // Delete all interview messages
+    const messages = await ctx.db
+      .query("interviewMessages")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const msg of messages) {
+      await ctx.db.delete(msg._id);
+    }
+
+    // Reset project interview state
+    await ctx.db.patch(args.projectId, {
+      appIdea: undefined,
+      interviewStep: 1,
+      interviewRound: undefined,
+      interviewPhase: undefined,
+      requirements: undefined,
+    });
+  },
+});
+
+export const setMatchedTemplate = mutation({
+  args: {
+    projectId: v.id("projects"),
+    templateId: v.string(),
+    templateName: v.string(),
+    matchScore: v.number(),
+    matchGaps: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      templateId: args.templateId,
+      templateName: args.templateName,
+      matchScore: args.matchScore,
+      matchGaps: args.matchGaps,
+      status: "matched",
+    });
   },
 });
 ```
@@ -234,30 +361,46 @@ Actions call external APIs and interact with database via queries/mutations:
 // convex/ai.ts
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import Anthropic from "@anthropic-ai/sdk";
+import { createVertex } from "@ai-sdk/google-vertex";
+import { generateText } from "ai";
 import { api } from "./_generated/api";
 
-export const generateQuestions = action({
-  args: { userInput: v.string() },
-  handler: async (ctx, args) => {
-    // Claude Code OAuth primary, API key fallback
-    const client = new Anthropic({
-      apiKey: process.env.CLAUDE_CODE_OAUTH_TOKEN || process.env.ANTHROPIC_API_KEY,
-    });
+function getVertexProvider() {
+  return createVertex({
+    project: process.env.GOOGLE_VERTEX_PROJECT,
+    location: process.env.GOOGLE_VERTEX_LOCATION || "us-central1",
+    googleAuthOptions: {
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL!,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      },
+    },
+  });
+}
 
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-5-20250929",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: args.userInput }],
+export const generateInterviewQuestions = action({
+  args: {
+    projectId: v.id("projects"),
+    appIdea: v.string(),
+    round: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const vertex = getVertexProvider();
+
+    const { text } = await generateText({
+      model: vertex("gemini-2.5-flash"),
+      system: QUESTION_SYSTEM_PROMPT,
+      prompt: `The user wants to build: "${args.appIdea}"`,
     });
 
     // Save to database via mutation
-    await ctx.runMutation(api.interviewSessions.save, {
-      userInput: args.userInput,
-      aiResponse: response.content,
+    await ctx.runMutation(api.interviews.saveQuestions, {
+      projectId: args.projectId,
+      round: args.round,
+      questions: JSON.parse(text),
     });
 
-    return response.content;
+    return JSON.parse(text);
   },
 });
 ```
@@ -384,6 +527,183 @@ export const listMyProjects = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
+  },
+});
+```
+
+## Interview Functions
+
+### Message-based Interview Mutations
+
+```typescript
+// convex/interviews.ts
+
+// Get all messages for a project
+export const getMessages = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("interviewMessages")
+      .withIndex("by_project_timestamp", (q) => q.eq("projectId", args.projectId))
+      .order("asc")
+      .collect();
+  },
+});
+
+// Add a new interview message
+export const addMessage = mutation({
+  args: {
+    projectId: v.id("projects"),
+    role: v.string(),
+    content: v.string(),
+    questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
+    options: v.optional(v.array(v.string())),
+    isComplete: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("interviewMessages", {
+      projectId: args.projectId,
+      role: args.role,
+      content: args.content,
+      questionType: args.questionType,
+      options: args.options,
+      isComplete: args.isComplete,
+      timestamp: Date.now(),
+    });
+  },
+});
+
+// Clear all messages for a project
+export const clearMessages = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query("interviewMessages")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const msg of messages) {
+      await ctx.db.delete(msg._id);
+    }
+  },
+});
+```
+
+## AI Actions
+
+### Interview AI Actions
+
+```typescript
+// convex/ai.ts
+
+// Generate interview questions based on app idea
+export const generateInterviewQuestions = action({
+  args: {
+    projectId: v.id("projects"),
+    appIdea: v.string(),
+    round: v.number(),
+    previousRounds: v.optional(v.array(v.object({
+      questions: v.array(v.any()),
+      answers: v.any(),
+    }))),
+  },
+  handler: async (ctx, args) => {
+    // Uses Gemini 2.5 Flash to generate contextual questions
+    // Returns { preamble: string, questions: Question[] }
+  },
+});
+
+// Continue conversational interview
+export const continueConversation = action({
+  args: {
+    projectId: v.id("projects"),
+    appIdea: v.string(),
+    history: v.array(v.object({
+      role: v.string(),
+      content: v.string(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    // Continues interview conversation with web search tool access
+    // Returns { content, questionType?, options?, isComplete? }
+  },
+});
+
+// Extract structured requirements from interview transcript
+export const extractRequirements = action({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    // Analyzes interview messages to extract structured requirements
+    // Saves to project.requirements
+  },
+});
+```
+
+### Template Matching Actions
+
+```typescript
+// convex/matching.ts
+
+// V2 matching algorithm with tag-based filtering + AI ranking
+export const matchTemplateV2 = action({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    // 1. Extract tags from requirements using AI
+    // 2. Filter templates by tag overlap
+    // 3. Rank top candidates with AI
+    // Returns { topMatches, bestMatch, extractedTags }
+  },
+});
+
+// V1 matching algorithm with weighted scoring
+export const matchTemplate = action({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    // Legacy matching algorithm using capability scoring
+    // Returns { template, score, scoreBreakdown, weights, gaps, included }
+  },
+});
+```
+
+## GitHub Actions
+
+```typescript
+// convex/github.ts
+
+// Exchange OAuth code for GitHub access token
+export const exchangeGitHubCode = action({
+  args: { code: v.string() },
+  handler: async (ctx, args) => {
+    // Exchanges code for token, encrypts it, saves to user
+    // Returns { success: true }
+  },
+});
+
+// Validate stored GitHub token
+export const validateToken = action({
+  args: {},
+  handler: async (ctx) => {
+    // Checks if stored token is valid
+    // Returns { valid: boolean, username?: string, reason?: string }
+  },
+});
+
+// Clone template repo to user's GitHub account
+export const cloneTemplate = action({
+  args: {
+    projectId: v.id("projects"),
+    templateSourceUrl: v.string(),
+    newRepoName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Fetches template files, creates new private repo, commits files
+    // Updates project with repoUrl and repoFullName
+    // Returns { repoUrl, repoFullName }
   },
 });
 ```

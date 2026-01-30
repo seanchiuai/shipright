@@ -584,6 +584,7 @@ export const matchTemplateV2 = action({
     await ctx.runMutation(api.projects.setMatchedTemplate, {
       projectId: args.projectId,
       templateId: bestMatch.template._id,
+      templateName: bestMatch.template.name,
       matchScore: bestMatch.score,
       matchGaps: identifyGaps(requirements, bestMatch.template),
     });
@@ -676,6 +677,7 @@ export const matchTemplate = action({
     await ctx.runMutation(api.projects.setMatchedTemplate, {
       projectId: args.projectId,
       templateId: bestMatch!.template._id,
+      templateName: bestMatch!.template.name,
       matchScore: bestMatch!.score,
       matchGaps: bestMatch!.gaps,
     });

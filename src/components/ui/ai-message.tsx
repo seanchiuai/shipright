@@ -19,7 +19,7 @@ const AIMessage = forwardRef<HTMLDivElement, AIMessageProps>(
         ref={ref}
         className={cn(
           "group relative",
-          isAssistant ? "self-start w-full" : "self-end max-w-[80%]",
+          isAssistant ? "self-start w-full" : "w-full",
           className
         )}
         {...props}

@@ -125,7 +125,9 @@ export function HeroSection() {
 
         {/* Input */}
         <div className="max-w-xl mx-auto">
-          <div className="relative bg-white border border-border rounded-xl p-1 transition-all focus-within:border-foreground/30 focus-within:shadow-[0_0_0_3px_rgba(28,25,23,0.06)]">
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 rounded-2xl opacity-100 blur-lg" />
+          <div className="relative bg-white border border-primary/30 rounded-xl p-1 shadow-[0_4px_30px_rgba(240,140,58,0.12)] transition-all focus-within:border-foreground/30 focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.18)]">
             <textarea
               ref={textareaRef}
               value={appIdea}
@@ -159,6 +161,7 @@ export function HeroSection() {
                 )}
               </button>
             </div>
+          </div>
           </div>
 
           <p className="text-xs text-muted-foreground/60 mt-4">

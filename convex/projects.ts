@@ -149,15 +149,17 @@ export const setMatchedTemplate = mutation({
   args: {
     projectId: v.id("projects"),
     templateId: v.string(),
+    templateName: v.string(),
     matchScore: v.number(),
     matchGaps: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.projectId, {
       templateId: args.templateId,
+      templateName: args.templateName,
       matchScore: args.matchScore,
       matchGaps: args.matchGaps,
-      status: "matching",
+      status: "matched",
     });
   },
 });

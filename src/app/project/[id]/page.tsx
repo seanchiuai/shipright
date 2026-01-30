@@ -4,7 +4,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,117 +18,11 @@ import { useUser } from "@clerk/nextjs";
 import { AppNavbar } from "@/components/app-navbar";
 import { useSyncUser } from "@/hooks/useSyncUser";
 import {
-  Check,
-  X,
   Loader2,
-  Github,
-  ArrowRight,
   RefreshCw,
-  Sparkles,
   Package,
   AlertCircle,
 } from "lucide-react";
-
-type Template = {
-  _id: string;
-  name: string;
-  description: string;
-  sourceUrl: string;
-  stack: string[];
-  capabilities: {
-    auth: {
-      present: boolean;
-      providers: string[];
-      hasRoles: boolean;
-      hasOrgs: boolean;
-    };
-    database: {
-      present: boolean;
-      type: string;
-      realtime: boolean;
-    };
-    payments: {
-      present: boolean;
-      provider?: string;
-      models?: string[];
-    };
-    ui: {
-      framework: string;
-      hasAdminDashboard: boolean;
-      hasLandingPage: boolean;
-    };
-    features: {
-      fileUploads: boolean;
-      email: boolean;
-      search: boolean;
-      ai: boolean;
-    };
-  };
-};
-
-type Weights = {
-  auth: number;
-  database: number;
-  payments: number;
-  features: number;
-  ui: number;
-};
-
-type MatchResult = {
-  template: Template;
-  score: number;
-  scoreBreakdown: {
-    auth: number;
-    database: number;
-    payments: number;
-    features: number;
-    ui: number;
-  };
-  weights: Weights;
-  gaps: string[];
-  included: string[];
-};
-
-function FeatureCheckItem({
-  label,
-  included,
-}: {
-  label: string;
-  included: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2 py-1">
-      {included ? (
-        <Check className="h-4 w-4 text-green-500" />
-      ) : (
-        <X className="h-4 w-4 text-muted-foreground" />
-      )}
-      <span className={included ? "" : "text-muted-foreground"}>{label}</span>
-    </div>
-  );
-}
-
-function ConfidenceBadge({ score }: { score: number }) {
-  let variant: "default" | "secondary" | "destructive" = "default";
-  let label = "Great Match";
-
-  if (score >= 70) {
-    variant = "default";
-    label = "Great Match";
-  } else if (score >= 50) {
-    variant = "secondary";
-    label = "Good Match";
-  } else {
-    variant = "destructive";
-    label = "Fallback";
-  }
-
-  return (
-    <Badge variant={variant} className="text-sm">
-      {score}% - {label}
-    </Badge>
-  );
-}
 
 export default function ProjectDetailsPage() {
   const params = useParams();
@@ -145,9 +39,8 @@ export default function ProjectDetailsPage() {
   const resetInterview = useMutation(api.projects.resetInterview);
 
   const [matching, setMatching] = useState(false);
-  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const cloneAttempted = useRef(false);
 
   const matchedTemplate =
     project?.templateId && templates
@@ -156,12 +49,11 @@ export default function ProjectDetailsPage() {
 
   useEffect(() => {
     async function runMatching() {
-      if (project?.status === "matching" && !matchResult && !matching) {
+      if (project?.status === "matching" && !matching && !error) {
         setMatching(true);
         setError(null);
         try {
-          const result = await matchTemplate({ projectId });
-          setMatchResult(result);
+          await matchTemplate({ projectId });
         } catch (e) {
           setError(e instanceof Error ? e.message : "Failed to match template");
         } finally {
@@ -170,106 +62,57 @@ export default function ProjectDetailsPage() {
       }
     }
     runMatching();
-  }, [project?.status, matchResult, matching, matchTemplate, projectId]);
+  }, [project?.status, matching, error, matchTemplate, projectId]);
 
+  // Auto-clone when status is "matched"
   useEffect(() => {
-    if (matchedTemplate && project?.matchScore !== undefined && !matchResult) {
-      setMatchResult({
-        template: matchedTemplate as Template,
-        score: project.matchScore,
-        scoreBreakdown: { auth: 0, database: 0, payments: 0, features: 0, ui: 0 },
-        weights: { auth: 0, database: 0, payments: 0, features: 0, ui: 0 },
-        gaps: project.matchGaps || [],
-        included: getIncludedFeatures(matchedTemplate as Template),
-      });
+    async function runClone() {
+      if (project?.status !== "matched") return;
+      if (cloneAttempted.current) return;
+      if (!matchedTemplate || !convexUser) return;
+
+      if (!convexUser.githubToken) {
+        router.push(`/connect-github?returnTo=/project/${projectId}`);
+        return;
+      }
+
+      cloneAttempted.current = true;
+      setError(null);
+
+      try {
+        const repoName = project.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+
+        await cloneTemplate({
+          projectId,
+          templateSourceUrl: matchedTemplate.sourceUrl,
+          newRepoName: repoName || "shipright-app",
+        });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to create repository";
+        if (message.includes("TEMPLATE_UNAVAILABLE")) {
+          setError("Template unavailable. Please start over with a different idea.");
+        } else if (message.includes("GitHub connection expired") || message.includes("401")) {
+          setError("GitHub connection expired. Reconnecting...");
+          router.push(`/connect-github?returnTo=/project/${projectId}`);
+        } else {
+          setError(message);
+        }
+        cloneAttempted.current = false;
+      }
     }
-  }, [matchedTemplate, project?.matchScore, project?.matchGaps, matchResult]);
-
-  function getIncludedFeatures(template: Template): string[] {
-    const included: string[] = [];
-    const caps = template.capabilities;
-
-    if (caps.auth.present) {
-      included.push(`Authentication (${caps.auth.providers.join(", ")})`);
-      if (caps.auth.hasRoles) included.push("Role-based access");
-      if (caps.auth.hasOrgs) included.push("Organizations/teams");
-    }
-
-    if (caps.database.present) {
-      included.push(`Database (${caps.database.type})`);
-      if (caps.database.realtime) included.push("Real-time sync");
-    }
-
-    if (caps.payments.present) {
-      const models = caps.payments.models?.join(", ") || "";
-      included.push(`Payments via ${caps.payments.provider} (${models})`);
-    }
-
-    if (caps.ui.hasAdminDashboard) included.push("Admin dashboard");
-    if (caps.ui.hasLandingPage) included.push("Landing page");
-
-    if (caps.features.fileUploads) included.push("File uploads");
-    if (caps.features.email) included.push("Email notifications");
-    if (caps.features.search) included.push("Search");
-    if (caps.features.ai) included.push("AI integration");
-
-    return included;
-  }
+    runClone();
+  }, [project?.status, project?.name, matchedTemplate, convexUser, projectId, cloneTemplate, router]);
 
   async function handleStartOver() {
     try {
+      cloneAttempted.current = false;
       await resetInterview({ projectId });
-      setMatchResult(null);
       router.push(`/interview/${projectId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to reset");
-    }
-  }
-
-  async function handleCreateRepository() {
-    if (!convexUser?.githubToken) {
-      router.push(`/connect-github?returnTo=/project/${projectId}`);
-      return;
-    }
-
-    if (!matchResult || !project) return;
-
-    setCreating(true);
-    setError(null);
-
-    try {
-      const repoName = project.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-
-      await cloneTemplate({
-        projectId,
-        templateSourceUrl: matchResult.template.sourceUrl,
-        newRepoName: repoName || "shipright-app",
-      });
-
-      router.refresh();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to create repository";
-      if (message.includes("TEMPLATE_UNAVAILABLE")) {
-        setError("Template unavailable. Re-matching with next best template...");
-        setMatchResult(null);
-        try {
-          const newMatch = await matchTemplate({ projectId });
-          setMatchResult(newMatch);
-          setError(null);
-        } catch {
-          setError("No alternative templates available. Please start over.");
-        }
-      } else if (message.includes("GitHub connection expired") || message.includes("401")) {
-        setError("GitHub connection expired. Please reconnect.");
-        router.push(`/connect-github?returnTo=/project/${projectId}`);
-      } else {
-        setError(message);
-      }
-    } finally {
-      setCreating(false);
     }
   }
 
@@ -309,9 +152,12 @@ export default function ProjectDetailsPage() {
   const statusLabels: Record<string, string> = {
     interview: "In Interview",
     matching: "Finding Template",
+    matched: "Creating Repo",
     building: "Building",
     complete: "Complete",
   };
+
+  const isInProgress = ["matching", "matched", "building"].includes(project.status);
 
   return (
     <div className="min-h-screen">
@@ -330,175 +176,73 @@ export default function ProjectDetailsPage() {
         {error && (
           <Card className="mb-6 border-destructive">
             <CardContent className="pt-6 flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              <p className="text-destructive">{error}</p>
+              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+              <p className="text-destructive flex-1">{error}</p>
+              <Button variant="outline" size="sm" onClick={handleStartOver} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Start Over
+              </Button>
             </CardContent>
           </Card>
         )}
 
-        {/* Matching in progress */}
-        {project.status === "matching" && matching && !matchResult && (
+        {/* Progress view for matching/matched/building */}
+        {isInProgress && (
           <Card className="mb-6">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-                <h3 className="text-lg font-medium mb-2">Finding the best template...</h3>
-                <p className="text-muted-foreground text-center max-w-md">
-                  We&apos;re analyzing your requirements to find the perfect starting point.
+                <h3 className="text-lg font-medium mb-2">
+                  {project.status === "matching" && "Finding the best template..."}
+                  {project.status === "matched" && "Creating your repository..."}
+                  {project.status === "building" && "Setting up your project..."}
+                </h3>
+                <p className="text-muted-foreground text-center max-w-md mb-6">
+                  {project.status === "matching" &&
+                    "Analyzing your requirements to find the perfect starting point."}
+                  {project.status === "matched" &&
+                    "Cloning the template and creating your GitHub repository."}
+                  {project.status === "building" &&
+                    "Your repository is being configured."}
                 </p>
+
+                {/* Template info once matched */}
+                {(project.status === "matched" || project.status === "building") &&
+                  matchedTemplate && (
+                    <div className="w-full max-w-md space-y-4">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50">
+                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center">
+                          <Package className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">
+                            {matchedTemplate.name}
+                          </p>
+                          {project.matchScore !== undefined && (
+                            <p className="text-xs text-muted-foreground">
+                              {project.matchScore}% match
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Tech stack badges */}
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        {matchedTemplate.stack.map((tech) => (
+                          <Badge key={tech} variant="secondary" className="text-xs">
+                            {tech}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Template match result - US-007 */}
-        {project.status === "matching" && matchResult && (
-          <div className="space-y-6">
-            {/* Template Card */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center">
-                      <Package className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl">
-                        {matchResult.template.name}
-                      </CardTitle>
-                      <CardDescription>
-                        {matchResult.template.description}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <ConfidenceBadge score={matchResult.score} />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Tech Stack */}
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                    Tech Stack
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {matchResult.template.stack.map((tech) => (
-                      <Badge key={tech} variant="secondary">
-                        {tech}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* AI-Determined Matching Priorities */}
-                {matchResult.weights.auth > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                      Matching Priorities
-                    </h4>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      AI analyzed your app to determine what matters most:
-                    </p>
-                    <div className="space-y-2">
-                      {Object.entries(matchResult.weights)
-                        .sort(([, a], [, b]) => b - a)
-                        .map(([key, value]) => (
-                          <div key={key} className="flex items-center gap-3">
-                            <span className="text-xs w-20 capitalize">{key}</span>
-                            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-primary rounded-full transition-all"
-                                style={{ width: `${value * 100}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-muted-foreground w-10">
-                              {Math.round(value * 100)}%
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* What's Included */}
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                    What&apos;s Included
-                  </h4>
-                  <div className="grid gap-1 sm:grid-cols-2">
-                    {matchResult.included.map((feature) => (
-                      <FeatureCheckItem
-                        key={feature}
-                        label={feature}
-                        included={true}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* What Will Be Built */}
-                {matchResult.gaps.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                      What Will Be Built
-                    </h4>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      These features aren&apos;t in the template and will be added:
-                    </p>
-                    <div className="grid gap-1 sm:grid-cols-2">
-                      {matchResult.gaps.map((gap) => (
-                        <div key={gap} className="flex items-center gap-2 py-1">
-                          <Sparkles className="h-4 w-4 text-amber-500" />
-                          <span>{gap}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Source Link */}
-                <div className="pt-4 border-t">
-                  <a
-                    href={matchResult.template.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Github className="h-4 w-4" />
-                    View template source
-                  </a>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-between">
-              <Button
-                variant="outline"
-                onClick={handleStartOver}
-                className="gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Try Different Template
-              </Button>
-              <Button onClick={handleCreateRepository} className="gap-2" disabled={creating}>
-                {creating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating Repository...
-                  </>
-                ) : (
-                  <>
-                    Create My Repository
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Default project view for other statuses */}
-        {project.status !== "matching" && (
+        {!isInProgress && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -515,6 +259,24 @@ export default function ProjectDetailsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Template info */}
+              {project.templateName && (
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                    Template
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{project.templateName}</span>
+                    {project.matchScore !== undefined && (
+                      <Badge variant="secondary" className="text-xs">
+                        {project.matchScore}% match
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {project.githubRepoUrl && (
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">

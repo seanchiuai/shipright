@@ -37,7 +37,7 @@
 - [x] Define template index schema in Convex
 - [x] Populate 10 curated templates with capability tags
 - [x] Build template scoring algorithm (AI-determined weights)
-- [x] Build template confirmation UI (what's included vs what will be built)
+- [x] Show matched template + GitHub URL on dashboard (no confirmation step)
 
 ### Phase 2: Interview Flow (2026-01-27, reworked 2026-01-29)
 - [x] Build seed phase: app idea input with example chips
