@@ -160,10 +160,10 @@ export default function InterviewPage() {
           projectId,
           appIdea: project.appIdea,
           history,
+          exchangeCount: exchangeCount + 1,
         });
 
-        const newExchangeCount = exchangeCount + 1;
-        if (result.isComplete || newExchangeCount >= 6) {
+        if (result.isComplete) {
           await extractRequirements({ projectId });
         }
       } catch (e) {
