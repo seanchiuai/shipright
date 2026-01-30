@@ -1,33 +1,35 @@
+import { PROJECT_STATUS, type ProjectStatus } from "@/lib/constants";
+
 export function StatusBadge({ status }: { status: string }) {
   const statusConfig: Record<
     string,
     { label: string; color: string; bg: string; glow: string }
   > = {
-    interview: {
+    [PROJECT_STATUS.INTERVIEW]: {
       label: "In Progress",
       color: "text-amber-600",
       bg: "bg-amber-50",
       glow: "shadow-[0_0_12px_rgba(245,158,11,0.2)]",
     },
-    matching: {
+    [PROJECT_STATUS.MATCHING]: {
       label: "Matching",
       color: "text-purple-600",
       bg: "bg-purple-50",
       glow: "shadow-[0_0_12px_rgba(139,92,246,0.2)]",
     },
-    matched: {
+    [PROJECT_STATUS.MATCHED]: {
       label: "Creating Repo",
       color: "text-blue-600",
       bg: "bg-blue-50",
       glow: "shadow-[0_0_12px_rgba(59,130,246,0.2)]",
     },
-    building: {
+    [PROJECT_STATUS.BUILDING]: {
       label: "Building",
       color: "text-amber-600",
       bg: "bg-amber-50",
       glow: "shadow-[0_0_12px_rgba(240,140,58,0.2)]",
     },
-    complete: {
+    [PROJECT_STATUS.COMPLETE]: {
       label: "Complete",
       color: "text-green-600",
       bg: "bg-green-50",
@@ -35,7 +37,7 @@ export function StatusBadge({ status }: { status: string }) {
     },
   };
 
-  const config = statusConfig[status] || statusConfig.interview;
+  const config = statusConfig[status] || statusConfig[PROJECT_STATUS.INTERVIEW];
 
   return (
     <span

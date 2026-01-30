@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { PROJECT_STATUS } from "./lib/constants";
 
 export const list = query({
   args: { userId: v.id("users") },
@@ -28,7 +29,7 @@ export const create = mutation({
     return await ctx.db.insert("projects", {
       userId: args.userId,
       name: args.name,
-      status: "interview",
+      status: PROJECT_STATUS.INTERVIEW,
       interviewStep: 1,
     });
   },
@@ -140,7 +141,7 @@ export const updateGitHubRepo = mutation({
     await ctx.db.patch(args.projectId, {
       githubRepoUrl: args.repoUrl,
       githubRepoFullName: args.repoFullName,
-      status: "building",
+      status: PROJECT_STATUS.BUILDING,
     });
   },
 });
@@ -197,7 +198,7 @@ export const setMatchedTemplate = mutation({
       templateName: args.templateName,
       matchScore: args.matchScore,
       matchGaps: args.matchGaps,
-      status: "matched",
+      status: PROJECT_STATUS.MATCHED,
     });
   },
 });
