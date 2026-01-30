@@ -84,7 +84,7 @@ export function InterviewInputArea({
               disabled={loading}
               className="text-[12px] text-stone-400 hover:text-stone-600 transition-colors disabled:opacity-50"
             >
-              I&apos;ve shared enough, let&apos;s see templates &rarr;
+              Skip conversation &rarr;
             </button>
           </div>
         )}
