@@ -40,7 +40,7 @@ export const create = mutation({
 export const updateStatus = mutation({
   args: {
     projectId: v.id("projects"),
-    status: v.string(),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("complete")),
   },
   handler: async (ctx, args) => {
     await getOwnedProject(ctx, args.projectId);
@@ -80,7 +80,7 @@ export const updateInterviewStep = mutation({
 export const updateInterviewPhase = mutation({
   args: {
     projectId: v.id("projects"),
-    phase: v.string(),
+    phase: v.union(v.literal("seed"), v.literal("conversation"), v.literal("summary")),
   },
   handler: async (ctx, args) => {
     await getOwnedProject(ctx, args.projectId);

@@ -55,7 +55,7 @@ export const getMessages = query({
 export const addMessage = mutation({
   args: {
     projectId: v.id("projects"),
-    role: v.string(),
+    role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
     options: v.optional(v.array(v.string())),

@@ -15,7 +15,7 @@ export default defineSchema({
   projects: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    status: v.string(), // "interview" | "matching" | "matched" | "building" | "complete"
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("complete")),
     interviewStep: v.optional(v.number()), // 1, 2, or 3
     interviewRound: v.optional(v.number()), // For step 2: 1-3
     appIdea: v.optional(v.string()), // Step 1 input
@@ -26,12 +26,12 @@ export default defineSchema({
     matchGaps: v.optional(v.array(v.string())),
     githubRepoUrl: v.optional(v.string()),
     githubRepoFullName: v.optional(v.string()),
-    interviewPhase: v.optional(v.string()),  // "seed" | "conversation" | "summary"
+    interviewPhase: v.optional(v.union(v.literal("seed"), v.literal("conversation"), v.literal("summary"))),
   }).index("by_user", ["userId"]),
 
   interviewMessages: defineTable({
     projectId: v.id("projects"),
-    role: v.string(),                    // "user" | "assistant"
+    role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
     options: v.optional(v.array(v.string())),
