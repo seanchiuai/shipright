@@ -5,7 +5,7 @@ description: Production deployment to Vercel and environment configuration
 
 # Deployment
 
-Phase 7: Deploy Shipright to production on Vercel.
+Phase 6: Deploy Shipright to production on Vercel.
 
 ## Why Vercel
 

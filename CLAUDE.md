@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Shipright helps non-technical founders turn app ideas into GitHub repos via AI-guided interview → template matching → repo generation.
+Shipright helps non-technical founders turn app ideas into GitHub repos via AI-guided interview → template matching → scaffolding injection → repo generation.
 
 ## Tech Stack
 
@@ -9,7 +9,7 @@ Shipright helps non-technical founders turn app ideas into GitHub repos via AI-g
 - Clerk (authentication with Google OAuth)
 - Vercel AI SDK + @ai-sdk/google-vertex (Gemini 2.5 Flash)
 - GitHub API via Octokit (repo creation)
-- Daytona SDK (template customization)
+- Daytona SDK (sandbox for scaffolding injection via Claude Code)
 - agent-browser (E2E testing)
 
 ## Commands
@@ -29,11 +29,25 @@ npm run lint       # Linting
 | 2 | Interview Flow | US-003, US-004, US-005 |
 | 3 | Template Matching | US-006, US-007, US-014 |
 | 4 | GitHub Repo | US-008, US-009 |
-| 5 | Daytona Customization | US-012c |
-| 6 | Scaffolding Generation | US-010, US-011, US-012, US-012b |
-| 7 | Production Deploy | US-015 |
+| 5 | Scaffolding Injection | US-010, US-011, US-012, US-012b, US-012c |
+| 6 | Production Deploy | US-015 |
 
 **Current phase:** `docs/development-progress.yaml` (Do not edit without user permisssion or confirmation)
+
+## Pipeline (Phases 3-5)
+
+```
+Interview → Template Matching (base stack only)
+  → GitHub Repo (clone template)
+  → Generate PRD from requirements (Convex/Gemini)
+  → Research tech stack integrations (Convex/Gemini, user approval if ambiguous)
+  → Daytona sandbox: inject cc-template files + Claude Code fills {{PLACEHOLDER}}s
+  → Commit scaffolding to repo → Done
+```
+
+**cc-template repo** (`github.com/seanchiuai/cc-template`): Contains Claude Code dev methodology files — .claude/ (settings, hooks, commands, skills), template-CLAUDE.md, TASKS.md, docs/PRD.md, docs/design.md, prompts/. These are injected into the user's repo, then Claude Code customizes the {{PLACEHOLDER}} template files.
+
+**Template matching decides base stack only.** Integrations (Stripe, SendGrid, etc.) are researched separately after matching.
 
 ## Ralph Loop Workflow
 

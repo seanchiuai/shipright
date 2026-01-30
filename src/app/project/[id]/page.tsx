@@ -100,10 +100,8 @@ export default function ProjectDetailsPage() {
         } else if (message.includes("GitHub connection expired") || message.includes("401")) {
           setError("GitHub connection expired. Reconnecting...");
           router.push(`/connect-github?returnTo=/project/${projectId}`);
-        } else if (message.includes("Not Found") || message.includes("HttpError")) {
-          setError("Repository creation failed. Please try again or start over.");
         } else {
-          setError("Failed to create repository. Please try again or start over.");
+          setError("Repository creation failed. Please try again or start over.");
         }
         cloneAttempted.current = false;
       }
@@ -203,7 +201,7 @@ export default function ProjectDetailsPage() {
           </Card>
         )}
 
-        {/* Progress view for matching/matched/building */}
+        {/* Progress view for matching/matched */}
         {isInProgress && (
           <Card className="mb-6">
             <CardContent className="pt-6">

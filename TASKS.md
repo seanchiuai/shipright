@@ -2,22 +2,20 @@
 
 ## Active
 
-### Phase 5: Template Customization (Daytona)
+### Phase 5: Scaffolding Injection (Daytona + Claude Code)
+- [ ] Build PRD generation action (Convex/Gemini, from interview requirements)
+- [ ] Build tech stack research action (identify integrations beyond base template)
+- [ ] Build tech stack choice UI (when AI can't decide between options)
 - [ ] Integrate Daytona SDK
-- [ ] Detect when template has gaps (AI determines)
-- [ ] Spin up sandbox with user's repo
-- [ ] Run Claude Code to build missing features
-- [ ] Commit changes continuously during build
+- [ ] Spin up sandbox, clone user repo + cc-template repo
+- [ ] Copy cc-template files into user's repo
+- [ ] Run Claude Code to fill {{PLACEHOLDER}} templates (one by one, dependency order)
+- [ ] Commit + push scaffolding to GitHub
 - [ ] Destroy sandbox after completion
+- [ ] Build scaffolding progress stepper UI
+- [ ] Add error recovery (resume from last completed step)
 
-### Phase 6: Scaffolding Generation
-- [ ] Build CLAUDE.md generator
-- [ ] Build TASKS.md generator
-- [ ] Build PRD.md generator
-- [ ] Build skills directory generator
-- [ ] Commit all scaffolding in single commit
-
-### Phase 7: Production Deployment
+### Phase 6: Production Deployment
 - [ ] Deploy to Vercel
 - [ ] Configure production environment variables
 - [ ] Test full flow end-to-end in production

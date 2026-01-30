@@ -29,7 +29,7 @@ npx convex env set CLAUDE_CODE_OAUTH_TOKEN <your-oauth-token>
 # Or set API key (fallback for rare cases)
 npx convex env set ANTHROPIC_API_KEY sk-ant-...
 
-# Daytona (for template customization)
+# Daytona (for scaffolding injection)
 npx convex env set DAYTONA_API_KEY dtn_...
 ```
 

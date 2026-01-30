@@ -10,8 +10,7 @@ Handles GitHub OAuth connection and repository operations.
 ## Where It's Used in Shipright
 
 - **Phase 4**: Connect GitHub account via OAuth, create repo from template
-- **Phase 5**: Daytona pushes customizations to repo (continuous commits)
-- **Phase 6**: Commit scaffolding files in single commit
+- **Phase 5**: Daytona sandbox pushes scaffolding files to repo (cc-template injection + Claude Code fills placeholders)
 
 ## OAuth Configuration
 
@@ -49,10 +48,10 @@ GitHub's "use this template" feature requires templates to be marked as template
 ### Template Unavailable Handling
 
 If template repo is deleted/private/unavailable:
-1. Log error with template details
-2. Remove template from index (admin notification)
-3. Re-run matching to find next best template
-4. If no templates available, fail with user-friendly error
+1. `cloneTemplate` throws `TEMPLATE_UNAVAILABLE` error
+2. Client shows friendly error: "Template unavailable. Please start over with a different idea."
+3. User can click "Start Over" to reset interview and try again
+4. For non-unavailable errors (e.g. Git API failures), a "Retry" button is also shown
 
 ## Repository Settings
 
@@ -72,16 +71,10 @@ Single commit with all template files.
 "Initial commit from Shipright template: {templateName}"
 ```
 
-### Phase 5: Daytona Customizations
-Multiple commits during build (continuous).
+### Phase 5: Scaffolding Injection
+Single commit with all scaffolding files after Claude Code fills templates.
 ```
-"Add {feature}: {description}"
-```
-
-### Phase 6: Scaffolding
-Single commit with all scaffolding files.
-```
-"Add Shipright scaffolding (CLAUDE.md, TASKS.md, PRD.md)"
+"Add project scaffolding via Shipright"
 ```
 
 ## Security Rules

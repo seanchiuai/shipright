@@ -24,8 +24,10 @@ Matches user requirements to the best-fit template from a curated library using 
 ## Confidence Thresholds
 
 - **>70%** - Strong match, proceed confidently
-- **50-70%** - Decent match, proceed to Phase 5 (Daytona customization)
+- **50-70%** - Decent match, gaps handled by tech stack research in Phase 5
 - **<50%** - Poor match, fallback to minimal-starter template
+
+**Note:** Template matching decides the base stack only. Additional integrations (Stripe, SendGrid, etc.) are researched separately in Phase 5 Step 2.
 
 ## Category Scoring
 

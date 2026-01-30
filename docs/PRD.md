@@ -119,7 +119,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] Initial commit with message: "Initial commit from Shipright template: {templateName}"
 - [x] Repo creation starts automatically after matching — no user confirmation required
 - [x] GitHub URL shown on dashboard immediately after repo is created
-- [ ] Success screen shown after scaffolding complete (Phase 6)
+- [ ] Success screen shown after scaffolding complete (Phase 5)
 - [x] Typecheck passes
 
 ### US-009: GitHub OAuth Connection
@@ -182,17 +182,21 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [ ] No hooks generated (not supported)
 - [ ] Typecheck passes
 
-### US-012c: Template Customization via Daytona
-**Description:** As a system, I need to use Daytona sandboxes with Claude Code to build custom features when the matched template doesn't fully cover user requirements.
+### US-012c: Scaffolding Injection via Daytona Sandbox
+**Description:** As a system, I need to use Daytona sandboxes with Claude Code to inject cc-template files and fill {{PLACEHOLDER}} values with project-specific content, producing a fully scaffolded repo ready for AI-assisted development.
 
 **Acceptance Criteria:**
-- [ ] Detect when template has gaps (requirements not covered by template capabilities)
-- [ ] Spin up Daytona sandbox with user's GitHub repo cloned
-- [ ] Run Claude Code in sandbox with customization prompts based on missing features
-- [ ] Claude Code builds the missing features following existing code patterns
-- [ ] Changes committed and pushed to user's GitHub repo
+- [ ] Generate PRD markdown from interview requirements (Convex action, pre-sandbox)
+- [ ] Research tech stack integrations beyond base template (Convex action, pre-sandbox)
+- [ ] If AI can't choose between integration options, present choices to user for approval
+- [ ] Spin up ephemeral Daytona sandbox
+- [ ] Clone user's GitHub repo and cc-template repo into sandbox
+- [ ] Copy cc-template files (.claude/, template files) into user's repo
+- [ ] Run Claude Code to fill {{PLACEHOLDER}} templates one by one in dependency order
+- [ ] Templates filled: PRD.md, design.md, CLAUDE.md, TASKS.md, development-progress.yaml, prompts/, skills/
+- [ ] All scaffolding committed and pushed to user's GitHub repo
 - [ ] Sandbox destroyed after completion
-- [ ] User notified of what was built
+- [ ] Pipeline is resumable (each step saves output, retry from failure point)
 - [ ] Error handling for sandbox timeout, Claude Code failures, git push failures
 - [ ] Typecheck passes
 
@@ -272,7 +276,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - **Template manual selection:** User cannot browse/pick templates manually (only AI-matched)
 - **Plan generation:** No architecture/implementation plan generation
 - **Payments/billing:** No paid features or subscriptions
-- **Template customization UI:** No UI for tweaking template before generation
+- **App building:** No automated app building in MVP (scaffolding only, user builds with Claude Code)
 - **Multiple templates per project:** One template per project only
 - **Team collaboration:** Single-user projects only
 - **Deployment:** No deploy-to-Vercel or similar features
@@ -290,7 +294,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - **UI:** shadcn/ui + Tailwind CSS
 - **AI:** Claude API for interview question generation and requirement extraction
 - **GitHub:** GitHub OAuth + GitHub API for repo creation
-- **Sandboxes:** Daytona SDK for template customization with Claude Code
+- **Sandboxes:** Daytona SDK for scaffolding injection (cc-template + Claude Code fills placeholders)
 - **Deployment:** Vercel for production hosting
 
 ### Template Index Schema
@@ -409,7 +413,7 @@ interface Requirements {
 
 1. **Interview flow UX:** Step 2 form layout, question types, back navigation behavior - needs detailed design.
 
-2. **Daytona trigger conditions:** How to determine if template has gaps. AI-determined based on prompts, refined during development.
+2. **cc-template evolution:** How to version/update the cc-template repo as Shipright's methodology evolves. Currently a single public repo cloned at scaffold time.
 
 ---
 

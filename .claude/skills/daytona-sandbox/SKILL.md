@@ -1,72 +1,82 @@
 ---
 name: daytona-sandbox
-description: Daytona SDK for sandboxed environments and Claude Code execution for template customization
+description: Daytona SDK for sandboxed environments where Claude Code fills cc-template scaffolding files
 ---
 
 # Daytona Sandbox
 
-Used in Phase 5 when templates don't fully cover user requirements.
+Used in Phase 5 to inject cc-template files and run Claude Code to fill {{PLACEHOLDER}} values with project-specific content.
 
 ## When to Use
 
-- Template match confidence is 50-70% (decent but has gaps)
-- User requirements include features not in any template
-- Need to build custom code on top of template
-
-## When NOT to Use
-
-- Template is a perfect match (>70% confidence)
-- User explicitly wants to build themselves
-- Requirements are minimal (just scaffold and done)
+- Phase 5: After GitHub repo created from template and PRD/tech stack research complete
+- Daytona always runs in Phase 5 — it is not conditional on match score
 
 ## Where It Fits
 
-**Phase 5**: After GitHub repo created with template, before scaffolding generation.
+**Phase 5 (Steps 3-7)**: After PRD generation and tech stack research (Steps 1-2), the sandbox handles file injection and Claude Code execution.
 
 ## The Flow
 
-1. GitHub repo already created (Phase 4) with template cloned
-2. Spin up Daytona sandbox with TypeScript runtime
-3. Clone the user's repo into sandbox
-4. Run Claude Code with customization prompts
-5. Claude Code builds the missing features
-6. Commit and push changes back to GitHub
-7. **Parse build summary** from Claude Code output
-8. Save build summary to Convex (critical for Phase 6 scaffolding)
-9. Destroy sandbox
+1. GitHub repo already created (Phase 4) with template code
+2. PRD markdown and tech stack research already generated (Phase 5, Steps 1-2)
+3. Spin up Daytona sandbox (ephemeral, TypeScript runtime)
+4. Clone user's repo into sandbox
+5. Clone `github.com/seanchiuai/cc-template` into sandbox
+6. Copy cc-template files into user's repo:
+   - `.claude/` directory (settings, hooks, commands, skills) → copied as-is
+   - Template files with `{{PLACEHOLDER}}` syntax → copied for customization
+7. Run Claude Code with assembled prompt (PRD + tech stack + meta-instructions)
+8. Claude Code fills templates ONE BY ONE in dependency order:
+   1. `docs/PRD.md` (source of truth)
+   2. `docs/design.md` (UI specs from PRD)
+   3. `template-CLAUDE.md` → rename to `CLAUDE.md`
+   4. `TASKS.md` (tasks reference PRD user stories)
+   5. `docs/development-progress.yaml` (phases from CLAUDE.md)
+   6. `prompts/phase-N.md` (one per phase)
+   7. `.claude/skills/` (domain-specific skills)
+9. Commit + push all files to GitHub
+10. Destroy sandbox
 
-## Build Summary Format
+## cc-template Repository
 
-Claude Code outputs a structured summary of what was built:
+Source: `https://github.com/seanchiuai/cc-template.git`
 
-```
----BUILD_SUMMARY---
-Features built:
-- Feature 1 description
-- Feature 2 description
+Contains:
+- `.claude/settings.json` — hooks config (phase context on session start)
+- `.claude/hooks/` — shell scripts for session/prompt hooks
+- `.claude/commands/` — slash commands (orchestrator, refactor, cleanup, etc.)
+- `.claude/skills/create-skill/` — guide for creating new skills
+- `template-CLAUDE.md` — project CLAUDE.md with {{PLACEHOLDER}} syntax
+- `TASKS.md` — task backlog template
+- `docs/PRD.md` — PRD template
+- `docs/design.md` — design doc template
+- `docs/development-progress.yaml` — phase tracker template
+- `prompts/phase-1.md` — Ralph Loop prompt template
+- Top-level `CLAUDE.md` — meta-instructions for how to fill templates
 
-Files created:
-- path/to/file1.ts
-- path/to/file2.tsx
+## Prompt Construction
 
-Patterns used:
-- Pattern 1
-- Pattern 2
----END_SUMMARY---
-```
+The Claude Code prompt is assembled from:
+1. cc-template's top-level `CLAUDE.md` (meta-instructions)
+2. Generated PRD markdown (from Step 1)
+3. Tech stack research results JSON (from Step 2)
+4. Raw requirements object
+5. Template info (name, stack, gaps)
+6. File manifest with fill order
 
-This summary tells Phase 6 scaffolding generation exactly what was built.
+Prompt is written to a file in the sandbox to avoid shell escaping issues.
 
 ## Cost Considerations
 
 - Sandboxes cost money per minute of runtime
 - Set `autoStopInterval` to prevent runaway costs
 - Destroy sandbox immediately after use
-- Consider using `ephemeral: true` for auto-cleanup
+- Use `ephemeral: true` for auto-cleanup
 
 ## Reference Files
 
-- [reference.md](reference.md) - Complete Daytona SDK usage, code examples
+- [reference.md](reference.md) - Daytona SDK usage, code examples
 
 ## External Documentation
 

@@ -308,7 +308,6 @@ async function commitFiles(
 ) {
   const parentSha = await waitForRef(octokit, owner, repo, "heads/main");
 
-  // Get the tree SHA from the parent commit for base_tree
   const { data: parentCommit } = await octokit.rest.git.getCommit({
     owner,
     repo,

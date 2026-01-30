@@ -1,6 +1,6 @@
 # Daytona Sandbox Reference
 
-Complete Daytona SDK usage, sandbox lifecycle, and customization patterns for Shipright.
+Daytona SDK usage, sandbox lifecycle, and scaffolding injection patterns for Shipright.
 
 ## Installation
 
@@ -11,40 +11,21 @@ npm install @daytonaio/sdk
 ## Creating a Sandbox (Convex Action)
 
 ```typescript
-// convex/daytona.ts
-import { action } from "./_generated/server";
-import { v } from "convex/values";
+// convex/scaffolding.ts
 import { Daytona } from "@daytonaio/sdk";
 
-export const createCustomizationSandbox = action({
-  args: {
-    projectId: v.id("projects"),
-    repoUrl: v.string(),
-    githubToken: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const daytona = new Daytona();
+const daytona = new Daytona();
 
-    // Create sandbox with TypeScript runtime
-    const sandbox = await daytona.create({
-      language: "typescript", // or "python", "javascript"
-      name: `shipright-${args.projectId}`,
-      envVars: {
-        // Claude Code OAuth primary, API key fallback
-        ANTHROPIC_API_KEY: process.env.CLAUDE_CODE_OAUTH_TOKEN || process.env.ANTHROPIC_API_KEY,
-        GITHUB_TOKEN: args.githubToken,
-      },
-      autoStopInterval: 30, // Stop after 30 min inactivity
-      autoArchiveInterval: 1440, // Archive after 24 hours stopped
-      autoDeleteInterval: 4320, // Delete after 72 hours stopped
-      labels: { project: "shipright", projectId: args.projectId },
-    });
-
-    return {
-      sandboxId: sandbox.id,
-      state: sandbox.state,
-    };
+const sandbox = await daytona.create({
+  language: "typescript",
+  name: `shipright-${projectId}`,
+  ephemeral: true,
+  envVars: {
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    GITHUB_TOKEN: decryptedGithubToken,
   },
+  autoStopInterval: 15, // Stop after 15 min inactivity
+  labels: { project: "shipright", projectId },
 });
 ```
 
@@ -53,71 +34,70 @@ export const createCustomizationSandbox = action({
 - `name` - Optional custom sandbox name
 - `envVars` - Environment variables object
 - `autoStopInterval` - Minutes of inactivity before auto-stop (0 = disabled)
-- `autoArchiveInterval` - Minutes stopped before archiving
-- `autoDeleteInterval` - Minutes stopped before deletion
-- `labels` - Key-value metadata tags
-- `resources` - Custom CPU/memory/disk allocation
 - `ephemeral` - Auto-delete when stopped (boolean)
+- `labels` - Key-value metadata tags
+
+## Sandbox Command Sequence
+
+```bash
+# 1. Clone user's repo
+git clone https://${GITHUB_TOKEN}@github.com/${repoFullName}.git /workspace/project
+
+# 2. Clone cc-template (public repo, no auth needed)
+git clone https://github.com/seanchiuai/cc-template.git /workspace/cc-template
+
+# 3. Copy infrastructure files (as-is, no customization)
+cp -r /workspace/cc-template/.claude /workspace/project/
+
+# 4. Copy template files (these get customized by Claude Code)
+cp /workspace/cc-template/template-CLAUDE.md /workspace/project/
+cp /workspace/cc-template/TASKS.md /workspace/project/
+mkdir -p /workspace/project/docs /workspace/project/prompts
+cp /workspace/cc-template/docs/PRD.md /workspace/project/docs/
+cp /workspace/cc-template/docs/design.md /workspace/project/docs/
+cp /workspace/cc-template/docs/development-progress.yaml /workspace/project/docs/
+cp /workspace/cc-template/prompts/phase-1.md /workspace/project/prompts/
+
+# 5. Write prompt file (avoids shell escaping issues)
+cat > /workspace/prompt.txt << 'PROMPT_EOF'
+[assembled prompt content]
+PROMPT_EOF
+
+# 6. Configure git
+cd /workspace/project
+git config user.name "Shipright"
+git config user.email "bot@shipright.dev"
+
+# 7. Run Claude Code with prompt file
+claude --print "$(cat /workspace/prompt.txt)"
+
+# 8. Commit and push
+git add . && git commit -m "Add project scaffolding via Shipright" && git push origin main
+```
 
 ## Executing Commands
 
 ```typescript
-export const runCustomization = action({
-  args: {
-    sandboxId: v.string(),
-    repoUrl: v.string(),
-    customizationPrompt: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const daytona = new Daytona();
-    const sandbox = await daytona.findOne(args.sandboxId);
+// Clone repository
+const cloneResult = await sandbox.process.exec(
+  `git clone https://${githubToken}@github.com/${repoFullName}.git /workspace/project`
+);
 
-    // Clone repository
-    const cloneResult = await sandbox.process.exec(
-      `git clone ${args.repoUrl} /workspace/project`
-    );
+if (cloneResult.exitCode !== 0) {
+  throw new Error(`Git clone failed: ${cloneResult.result}`);
+}
 
-    if (cloneResult.exitCode !== 0) {
-      throw new Error(`Git clone failed: ${cloneResult.result}`);
-    }
-
-    // Run Claude Code with customization
-    const claudeResult = await sandbox.process.exec(
-      `cd /workspace/project && claude "${args.customizationPrompt}"`,
-      {
-        cwd: "/workspace/project",
-        timeout: 600000, // 10 minutes
-      }
-    );
-
-    if (claudeResult.exitCode !== 0) {
-      throw new Error(`Claude Code failed: ${claudeResult.result}`);
-    }
-
-    // Commit and push changes
-    await sandbox.process.exec(
-      'git config user.name "Shipright" && git config user.email "bot@shipright.dev"',
-      { cwd: "/workspace/project" }
-    );
-
-    await sandbox.process.exec(
-      'git add . && git commit -m "Add customizations via Shipright" && git push origin main',
-      { cwd: "/workspace/project" }
-    );
-
-    return {
-      output: claudeResult.result,
-      summary: parseBuildSummary(claudeResult.result),
-    };
-  },
-});
+// Run Claude Code
+const claudeResult = await sandbox.process.exec(
+  `cd /workspace/project && claude --print "$(cat /workspace/prompt.txt)"`,
+  { cwd: "/workspace/project", timeout: 600000 } // 10 minutes
+);
 ```
 
 **exec() Parameters**:
 - `command` (required) - Shell command to execute
 - `cwd` - Working directory (optional)
 - `timeout` - Timeout in milliseconds (optional)
-- `env` - Additional environment variables (optional)
 
 **exec() Returns**:
 ```typescript
@@ -127,221 +107,135 @@ export const runCustomization = action({
 }
 ```
 
-## Running Code Snippets (Python)
-
-For Python code execution without shell:
+## Prompt Construction
 
 ```typescript
-const response = await sandbox.process.codeRun(
-  `
-def greet(name):
-    return f"Hello, {name}!"
+function buildSandboxPrompt(params: {
+  ccTemplateClaude: string;    // cc-template's CLAUDE.md (meta-instructions)
+  prdMarkdown: string;         // Generated PRD from Step 1
+  techStack: TechStackResult;  // Resolved + user-chosen integrations
+  requirements: Requirements;   // Raw interview requirements
+  templateName: string;
+  templateStack: string[];
+  templateGaps: string[];
+}): string {
+  return `${params.ccTemplateClaude}
 
-result = greet("Shipright")
-print(result)
-`,
-  {
-    env: { API_KEY: "secret123" },
-  }
-);
+---
 
-if (response.exitCode !== 0) {
-  console.error(`Error: ${response.result}`);
-} else {
-  console.log(response.result); // Output: Hello, Shipright!
+## Project Context
+
+### Generated PRD
+${params.prdMarkdown}
+
+### Tech Stack
+Base template: ${params.templateName} (${params.templateStack.join(', ')})
+Template gaps: ${params.templateGaps.join(', ')}
+
+Resolved integrations:
+${JSON.stringify(params.techStack.resolved, null, 2)}
+
+### Raw Requirements
+${JSON.stringify(params.requirements, null, 2)}
+
+---
+
+## Instructions
+
+Fill in each template file ONE BY ONE in this exact order:
+
+1. docs/PRD.md - Use the Generated PRD above. Adapt to template format.
+2. docs/design.md - Create UI specs based on PRD features and user flows.
+3. template-CLAUDE.md - Fill in project details, then rename to CLAUDE.md.
+4. TASKS.md - Create tasks referencing user stories from PRD.
+5. docs/development-progress.yaml - Define phases matching CLAUDE.md.
+6. prompts/phase-N.md - One prompt per phase, referencing user stories and skills.
+7. .claude/skills/ - Generate domain-specific skills for each integration.
+
+For each file:
+- Read the template first to understand the {{PLACEHOLDER}} format
+- Fill in every placeholder with project-specific content
+- Do NOT leave any {{PLACEHOLDER}} unfilled
+- Commit each file individually with a descriptive message
+
+After all files are complete, do a final review pass.`;
 }
-```
-
-## Persistent Sessions
-
-For maintaining state between commands:
-
-```typescript
-const sessionId = "build-session-1";
-
-// Create session
-await sandbox.process.createSession(sessionId);
-
-// Execute commands in session (state persists)
-await sandbox.process.executeSessionCommand(sessionId, {
-  command: "export FOO=BAR",
-});
-
-const result = await sandbox.process.executeSessionCommand(sessionId, {
-  command: "echo $FOO",
-});
-
-console.log(result.output); // Output: BAR
 ```
 
 ## Lifecycle Management
 
 ```typescript
-// Stop sandbox (preserves filesystem, clears memory)
+// Stop sandbox
 await sandbox.stop();
-
-// Restart stopped sandbox
-const sandbox = await daytona.findOne(sandboxId);
-await sandbox.start();
-
-// Archive sandbox (move to object storage)
-await sandbox.stop();
-await sandbox.archive();
-
-// Update lifecycle settings
-await sandbox.setAutostopInterval(0); // Disable auto-stop
-await sandbox.setAutoArchiveInterval(60); // Archive after 1 hour
-await sandbox.setAutoDeleteInterval(120); // Delete after 2 hours
 
 // Delete sandbox permanently
 await daytona.delete(sandbox);
+
+// Find existing sandbox
+const sandbox = await daytona.findOne(sandboxId);
 ```
-
-## Customization Prompt Template
-
-```typescript
-function buildCustomizationPrompt(requirements: string[], templateInfo: any): string {
-  return `You are building on top of a ${templateInfo.stack.join(", ")} template.
-
-The template includes:
-${templateInfo.capabilities.map(c => `- ${c}`).join("\n")}
-
-Add the following features that are NOT in the template:
-${requirements.map((r, i) => `${i + 1}. ${r}`).join("\n")}
-
-Follow the existing code patterns in the template. Commit your changes with clear messages.
-
-IMPORTANT: When you are done, output a BUILD SUMMARY in this format:
----BUILD_SUMMARY---
-Features built:
-- [list each feature with brief description]
-
-Files created:
-- [list new files]
-
-Files modified:
-- [list modified files]
-
-Patterns used:
-- [list key patterns/libraries used]
-
-Notes for scaffolding:
-- [any important context for generating CLAUDE.md/TASKS.md]
----END_SUMMARY---`;
-}
-```
-
-## Parsing Build Summary
-
-```typescript
-function parseBuildSummary(output: string): BuildSummary {
-  const summaryMatch = output.match(
-    /---BUILD_SUMMARY---([\s\S]*?)---END_SUMMARY---/
-  );
-
-  if (!summaryMatch) {
-    throw new Error("No build summary found in output");
-  }
-
-  const summaryText = summaryMatch[1];
-
-  return {
-    features: extractSection(summaryText, "Features built:"),
-    filesCreated: extractSection(summaryText, "Files created:"),
-    filesModified: extractSection(summaryText, "Files modified:"),
-    patterns: extractSection(summaryText, "Patterns used:"),
-    notes: extractSection(summaryText, "Notes for scaffolding:"),
-  };
-}
-
-function extractSection(text: string, sectionName: string): string[] {
-  const regex = new RegExp(`${sectionName}\\s*([\\s\\S]*?)(?=\\n\\w+:|$)`, 'i');
-  const match = text.match(regex);
-
-  if (!match) return [];
-
-  return match[1]
-    .split("\n")
-    .map(line => line.trim())
-    .filter(line => line.startsWith("-"))
-    .map(line => line.substring(1).trim());
-}
-
-interface BuildSummary {
-  features: string[];
-  filesCreated: string[];
-  filesModified: string[];
-  patterns: string[];
-  notes: string[];
-}
-```
-
-## Saving Build Summary to Convex
-
-```typescript
-// After parsing summary
-await ctx.runMutation(api.projects.saveBuildSummary, {
-  projectId: args.projectId,
-  summary: buildSummary,
-});
-```
-
-This summary is critical for Phase 6 scaffolding generation - it tells us exactly what was built vs what was requested.
 
 ## Complete Example
 
 ```typescript
-// convex/customization.ts
-import { action } from "./_generated/server";
-import { v } from "convex/values";
-import { Daytona } from "@daytonaio/sdk";
-import { api } from "./_generated/api";
-
-export const customizeTemplate = action({
-  args: {
-    projectId: v.id("projects"),
-    repoUrl: v.string(),
-    githubToken: v.string(),
-    requirements: v.array(v.string()),
-  },
+// convex/scaffolding.ts - executeSandbox action
+export const executeSandbox = action({
+  args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     const daytona = new Daytona();
 
     try {
-      // Create ephemeral sandbox
+      // 1. Fetch project data
+      const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+      const user = await ctx.runQuery(api.users.getById, { userId: project.userId });
+      const githubToken = decryptToken(user.githubToken);
+
+      // 2. Fetch cc-template CLAUDE.md (meta-instructions)
+      const ccTemplateClaude = await fetchCcTemplateClaude();
+
+      // 3. Build prompt
+      const prompt = buildSandboxPrompt({
+        ccTemplateClaude,
+        prdMarkdown: project.prdMarkdown,
+        techStack: { ...project.techStackResearch, ...project.techStackChoices },
+        requirements: project.requirements,
+        templateName: project.templateName,
+        templateStack: matchedTemplate.stack,
+        templateGaps: project.matchGaps || [],
+      });
+
+      // 4. Create sandbox
       const sandbox = await daytona.create({
         language: "typescript",
         ephemeral: true,
         autoStopInterval: 15,
         envVars: {
           ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-          GITHUB_TOKEN: args.githubToken,
+          GITHUB_TOKEN: githubToken,
         },
       });
 
-      // Clone and customize
-      await sandbox.process.exec(`git clone ${args.repoUrl} /workspace/app`);
+      // 5. Clone repos, copy files, run Claude Code (see command sequence above)
+      // ...
 
-      const prompt = buildCustomizationPrompt(args.requirements, {});
-      const result = await sandbox.process.exec(
-        `cd /workspace/app && claude "${prompt}"`,
-        { timeout: 600000 }
-      );
-
-      // Parse and save summary
-      const summary = parseBuildSummary(result.result);
-      await ctx.runMutation(api.projects.saveBuildSummary, {
-        projectId: args.projectId,
-        summary,
-      });
-
-      // Cleanup
+      // 6. Cleanup
       await daytona.delete(sandbox);
 
-      return { success: true, summary };
+      // 7. Update status
+      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+        projectId: args.projectId,
+        scaffoldingStatus: "scaffolding_complete",
+        status: "complete",
+      });
+
+      return { success: true };
     } catch (error: any) {
-      console.error("Customization failed:", error);
-      throw new Error(`Template customization failed: ${error.message}`);
+      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+        projectId: args.projectId,
+        scaffoldingStatus: "scaffolding_failed",
+        scaffoldingError: error.message,
+      });
+      throw error;
     }
   },
 });
@@ -371,19 +265,14 @@ try {
 ## Environment Variables
 
 ```bash
-# .env.local or Convex environment
+# Convex environment
 DAYTONA_API_KEY=dtn_...
-CLAUDE_CODE_OAUTH_TOKEN=...   # Primary (Claude Code OAuth)
-ANTHROPIC_API_KEY=sk-ant-...  # Fallback (rare cases)
+DAYTONA_API_URL=https://api.daytona.io
+ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 Set in Convex:
 ```bash
 npx convex env set DAYTONA_API_KEY <value>
-
-# Set OAuth token (primary - used by Claude Code sessions)
-npx convex env set CLAUDE_CODE_OAUTH_TOKEN <your-oauth-token>
-
-# Or set API key (fallback for rare cases)
 npx convex env set ANTHROPIC_API_KEY <your-api-key>
 ```
