@@ -22,6 +22,8 @@ import {
   RefreshCw,
   Package,
   AlertCircle,
+  ExternalLink,
+  CheckCircle2,
 } from "lucide-react";
 import { PROJECT_STATUS } from "@/lib/constants";
 
@@ -158,7 +160,7 @@ export default function ProjectDetailsPage() {
     [PROJECT_STATUS.COMPLETE]: "Complete",
   };
 
-  const isInProgress = ([PROJECT_STATUS.MATCHING, PROJECT_STATUS.MATCHED, PROJECT_STATUS.BUILDING] as string[]).includes(project.status);
+  const isInProgress = !error && ([PROJECT_STATUS.MATCHING, PROJECT_STATUS.MATCHED] as string[]).includes(project.status);
 
   return (
     <div className="min-h-screen">
@@ -196,19 +198,16 @@ export default function ProjectDetailsPage() {
                 <h3 className="text-lg font-medium mb-2">
                   {project.status === PROJECT_STATUS.MATCHING && "Finding the best template..."}
                   {project.status === PROJECT_STATUS.MATCHED && "Creating your repository..."}
-                  {project.status === PROJECT_STATUS.BUILDING && "Setting up your project..."}
                 </h3>
                 <p className="text-muted-foreground text-center max-w-md mb-6">
                   {project.status === PROJECT_STATUS.MATCHING &&
                     "Analyzing your requirements to find the perfect starting point."}
                   {project.status === PROJECT_STATUS.MATCHED &&
                     "Cloning the template and creating your GitHub repository."}
-                  {project.status === PROJECT_STATUS.BUILDING &&
-                    "Your repository is being configured."}
                 </p>
 
                 {/* Template info once matched */}
-                {(project.status === PROJECT_STATUS.MATCHED || project.status === PROJECT_STATUS.BUILDING) &&
+                {project.status === PROJECT_STATUS.MATCHED &&
                   matchedTemplate && (
                     <div className="w-full max-w-md space-y-4">
                       <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50">
@@ -242,8 +241,61 @@ export default function ProjectDetailsPage() {
           </Card>
         )}
 
+        {/* Success: repo created */}
+        {project.status === PROJECT_STATUS.COMPLETE && project.githubRepoUrl && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
+                  <CheckCircle2 className="h-6 w-6 text-green-500" />
+                </div>
+                <h3 className="text-lg font-medium mb-1">Repository created</h3>
+                <p className="text-muted-foreground text-center text-sm mb-6">
+                  Your project is ready on GitHub.
+                </p>
+
+                {matchedTemplate && (
+                  <div className="w-full max-w-md space-y-4 mb-6">
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center">
+                        <Package className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{matchedTemplate.name}</p>
+                        {project.matchScore !== undefined && (
+                          <p className="text-xs text-muted-foreground">
+                            {project.matchScore}% match
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {matchedTemplate.stack.map((tech) => (
+                        <Badge key={tech} variant="secondary" className="text-xs">
+                          {tech}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button asChild size="lg" className="gap-2">
+                  <a
+                    href={project.githubRepoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    View on GitHub
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Default project view for other statuses */}
-        {!isInProgress && (
+        {!isInProgress && project.status !== PROJECT_STATUS.COMPLETE && (
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -260,41 +312,6 @@ export default function ProjectDetailsPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Template info */}
-              {project.templateName && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                    Template
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{project.templateName}</span>
-                    {project.matchScore !== undefined && (
-                      <Badge variant="secondary" className="text-xs">
-                        {project.matchScore}% match
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {project.githubRepoUrl && (
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                    GitHub Repository
-                  </h3>
-                  <Button variant="outline" asChild>
-                    <a
-                      href={project.githubRepoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      View on GitHub
-                    </a>
-                  </Button>
-                </div>
-              )}
-
               {project.status === PROJECT_STATUS.INTERVIEW && (
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-2">
@@ -306,14 +323,6 @@ export default function ProjectDetailsPage() {
                   <Button onClick={() => router.push(`/interview/${projectId}`)}>
                     Continue Interview
                   </Button>
-                </div>
-              )}
-
-              {project.status === PROJECT_STATUS.COMPLETE && !project.githubRepoUrl && (
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Project complete but no repository was created.
-                  </p>
                 </div>
               )}
             </CardContent>

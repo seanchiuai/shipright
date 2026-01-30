@@ -134,7 +134,7 @@ export const updateGitHubRepo = mutation({
     await ctx.db.patch(args.projectId, {
       githubRepoUrl: args.repoUrl,
       githubRepoFullName: args.repoFullName,
-      status: PROJECT_STATUS.BUILDING,
+      status: PROJECT_STATUS.COMPLETE,
     });
   },
 });
