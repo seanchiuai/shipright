@@ -363,7 +363,6 @@ export default function InterviewPage() {
             {phase === "summary" && requirements && (
               <RequirementsSummary
                 requirements={requirements}
-                projectId={projectId}
                 loading={loading}
                 onConfirm={handleConfirm}
                 onContinueConversation={handleContinueConversation}

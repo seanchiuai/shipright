@@ -1,4 +1,4 @@
-import { PROJECT_STATUS, type ProjectStatus } from "@/lib/constants";
+import { PROJECT_STATUS } from "@/lib/constants";
 
 export function StatusBadge({ status }: { status: string }) {
   const statusConfig: Record<

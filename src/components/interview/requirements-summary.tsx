@@ -5,19 +5,16 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
-import { Id } from "../../../convex/_generated/dataModel";
 import { Requirements } from "@/lib/types";
 
 export function RequirementsSummary({
   requirements,
-  projectId,
   loading,
   onConfirm,
   onContinueConversation,
   onUpdateRequirements,
 }: {
   requirements: Requirements;
-  projectId: Id<"projects">;
   loading: boolean;
   onConfirm: () => void;
   onContinueConversation: () => void;
