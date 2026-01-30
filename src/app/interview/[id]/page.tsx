@@ -6,35 +6,18 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useUser } from "@clerk/nextjs";
 import { useSyncUser } from "@/hooks/useSyncUser";
-import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
-import Image from "next/image";
 import { AppNavbar } from "@/components/app-navbar";
 import {
   ChatMessage,
   ChoiceGrid,
-  MagicTextarea,
   AIConversation,
+  LoadingDots,
+  RequirementsSummary,
+  InterviewInputArea,
 } from "@/components/interview";
-
-type Requirements = {
-  appName: string;
-  tagline: string;
-  appType: string;
-  problemStatement: string;
-  primaryUser: { type: string; coreNeed: string };
-  secondaryUsers: Array<{ type: string; coreNeed: string }>;
-  coreAction: string;
-  hasPayments: boolean;
-  paymentContext: string | null;
-  platform: string;
-  keyFeatures: string[];
-  constraints: { timeline: string | null; mustHave: string[]; mustNotHave: string[] };
-  devAgentNotes: string;
-};
+import { Requirements } from "@/lib/types";
 
 export default function InterviewPage() {
   const params = useParams();
@@ -60,8 +43,6 @@ export default function InterviewPage() {
   const [currentInput, setCurrentInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTypewriterDone, setIsTypewriterDone] = useState(true);
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
   const [multiselectValue, setMultiselectValue] = useState<string[]>([]);
 
   // Track which AI message IDs we've already seen (for typewriter)
@@ -85,12 +66,10 @@ export default function InterviewPage() {
   // Mark existing messages as seen on first load
   useEffect(() => {
     if (messages && seenAiMessages.current.size === 0 && messages.length > 0) {
-      // Mark all but the last AI message as seen
       const aiMessages = messages.filter((m) => m.role === "assistant");
       for (let i = 0; i < aiMessages.length - 1; i++) {
         seenAiMessages.current.add(aiMessages[i]._id);
       }
-      // If we're resuming with messages, mark the last one as seen too (no typewriter on reload)
       if (aiMessages.length > 0) {
         seenAiMessages.current.add(aiMessages[aiMessages.length - 1]._id);
         setIsTypewriterDone(true);
@@ -167,28 +146,24 @@ export default function InterviewPage() {
       try {
         await addMessage({ projectId, role: "user", content: answerText });
 
-        // Build history from current messages + new answer
         const history = [
           ...messages.map((m) => ({ role: m.role, content: m.content })),
           { role: "user", content: answerText },
         ];
 
         seenAiMessages.current.clear();
-        // Mark all current AI messages as seen
         messages.filter((m) => m.role === "assistant").forEach((m) => {
           seenAiMessages.current.add(m._id);
         });
 
-        const newExchangeCount = exchangeCount + 1;
         const result = await continueConversation({
           projectId,
           appIdea: project.appIdea,
           history,
-          exchangeCount: newExchangeCount,
         });
 
-        // Only trigger summary when AI decides conversation is complete
-        if (result.isComplete) {
+        const newExchangeCount = exchangeCount + 1;
+        if (result.isComplete || newExchangeCount >= 6) {
           await extractRequirements({ projectId });
         }
       } catch (e) {
@@ -219,7 +194,6 @@ export default function InterviewPage() {
       await clearIsComplete({ projectId });
       await updateInterviewPhase({ projectId, phase: "conversation" });
 
-      // Mark existing AI messages as seen so only the new one typewriters
       seenAiMessages.current.clear();
       messages.filter((m) => m.role === "assistant").forEach((m) => {
         seenAiMessages.current.add(m._id);
@@ -254,65 +228,9 @@ export default function InterviewPage() {
     }
   }, [projectId, updateStatus, router, convexUser?.githubToken]);
 
-  // Edit handlers for requirements
-  const startEdit = (field: string, value: string) => {
-    setEditingField(field);
-    setEditValue(value);
-  };
-
-  const saveEdit = async (field: string) => {
-    if (!requirements) return;
-    const updated = { ...requirements };
-    if (field === "appName") updated.appName = editValue;
+  const handleUpdateRequirements = useCallback(async (updated: Requirements) => {
     await updateRequirements({ projectId, requirements: updated });
-    setEditingField(null);
-  };
-
-  const saveUserEdit = async (index: number, type: string, coreNeed: string) => {
-    if (!requirements) return;
-    const updated = { ...requirements, secondaryUsers: [...requirements.secondaryUsers] };
-    updated.secondaryUsers[index] = { type, coreNeed };
-    await updateRequirements({ projectId, requirements: updated });
-    setEditingField(null);
-  };
-
-  const addSecondaryUser = async () => {
-    if (!requirements) return;
-    const updated = {
-      ...requirements,
-      secondaryUsers: [...requirements.secondaryUsers, { type: "New User", coreNeed: "" }],
-    };
-    await updateRequirements({ projectId, requirements: updated });
-  };
-
-  const removeSecondaryUser = async (index: number) => {
-    if (!requirements) return;
-    const updated = { ...requirements, secondaryUsers: requirements.secondaryUsers.filter((_, i) => i !== index) };
-    await updateRequirements({ projectId, requirements: updated });
-  };
-
-  const saveFeatureEdit = async (index: number, value: string) => {
-    if (!requirements) return;
-    const updated = { ...requirements, keyFeatures: [...requirements.keyFeatures] };
-    updated.keyFeatures[index] = value;
-    await updateRequirements({ projectId, requirements: updated });
-    setEditingField(null);
-  };
-
-  const addFeature = async () => {
-    if (!requirements) return;
-    const updated = {
-      ...requirements,
-      keyFeatures: [...requirements.keyFeatures, "New feature"],
-    };
-    await updateRequirements({ projectId, requirements: updated });
-  };
-
-  const removeFeature = async (index: number) => {
-    if (!requirements) return;
-    const updated = { ...requirements, keyFeatures: requirements.keyFeatures.filter((_, i) => i !== index) };
-    await updateRequirements({ projectId, requirements: updated });
-  };
+  }, [projectId, updateRequirements]);
 
   // Loading state
   if (!isLoaded || convexUser === undefined || project === undefined) {
@@ -342,19 +260,6 @@ export default function InterviewPage() {
       </div>
     );
   }
-
-  // Determine input mode from last AI message
-  const showChoiceInput = lastAiMsg && !isComplete && phase === "conversation" &&
-    (lastAiMsg.questionType === "choice" || lastAiMsg.questionType === "multiselect") &&
-    lastAiMsg.options;
-  const showTextInput = phase === "seed" || (phase === "conversation" && !isComplete);
-
-  // Example idea chips for seed phase
-  const exampleIdeas = [
-    "A marketplace where local tutors connect with students",
-    "A habit tracker that sends daily check-ins",
-    "A recipe sharing app with meal planning",
-  ];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -391,13 +296,6 @@ export default function InterviewPage() {
             <AnimatePresence mode="popLayout">
               {messages?.map((msg) => {
                 const isAI = msg.role === "assistant";
-                const isSeen = seenAiMessages.current.has(msg._id);
-                const shouldTypewrite = isAI && !isSeen;
-
-                // After rendering, mark as seen
-                if (isAI && !isSeen) {
-                  // We'll mark it seen when typewriter completes
-                }
 
                 return (
                   <ChatMessage
@@ -459,341 +357,34 @@ export default function InterviewPage() {
             </AnimatePresence>
 
             {/* Loading indicator */}
-            {loading && (
-              <motion.div
-                className="flex gap-4 items-start self-start"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <div className="w-7 h-7 rounded-full bg-stone-900 flex items-center justify-center shadow-sm">
-                  <Image src="/logo.png" alt="ShipRight" width={20} height={20} className="w-4 h-4 object-contain brightness-0 invert" />
-                </div>
-                <div className="flex gap-1.5 items-center pt-2">
-                  {[0, 1, 2].map((i) => (
-                    <motion.div
-                      key={i}
-                      className="w-1.5 h-1.5 rounded-full bg-stone-400"
-                      animate={{ opacity: [0.2, 0.8, 0.2], scale: [0.85, 1, 0.85] }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 1.4,
-                        delay: i * 0.2,
-                        ease: "easeInOut",
-                      }}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            )}
+            {loading && <LoadingDots />}
 
             {/* Requirements summary */}
             {phase === "summary" && requirements && (
-              <motion.div
-                className="bg-white rounded-2xl border border-stone-200 p-8 shadow-sm"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-              >
-                {/* App name + tagline */}
-                <div className="pb-6 mb-6 border-b border-stone-100">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      {editingField === "appName" ? (
-                        <div className="flex gap-2 items-center">
-                          <Input
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
-                            className="h-9 text-lg font-medium"
-                          />
-                          <Button size="sm" variant="ghost" onClick={() => saveEdit("appName")}>
-                            <Check className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <h3 className="font-serif text-2xl tracking-tight text-stone-900">
-                          {requirements.appName}
-                        </h3>
-                      )}
-                      <p className="text-[15px] text-stone-500 mt-1.5 leading-relaxed italic">
-                        {requirements.tagline}
-                      </p>
-                    </div>
-                    {editingField !== "appName" && (
-                      <button
-                        onClick={() => startEdit("appName", requirements.appName)}
-                        className="mt-1 p-1.5 rounded-lg text-stone-300 hover:text-stone-500 hover:bg-stone-50 transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Platform + payments */}
-                  <div className="flex items-center gap-2 mt-4">
-                    <span className="px-2.5 py-1 text-[11px] font-medium rounded-full bg-stone-100 text-stone-600 tracking-wide">
-                      {requirements.platform}
-                    </span>
-                    {requirements.hasPayments && (
-                      <span className="px-2.5 py-1 text-[11px] font-medium rounded-full bg-stone-100 text-stone-600 tracking-wide">
-                        {requirements.paymentContext || "Payments"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Users */}
-                <div className="pb-6 mb-6 border-b border-stone-100">
-                  <p className="text-[12px] font-medium text-stone-400 mb-3">Built for</p>
-                  <p className="text-[15px] text-stone-800 leading-relaxed">
-                    <span className="font-medium">{requirements.primaryUser.type}</span>
-                    {requirements.primaryUser.coreNeed && (
-                      <span className="text-stone-500"> — {requirements.primaryUser.coreNeed}</span>
-                    )}
-                  </p>
-
-                  {/* Additional users */}
-                  {requirements.secondaryUsers.length > 0 && (
-                    <div className="mt-3 space-y-1.5">
-                      {requirements.secondaryUsers.map((u, i) => (
-                        <div key={i} className="flex items-start gap-2 group">
-                          {editingField === `user-${i}` ? (
-                            <div className="flex-1 space-y-1.5">
-                              <Input
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                placeholder="User type"
-                                className="h-7 text-sm"
-                              />
-                              <Input
-                                value={editValue.includes("||") ? editValue.split("||")[1] : u.coreNeed}
-                                onChange={(e) => {
-                                  const name = editValue.includes("||") ? editValue.split("||")[0] : editValue;
-                                  setEditValue(`${name}||${e.target.value}`);
-                                }}
-                                placeholder="Their core need"
-                                className="h-7 text-sm"
-                              />
-                              <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => {
-                                  const parts = editValue.split("||");
-                                  saveUserEdit(i, parts[0], parts[1] || u.coreNeed);
-                                }}>
-                                  <Check className="w-3 h-3" />
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
-                                  <X className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <p className="flex-1 text-[14px] text-stone-600">
-                                <span className="font-medium text-stone-700">{u.type}</span>
-                                {u.coreNeed && (
-                                  <span className="text-stone-400"> — {u.coreNeed}</span>
-                                )}
-                              </p>
-                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => { setEditingField(`user-${i}`); setEditValue(u.type); }}
-                                  className="p-1 rounded text-stone-300 hover:text-stone-500"
-                                >
-                                  <Pencil className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={() => removeSecondaryUser(i)}
-                                  className="p-1 rounded text-stone-300 hover:text-red-400"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={addSecondaryUser}
-                    className="mt-3 inline-flex items-center gap-1 text-[12px] text-stone-400 hover:text-stone-600 transition-colors"
-                  >
-                    <Plus className="w-3 h-3" /> Add user role
-                  </button>
-                </div>
-
-                {/* Features */}
-                <div className="pb-6 mb-6 border-b border-stone-100">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-[12px] font-medium text-stone-400">Features</p>
-                    <button
-                      onClick={addFeature}
-                      className="inline-flex items-center gap-1 text-[12px] text-stone-400 hover:text-stone-600 transition-colors"
-                    >
-                      <Plus className="w-3 h-3" /> Add
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {requirements.keyFeatures.map((f, i) => (
-                      <div key={i} className="flex items-center gap-2 group">
-                        {editingField === `feature-${i}` ? (
-                          <div className="flex-1 flex gap-1.5">
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              placeholder="Feature"
-                              className="h-8 text-sm flex-1"
-                            />
-                            <Button size="sm" variant="ghost" onClick={() => saveFeatureEdit(i, editValue)}>
-                              <Check className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
-                              <X className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <>
-                            <span className="flex-1 px-3 py-1.5 text-[13px] rounded-xl bg-stone-50 text-stone-700 font-medium border border-stone-100">
-                              {f}
-                            </span>
-                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => { setEditingField(`feature-${i}`); setEditValue(f); }}
-                                className="p-1 rounded text-stone-300 hover:text-stone-500"
-                              >
-                                <Pencil className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => removeFeature(i)}
-                                className="p-1 rounded text-stone-300 hover:text-red-400"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Constraints */}
-                {(requirements.constraints.mustHave.length > 0 || requirements.constraints.mustNotHave.length > 0) && (
-                  <div className="pb-6 mb-6 border-b border-stone-100">
-                    {requirements.constraints.mustHave.length > 0 && (
-                      <div className="mb-3">
-                        <p className="text-[12px] font-medium text-stone-400 mb-2">Must include</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {requirements.constraints.mustHave.map((c, i) => (
-                            <span key={i} className="px-2.5 py-1 text-[12px] rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium">
-                              {c}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {requirements.constraints.mustNotHave.length > 0 && (
-                      <div>
-                        <p className="text-[12px] font-medium text-stone-400 mb-2">Must avoid</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {requirements.constraints.mustNotHave.map((c, i) => (
-                            <span key={i} className="px-2.5 py-1 text-[12px] rounded-lg bg-red-50 text-red-600 border border-red-100 font-medium">
-                              {c}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="pt-2 space-y-3">
-                  <button
-                    onClick={handleConfirm}
-                    disabled={loading}
-                    className="w-full inline-flex items-center justify-center gap-2 h-11 bg-stone-900 text-white text-[14px] font-medium rounded-xl hover:bg-stone-800 transition-colors disabled:opacity-50 shadow-sm"
-                  >
-                    {loading ? "Processing..." : "Build My App"}
-                    {!loading && <span>&rarr;</span>}
-                  </button>
-                  <div className="text-center">
-                    <button
-                      onClick={handleContinueConversation}
-                      disabled={loading}
-                      className="text-[12px] text-stone-400 hover:text-stone-600 transition-colors disabled:opacity-50"
-                    >
-                      Continue Conversation
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
+              <RequirementsSummary
+                requirements={requirements}
+                projectId={projectId}
+                loading={loading}
+                onConfirm={handleConfirm}
+                onContinueConversation={handleContinueConversation}
+                onUpdateRequirements={handleUpdateRequirements}
+              />
             )}
           </AIConversation>
         </div>
 
         {/* Input area — pinned to bottom */}
-        {phase !== "summary" && (
-          <div className="shrink-0 border-t border-stone-200/60 bg-white/50 backdrop-blur-xl">
-            <div className="max-w-2xl mx-auto p-4 px-6">
-              {/* Example idea chips for seed phase */}
-              {phase === "seed" && (!messages || messages.length === 0) && !currentInput && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {exampleIdeas.map((idea) => (
-                    <button
-                      key={idea}
-                      onClick={() => setCurrentInput(idea)}
-                      className="px-3.5 py-1.5 text-[12px] rounded-full border border-stone-200 text-stone-500 hover:text-stone-700 hover:border-stone-400 hover:bg-white/80 transition-all duration-200"
-                    >
-                      {idea}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {showTextInput && (
-                <MagicTextarea
-                  value={currentInput}
-                  onChange={setCurrentInput}
-                  onSubmit={
-                    phase === "seed" && (!messages || messages.length === 0)
-                      ? handleSubmitIdea
-                      : () => {
-                          if (currentInput.trim()) {
-                            handleAnswer(currentInput.trim());
-                          }
-                        }
-                  }
-                  placeholder={
-                    phase === "seed" && (!messages || messages.length === 0)
-                      ? "I want to build an app that..."
-                      : "Type your answer..."
-                  }
-                  maxLength={phase === "seed" && (!messages || messages.length === 0) ? 500 : undefined}
-                  loading={loading}
-                  submitLabel={phase === "seed" && (!messages || messages.length === 0) ? "Let's Go!" : "Send"}
-                />
-              )}
-
-              {/* Finish early option */}
-              {phase === "conversation" && !isComplete && messages && messages.length > 0 && (
-                <div className="mt-2 text-center">
-                  <button
-                    onClick={handleFinishEarly}
-                    disabled={loading}
-                    className="text-[12px] text-stone-400 hover:text-stone-600 transition-colors disabled:opacity-50"
-                  >
-                    I&apos;ve shared enough, let&apos;s see templates &rarr;
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        <InterviewInputArea
+          phase={phase}
+          hasMessages={!!messages && messages.length > 0}
+          currentInput={currentInput}
+          loading={loading}
+          isComplete={!!isComplete}
+          onInputChange={setCurrentInput}
+          onSubmitIdea={handleSubmitIdea}
+          onAnswer={(answer) => handleAnswer(answer)}
+          onFinishEarly={handleFinishEarly}
+        />
       </main>
     </div>
   );
