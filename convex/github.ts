@@ -183,43 +183,48 @@ async function fetchRepoFiles(
   path: string = "",
   ref?: string
 ): Promise<Array<{ path: string; content: string; isBinary: boolean }>> {
-  const { data: contents } = await octokit.rest.repos.getContent({
+  // Single API call to get the entire file tree
+  const { data: tree } = await octokit.rest.git.getTree({
     owner,
     repo,
-    path,
-    ...(ref ? { ref } : {}),
+    tree_sha: ref || "HEAD",
+    recursive: "true",
   });
 
+  // Filter to blobs (files) only, apply subpath filter
+  const prefix = path ? path + "/" : "";
+  const blobs = tree.tree.filter(
+    (item) =>
+      item.type === "blob" &&
+      item.sha &&
+      item.path &&
+      (!prefix || item.path.startsWith(prefix))
+  );
+
+  // Download all blob contents in parallel batches
   const files: Array<{ path: string; content: string; isBinary: boolean }> = [];
-  const items = Array.isArray(contents) ? contents : [contents];
+  const batchSize = 20;
 
-  for (const item of items) {
-    if (item.type === "file" && item.download_url) {
-      try {
-        const response = await fetch(item.download_url);
-        if (!response.ok) continue; // skip files that fail to download
-
-        const isBinary = isBinaryFile(item.name, item.size ?? 0);
-
-        if (isBinary) {
-          const buffer = await response.arrayBuffer();
-          files.push({
-            path: item.path,
-            content: Buffer.from(buffer).toString("base64"),
-            isBinary: true,
-          });
-        } else {
-          const content = await response.text();
-          files.push({ path: item.path, content, isBinary: false });
-        }
-      } catch {
-        // Skip files that fail to download
-        continue;
-      }
-    } else if (item.type === "dir") {
-      const subFiles = await fetchRepoFiles(octokit, owner, repo, item.path, ref);
-      files.push(...subFiles);
-    }
+  for (let i = 0; i < blobs.length; i += batchSize) {
+    const batch = blobs.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map(async (blob) => {
+        const { data } = await octokit.rest.git.getBlob({
+          owner,
+          repo,
+          file_sha: blob.sha!,
+        });
+        const binary = isBinaryFile(blob.path!, data.size);
+        return {
+          path: blob.path!,
+          content: binary
+            ? data.content
+            : Buffer.from(data.content, "base64").toString("utf-8"),
+          isBinary: binary,
+        };
+      })
+    );
+    files.push(...results);
   }
 
   return files;
@@ -308,12 +313,6 @@ async function commitFiles(
 ) {
   const parentSha = await waitForRef(octokit, owner, repo, "heads/main");
 
-  const { data: parentCommit } = await octokit.rest.git.getCommit({
-    owner,
-    repo,
-    commit_sha: parentSha,
-  });
-
   const blobs = await createBlobsBatched(octokit, owner, repo, files);
 
   const treeItems = blobs.map((blob) => ({
@@ -330,7 +329,6 @@ async function commitFiles(
       const result = await octokit.rest.git.createTree({
         owner,
         repo,
-        base_tree: parentCommit.tree.sha,
         tree: treeItems,
       });
       tree = result.data;
