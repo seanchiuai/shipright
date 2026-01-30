@@ -100,14 +100,21 @@ export default function ProjectDetailsPage() {
         } else if (message.includes("GitHub connection expired") || message.includes("401")) {
           setError("GitHub connection expired. Reconnecting...");
           router.push(`/connect-github?returnTo=/project/${projectId}`);
+        } else if (message.includes("Not Found") || message.includes("HttpError")) {
+          setError("Repository creation failed. Please try again or start over.");
         } else {
-          setError(message);
+          setError("Failed to create repository. Please try again or start over.");
         }
         cloneAttempted.current = false;
       }
     }
     runClone();
   }, [project?.status, project?.name, matchedTemplate, convexUser, projectId, cloneTemplate, router]);
+
+  function handleRetry() {
+    cloneAttempted.current = false;
+    setError(null);
+  }
 
   async function handleStartOver() {
     try {
@@ -181,10 +188,17 @@ export default function ProjectDetailsPage() {
             <CardContent className="pt-6 flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
               <p className="text-destructive flex-1">{error}</p>
-              <Button variant="outline" size="sm" onClick={handleStartOver} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Start Over
-              </Button>
+              <div className="flex gap-2">
+                {!error.includes("unavailable") && (
+                  <Button variant="outline" size="sm" onClick={handleRetry} className="gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Retry
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={handleStartOver} className="gap-2">
+                  Start Over
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

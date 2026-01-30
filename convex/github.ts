@@ -308,18 +308,41 @@ async function commitFiles(
 ) {
   const parentSha = await waitForRef(octokit, owner, repo, "heads/main");
 
-  const blobs = await createBlobsBatched(octokit, owner, repo, files);
-
-  const { data: tree } = await octokit.rest.git.createTree({
+  // Get the tree SHA from the parent commit for base_tree
+  const { data: parentCommit } = await octokit.rest.git.getCommit({
     owner,
     repo,
-    tree: blobs.map((blob) => ({
-      path: blob.path,
-      mode: "100644" as const,
-      type: "blob" as const,
-      sha: blob.sha,
-    })),
+    commit_sha: parentSha,
   });
+
+  const blobs = await createBlobsBatched(octokit, owner, repo, files);
+
+  const treeItems = blobs.map((blob) => ({
+    path: blob.path,
+    mode: "100644" as const,
+    type: "blob" as const,
+    sha: blob.sha,
+  }));
+
+  // Retry createTree — GitHub's git backend can lag behind repo creation
+  let tree;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const result = await octokit.rest.git.createTree({
+        owner,
+        repo,
+        base_tree: parentCommit.tree.sha,
+        tree: treeItems,
+      });
+      tree = result.data;
+      break;
+    } catch (error: unknown) {
+      if (attempt === 2) throw error;
+      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+    }
+  }
+
+  if (!tree) throw new Error("Failed to create git tree");
 
   const { data: commit } = await octokit.rest.git.createCommit({
     owner,

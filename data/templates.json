@@ -5,7 +5,7 @@
       "slug": "minimal-starter",
       "name": "Minimal Starter",
       "description": "Basic Next.js with TypeScript and Tailwind. Perfect for simple static sites or custom builds from scratch.",
-      "sourceUrl": "https://github.com/vercel/next.js/tree/canary/examples/with-tailwindcss",
+      "sourceUrl": "https://github.com/shadcn-ui/next-template",
       "stack": ["Next.js", "TypeScript", "Tailwind"],
       "capabilities": {
         "auth": { "present": false, "providers": [], "hasRoles": false, "hasOrgs": false },
@@ -45,7 +45,7 @@
       "slug": "simple-database",
       "name": "Simple Database",
       "description": "Next.js with Prisma and PostgreSQL. For apps that need data storage without authentication.",
-      "sourceUrl": "https://github.com/prisma/prisma-examples/tree/latest/typescript/rest-nextjs-api-routes",
+      "sourceUrl": "https://github.com/prisma/prisma-examples/tree/latest/orm/nextjs",
       "stack": ["Next.js", "Prisma", "PostgreSQL", "TypeScript"],
       "capabilities": {
         "auth": { "present": false, "providers": [], "hasRoles": false, "hasOrgs": false },
@@ -105,7 +105,7 @@
       "slug": "convex-saas-starter",
       "name": "Convex SaaS Starter",
       "description": "Real-time SaaS with Convex, Clerk auth, and Stripe. Best for apps needing real-time features.",
-      "sourceUrl": "https://github.com/get-convex/convex-saas-starter",
+      "sourceUrl": "https://github.com/get-convex/convex-saas",
       "stack": ["Next.js", "Convex", "Clerk", "Stripe", "shadcn/ui"],
       "capabilities": {
         "auth": { "present": true, "providers": ["google", "email"], "hasRoles": true, "hasOrgs": true },
