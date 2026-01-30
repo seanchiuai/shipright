@@ -60,9 +60,9 @@ If template repo is deleted/private/unavailable:
 |---------|-------|--------|
 | Private | `true` | Default for user privacy |
 | Name | Auto-generated | From app name, user can rename later on GitHub |
-| Auto-init | `false` | We commit template files, no need for README |
+| Auto-init | `true` | Creates initial commit so Git Data API works |
 
-**No user confirmation for repo creation** - flow is autonomous after interview.
+**No user confirmation for repo creation** - flow is autonomous after matching. Template name and GitHub URL shown on dashboard as soon as available.
 
 ## Commit Patterns
 
