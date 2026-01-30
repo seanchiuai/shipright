@@ -201,7 +201,7 @@ export default function InterviewPage() {
 
       const history = [
         ...messages.map((m) => ({ role: m.role, content: m.content })),
-        { role: "user", content: "[The user reviewed the requirements summary and wants to continue the conversation to clarify or adjust something]" },
+        { role: "user", content: "[SYSTEM] The user wants to keep going. Ask the next most useful question to refine the app requirements — don't ask what they want to discuss." },
       ];
 
       await continueConversation({
