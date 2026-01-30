@@ -119,7 +119,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [x] Initial commit with message: "Initial commit from Shipright template: {templateName}"
 - [x] Repo creation starts automatically after matching — no user confirmation required
 - [x] GitHub URL shown on dashboard immediately after repo is created
-- [ ] Success screen shown after scaffolding complete (Phase 5)
+- [x] Success screen shown after scaffolding complete (Phase 5)
 - [x] Typecheck passes
 
 ### US-009: GitHub OAuth Connection
@@ -139,66 +139,66 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 **Description:** As a system, I need to generate a CLAUDE.md file tailored to the user's project so that AI agents can effectively work on the codebase.
 
 **Acceptance Criteria:**
-- [ ] CLAUDE.md includes: overview, tech stack, commands, project structure, code style, boundaries
-- [ ] Overview section uses user's app description
-- [ ] Tech stack section reflects actual template stack
-- [ ] Commands section includes exact npm scripts from template
-- [ ] Project structure is vague (not specific file paths) to remain stable during development
-- [ ] Boundaries section includes "Always do", "Ask first", "Never do" lists
-- [ ] Contains only stable info that won't need frequent updates
-- [ ] Under 100 lines recommended (not a hard limit)
-- [ ] Typecheck passes
+- [x] CLAUDE.md includes: overview, tech stack, commands, project structure, code style, boundaries
+- [x] Overview section uses user's app description
+- [x] Tech stack section reflects actual template stack
+- [x] Commands section includes exact npm scripts from template
+- [x] Project structure is vague (not specific file paths) to remain stable during development
+- [x] Boundaries section includes "Always do", "Ask first", "Never do" lists
+- [x] Contains only stable info that won't need frequent updates
+- [x] Under 100 lines recommended (not a hard limit)
+- [x] Typecheck passes
 
 ### US-011: TASKS.md Generation
 **Description:** As a system, I need to generate a TASKS.md file with the user's feature backlog so that AI agents know what to build.
 
 **Acceptance Criteria:**
-- [ ] TASKS.md includes: Current Sprint, Backlog, Completed sections
-- [ ] Current Sprint populated with first 3-5 features from requirements
-- [ ] Backlog populated with remaining features
-- [ ] Features written as actionable task descriptions
-- [ ] Typecheck passes
+- [x] TASKS.md includes: Current Sprint, Backlog, Completed sections
+- [x] Current Sprint populated with first 3-5 features from requirements
+- [x] Backlog populated with remaining features
+- [x] Features written as actionable task descriptions
+- [x] Typecheck passes
 
 ### US-012: PRD.md Generation
 **Description:** As a system, I need to generate a PRD.md file documenting the user's requirements so that AI agents understand the product context. This is a kickstart document used for initial planning and implementation plan generation.
 
 **Acceptance Criteria:**
-- [ ] PRD.md includes: Problem, Users, Core Features, Data Model, User Flows
-- [ ] Content derived from interview answers
-- [ ] Written in plain language (user can understand it)
-- [ ] High-level document (not used frequently during development, just to start)
-- [ ] Typecheck passes
+- [x] PRD.md includes: Problem, Users, Core Features, Data Model, User Flows
+- [x] Content derived from interview answers
+- [x] Written in plain language (user can understand it)
+- [x] High-level document (not used frequently during development, just to start)
+- [x] Typecheck passes
 
 ### US-012b: Skills Directory Generation
 **Description:** As a system, I need to generate a `.claude/skills/` directory with domain-specific skills so that AI agents have on-demand access to specialized knowledge.
 
 **Acceptance Criteria:**
-- [ ] Skills directory created at `.claude/skills/`
-- [ ] Skills organized by domain (e.g., authentication/, api/, database/) based on requirements
-- [ ] Each skill has a `SKILL.md` file with proper frontmatter and instructions
-- [ ] Skills cover the key domains identified in the interview
-- [ ] Skills load on-demand (progressive disclosure) vs CLAUDE.md which always loads
-- [ ] No MCP server configurations generated (not supported)
-- [ ] No hooks generated (not supported)
-- [ ] Typecheck passes
+- [x] Skills directory created at `.claude/skills/`
+- [x] Skills organized by domain (e.g., authentication/, api/, database/) based on requirements
+- [x] Each skill has a `SKILL.md` file with proper frontmatter and instructions
+- [x] Skills cover the key domains identified in the interview
+- [x] Skills load on-demand (progressive disclosure) vs CLAUDE.md which always loads
+- [x] No MCP server configurations generated (not supported)
+- [x] No hooks generated (not supported)
+- [x] Typecheck passes
 
 ### US-012c: Scaffolding Injection via Daytona Sandbox
 **Description:** As a system, I need to use Daytona sandboxes with Claude Code to inject cc-template files and fill {{PLACEHOLDER}} values with project-specific content, producing a fully scaffolded repo ready for AI-assisted development.
 
 **Acceptance Criteria:**
-- [ ] Generate PRD markdown from interview requirements (Convex action, pre-sandbox)
-- [ ] Research tech stack integrations beyond base template (Convex action, pre-sandbox)
-- [ ] If AI can't choose between integration options, present choices to user for approval
-- [ ] Spin up ephemeral Daytona sandbox
-- [ ] Clone user's GitHub repo and cc-template repo into sandbox
-- [ ] Copy cc-template files (.claude/, template files) into user's repo
-- [ ] Run Claude Code to fill {{PLACEHOLDER}} templates one by one in dependency order
-- [ ] Templates filled: PRD.md, design.md, CLAUDE.md, TASKS.md, development-progress.yaml, prompts/, skills/
-- [ ] All scaffolding committed and pushed to user's GitHub repo
-- [ ] Sandbox destroyed after completion
-- [ ] Pipeline is resumable (each step saves output, retry from failure point)
-- [ ] Error handling for sandbox timeout, Claude Code failures, git push failures
-- [ ] Typecheck passes
+- [x] Generate PRD markdown from interview requirements (Convex action, pre-sandbox)
+- [x] Research tech stack integrations beyond base template (Convex action, pre-sandbox)
+- [x] If AI can't choose between integration options, present choices to user for approval
+- [x] Spin up ephemeral Daytona sandbox
+- [x] Clone user's GitHub repo and cc-template repo into sandbox
+- [x] Copy cc-template files (.claude/, template files) into user's repo
+- [x] Run Claude Code to fill {{PLACEHOLDER}} templates one by one in dependency order
+- [x] Templates filled: PRD.md, design.md, CLAUDE.md, TASKS.md, development-progress.yaml, prompts/, skills/
+- [x] All scaffolding committed and pushed to user's GitHub repo
+- [x] Sandbox destroyed after completion
+- [x] Pipeline is resumable (each step saves output, retry from failure point)
+- [x] Error handling for sandbox timeout, Claude Code failures, git push failures
+- [x] Typecheck passes
 
 ### US-013: User Dashboard
 **Description:** As a user, I want to see my projects so that I can access them later.

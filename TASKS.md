@@ -2,19 +2,6 @@
 
 ## Active
 
-### Phase 5: Scaffolding Injection (Daytona + Claude Code)
-- [ ] Build PRD generation action (Convex/Gemini, from interview requirements)
-- [ ] Build tech stack research action (identify integrations beyond base template)
-- [ ] Build tech stack choice UI (when AI can't decide between options)
-- [ ] Integrate Daytona SDK
-- [ ] Spin up sandbox, clone user repo + cc-template repo
-- [ ] Copy cc-template files into user's repo
-- [ ] Run Claude Code to fill {{PLACEHOLDER}} templates (one by one, dependency order)
-- [ ] Commit + push scaffolding to GitHub
-- [ ] Destroy sandbox after completion
-- [ ] Build scaffolding progress stepper UI
-- [ ] Add error recovery (resume from last completed step)
-
 ### Phase 6: Production Deployment
 - [ ] Deploy to Vercel
 - [ ] Configure production environment variables
@@ -22,6 +9,19 @@
 - [ ] Set up error monitoring
 
 ## Complete
+
+### Phase 5: Scaffolding Injection (2026-01-30)
+- [x] Build PRD generation action (Convex/Gemini, from interview requirements)
+- [x] Build tech stack research action (identify integrations beyond base template)
+- [x] Build tech stack choice UI (when AI can't decide between options)
+- [x] Integrate Daytona SDK
+- [x] Spin up sandbox, clone user repo + cc-template repo
+- [x] Copy cc-template files into user's repo
+- [x] Run Claude Code to fill {{PLACEHOLDER}} templates (one by one, dependency order)
+- [x] Commit + push scaffolding to GitHub
+- [x] Destroy sandbox after completion
+- [x] Build scaffolding progress stepper UI
+- [x] Add error recovery (resume from last completed step)
 
 ### Phase 4: GitHub Repo Creation (2026-01-29)
 - [x] Implement GitHub OAuth connection flow (connect/disconnect page)
