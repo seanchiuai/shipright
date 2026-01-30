@@ -52,6 +52,7 @@ export default function ProjectDetailsPage() {
   const resetInterview = useMutation(api.projects.resetInterview);
   const retryRepo = useMutation(api.projects.retryRepoCreation);
   const setRepoFailed = useMutation(api.projects.setRepoFailed);
+  const restartRepo = useMutation(api.projects.restartRepoCreation);
 
   const [matching, setMatching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -181,6 +182,16 @@ export default function ProjectDetailsPage() {
     }
   }
 
+  async function handleRestartRepo() {
+    try {
+      cloneInFlight.current = false;
+      setError(null);
+      await restartRepo({ projectId });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to restart");
+    }
+  }
+
   async function handleStartOver() {
     try {
       cloneInFlight.current = false;
@@ -294,15 +305,17 @@ export default function ProjectDetailsPage() {
                 </p>
               </div>
               <div className="flex gap-2">
-                {(project.repoRetryCount ?? 0) < 3 && (
+                {(project.repoRetryCount ?? 0) < 3 ? (
                   <Button variant="outline" size="sm" onClick={handleRetryRepo} className="gap-2">
                     <RefreshCw className="h-4 w-4" />
                     Retry
                   </Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={handleRestartRepo} className="gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Restart
+                  </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={handleStartOver} className="gap-2">
-                  Start Over
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -334,22 +347,17 @@ export default function ProjectDetailsPage() {
                     <p className="text-xs text-amber-600">
                       This is taking too long ({elapsedSeconds}s). Something may have gone wrong.
                     </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={async () => {
-                          await setRepoFailed({ projectId, error: "Timed out waiting for repository creation." });
-                        }}
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                        Cancel &amp; Retry
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={handleStartOver} className="gap-2">
-                        Start Over
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={async () => {
+                        await setRepoFailed({ projectId, error: "Timed out waiting for repository creation." });
+                      }}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Cancel &amp; Retry
+                    </Button>
                   </div>
                 )}
 

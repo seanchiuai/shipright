@@ -165,12 +165,28 @@ export const retryRepoCreation = mutation({
     const { project } = await getOwnedProject(ctx, args.projectId);
     if (project.status !== "repo_failed") throw new Error("Project is not in failed state");
     if ((project.repoRetryCount ?? 0) >= 3) {
-      throw new Error("Maximum retry attempts reached. Please start over.");
+      throw new Error("Maximum retry attempts reached. Use restart instead.");
     }
 
     await ctx.db.patch(args.projectId, {
       status: "matched",
       repoError: undefined,
+    });
+  },
+});
+
+export const restartRepoCreation = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const { project } = await getOwnedProject(ctx, args.projectId);
+    if (project.status !== "repo_failed") throw new Error("Project is not in failed state");
+
+    await ctx.db.patch(args.projectId, {
+      status: "matched",
+      repoError: undefined,
+      repoRetryCount: 0,
     });
   },
 });
