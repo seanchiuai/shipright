@@ -24,7 +24,14 @@ import {
   AlertCircle,
   ExternalLink,
   CheckCircle2,
+  FileText,
+  Search,
+  Box,
+  Code2,
+  GitBranch,
 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { PROJECT_STATUS } from "@/lib/constants";
 
 export default function ProjectDetailsPage() {
@@ -39,11 +46,16 @@ export default function ProjectDetailsPage() {
 
   const matchTemplate = useAction(api.matching.matchTemplate);
   const cloneTemplate = useAction(api.github.cloneTemplate);
+  const runScaffolding = useAction(api.scaffolding.runScaffoldingPipeline);
+  const resumeAfterChoices = useAction(api.scaffolding.resumeAfterChoices);
+  const submitTechChoicesAction = useAction(api.scaffolding.submitTechChoices);
   const resetInterview = useMutation(api.projects.resetInterview);
 
   const [matching, setMatching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cloneAttempted = useRef(false);
+  const scaffoldingAttempted = useRef(false);
+  const [techChoices, setTechChoices] = useState<Record<string, string>>({});
 
   const matchedTemplate =
     project?.templateId && templates
@@ -109,6 +121,37 @@ export default function ProjectDetailsPage() {
     runClone();
   }, [project?.status, project?.name, matchedTemplate, convexUser, projectId, cloneTemplate, router]);
 
+  // Auto-trigger scaffolding when repo is created (status: "building")
+  useEffect(() => {
+    async function startScaffolding() {
+      if (project?.status !== "building") return;
+      if (scaffoldingAttempted.current) return;
+      if (!project.githubRepoUrl) return;
+
+      scaffoldingAttempted.current = true;
+      setError(null);
+
+      try {
+        await runScaffolding({ projectId });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Scaffolding failed";
+        setError(message);
+        scaffoldingAttempted.current = false;
+      }
+    }
+    startScaffolding();
+  }, [project?.status, project?.githubRepoUrl, projectId, runScaffolding]);
+
+  async function handleSubmitTechChoices() {
+    try {
+      setError(null);
+      await submitTechChoicesAction({ projectId, choices: techChoices });
+      await resumeAfterChoices({ projectId });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to continue");
+    }
+  }
+
   function handleRetry() {
     cloneAttempted.current = false;
     setError(null);
@@ -161,11 +204,30 @@ export default function ProjectDetailsPage() {
     [PROJECT_STATUS.INTERVIEW]: "In Interview",
     [PROJECT_STATUS.MATCHING]: "Finding Template",
     [PROJECT_STATUS.MATCHED]: "Creating Repo",
-    [PROJECT_STATUS.BUILDING]: "Building",
+    [PROJECT_STATUS.BUILDING]: "Creating Repo",
+    [PROJECT_STATUS.SCAFFOLDING]: "Scaffolding",
     [PROJECT_STATUS.COMPLETE]: "Complete",
   };
 
-  const isInProgress = !error && ([PROJECT_STATUS.MATCHING, PROJECT_STATUS.MATCHED] as string[]).includes(project.status);
+  const scaffoldingSteps = [
+    { key: "generating_prd", label: "Generating PRD", icon: FileText },
+    { key: "researching_stack", label: "Researching tech stack", icon: Search },
+    { key: "preparing_sandbox", label: "Preparing sandbox", icon: Box },
+    { key: "running_sandbox", label: "Running Claude Code", icon: Code2 },
+    { key: "pushing_files", label: "Pushing to GitHub", icon: GitBranch },
+    { key: "scaffolding_complete", label: "Complete", icon: CheckCircle2 },
+  ];
+
+  const scaffoldingStepIndex = project.scaffoldingStatus
+    ? scaffoldingSteps.findIndex((s) => s.key === project.scaffoldingStatus)
+    : -1;
+
+  const isMatchingInProgress = !error && ([PROJECT_STATUS.MATCHING, PROJECT_STATUS.MATCHED] as string[]).includes(project.status);
+  const isBuildingRepo = !error && project.status === PROJECT_STATUS.BUILDING && !project.scaffoldingStatus;
+  const isScaffolding = !error && (project.status === PROJECT_STATUS.SCAFFOLDING || (project.status === PROJECT_STATUS.BUILDING && project.scaffoldingStatus));
+  const isAwaitingChoices = project.scaffoldingStatus === "awaiting_tech_choices";
+  const isScaffoldingFailed = project.scaffoldingStatus === "scaffolding_failed";
+  const isInProgress = isMatchingInProgress || isBuildingRepo;
 
   return (
     <div className="min-h-screen">
@@ -253,6 +315,113 @@ export default function ProjectDetailsPage() {
           </Card>
         )}
 
+        {/* Scaffolding progress */}
+        {isScaffolding && !isAwaitingChoices && !isScaffoldingFailed && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                <h3 className="text-lg font-medium mb-1">Setting up your project</h3>
+                <p className="text-muted-foreground text-sm mb-8 text-center max-w-md">
+                  Generating scaffolding files so AI can help you build.
+                </p>
+
+                <div className="w-full max-w-sm space-y-3">
+                  {scaffoldingSteps.slice(0, -1).map((step, i) => {
+                    const Icon = step.icon;
+                    const isActive = step.key === project.scaffoldingStatus;
+                    const isDone = scaffoldingStepIndex > i;
+                    return (
+                      <div key={step.key} className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          isDone ? "bg-green-500/10" : isActive ? "bg-primary/10" : "bg-muted"
+                        }`}>
+                          {isDone ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : isActive ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          ) : (
+                            <Icon className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span className={`text-sm ${
+                          isDone ? "text-green-600" : isActive ? "text-foreground font-medium" : "text-muted-foreground"
+                        }`}>
+                          {step.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tech choices dialog */}
+        {isAwaitingChoices && project.techStackResearch && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Choose your integrations</CardTitle>
+              <CardDescription>
+                We found a few options for some integrations. Pick what works best for your project.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {(project.techStackResearch as { choices: Array<{ need: string; options: Array<{ library: string; package: string; reason: string }> }> }).choices?.map((choice) => (
+                <div key={choice.need} className="space-y-3">
+                  <h4 className="text-sm font-medium">{choice.need}</h4>
+                  <RadioGroup
+                    value={techChoices[choice.need] || ""}
+                    onValueChange={(value) => setTechChoices((prev) => ({ ...prev, [choice.need]: value }))}
+                  >
+                    {choice.options.map((option) => (
+                      <div key={option.library} className="flex items-start gap-3 p-3 rounded-xl border border-stone-200 hover:border-stone-300 transition-colors">
+                        <RadioGroupItem value={option.library} id={`${choice.need}-${option.library}`} className="mt-0.5" />
+                        <Label htmlFor={`${choice.need}-${option.library}`} className="cursor-pointer flex-1">
+                          <span className="font-medium text-sm">{option.library}</span>
+                          <span className="text-xs text-muted-foreground ml-2">{option.package}</span>
+                          <p className="text-xs text-muted-foreground mt-1">{option.reason}</p>
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+              ))}
+              <Button
+                onClick={handleSubmitTechChoices}
+                disabled={
+                  (project.techStackResearch as { choices: Array<{ need: string }> }).choices?.some(
+                    (c) => !techChoices[c.need]
+                  )
+                }
+                className="w-full"
+              >
+                Continue with these choices
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Scaffolding failed */}
+        {isScaffoldingFailed && (
+          <Card className="mb-6 border-destructive">
+            <CardContent className="pt-6 flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+              <p className="text-destructive flex-1 text-sm">
+                {project.scaffoldingError || "Scaffolding failed. Please try again."}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => {
+                scaffoldingAttempted.current = false;
+                setError(null);
+              }} className="gap-2">
+                <RefreshCw className="h-4 w-4" />
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Success: repo created */}
         {project.status === PROJECT_STATUS.COMPLETE && project.githubRepoUrl && (
           <Card className="mb-6">
@@ -261,9 +430,9 @@ export default function ProjectDetailsPage() {
                 <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
                   <CheckCircle2 className="h-6 w-6 text-green-500" />
                 </div>
-                <h3 className="text-lg font-medium mb-1">Repository created</h3>
+                <h3 className="text-lg font-medium mb-1">Project scaffolded</h3>
                 <p className="text-muted-foreground text-center text-sm mb-6">
-                  Your project is ready on GitHub.
+                  Your project is ready on GitHub with AI-optimized scaffolding.
                 </p>
 
                 {matchedTemplate && (

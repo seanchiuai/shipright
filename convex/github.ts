@@ -214,7 +214,7 @@ async function fetchRepoFiles(
           repo,
           file_sha: blob.sha!,
         });
-        const binary = isBinaryFile(blob.path!, data.size);
+        const binary = isBinaryFile(blob.path!, data.size ?? 0);
         return {
           path: blob.path!,
           content: binary

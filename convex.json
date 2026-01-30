@@ -1,5 +1,5 @@
 {
   "node": {
-    "externalPackages": ["octokit", "crypto"]
+    "externalPackages": ["octokit", "crypto", "@daytonaio/sdk"]
   }
 }

@@ -41,7 +41,7 @@ export const create = mutation({
 export const updateStatus = mutation({
   args: {
     projectId: v.id("projects"),
-    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("complete")),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete")),
   },
   handler: async (ctx, args) => {
     await getOwnedProject(ctx, args.projectId);
@@ -134,7 +134,7 @@ export const updateGitHubRepo = mutation({
     await ctx.db.patch(args.projectId, {
       githubRepoUrl: args.repoUrl,
       githubRepoFullName: args.repoFullName,
-      status: PROJECT_STATUS.COMPLETE,
+      status: PROJECT_STATUS.BUILDING,
     });
   },
 });
@@ -158,6 +158,66 @@ export const remove = mutation({
     await getOwnedProject(ctx, args.projectId);
     await deleteProjectData(ctx, args.projectId);
     await ctx.db.delete(args.projectId);
+  },
+});
+
+export const savePrdMarkdown = mutation({
+  args: {
+    projectId: v.id("projects"),
+    prdMarkdown: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, { prdMarkdown: args.prdMarkdown });
+  },
+});
+
+export const saveTechStackResearch = mutation({
+  args: {
+    projectId: v.id("projects"),
+    techStackResearch: v.any(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, { techStackResearch: args.techStackResearch });
+  },
+});
+
+export const submitTechChoices = mutation({
+  args: {
+    projectId: v.id("projects"),
+    techStackChoices: v.any(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      techStackChoices: args.techStackChoices,
+      scaffoldingStatus: "preparing_sandbox",
+    });
+  },
+});
+
+export const updateScaffoldingStatus = mutation({
+  args: {
+    projectId: v.id("projects"),
+    scaffoldingStatus: v.union(
+      v.literal("generating_prd"),
+      v.literal("researching_stack"),
+      v.literal("awaiting_tech_choices"),
+      v.literal("preparing_sandbox"),
+      v.literal("running_sandbox"),
+      v.literal("pushing_files"),
+      v.literal("scaffolding_complete"),
+      v.literal("scaffolding_failed"),
+    ),
+    scaffoldingError: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const patch: Record<string, unknown> = { scaffoldingStatus: args.scaffoldingStatus };
+    if (args.scaffoldingError !== undefined) {
+      patch.scaffoldingError = args.scaffoldingError;
+    }
+    if (args.scaffoldingStatus === "scaffolding_complete") {
+      patch.status = "complete";
+    }
+    await ctx.db.patch(args.projectId, patch);
   },
 });
 

@@ -18,6 +18,7 @@ import type * as lib_constants from "../lib/constants.js";
 import type * as lib_vertex from "../lib/vertex.js";
 import type * as matching from "../matching.js";
 import type * as projects from "../projects.js";
+import type * as scaffolding from "../scaffolding.js";
 import type * as templates from "../templates.js";
 import type * as users from "../users.js";
 
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   "lib/vertex": typeof lib_vertex;
   matching: typeof matching;
   projects: typeof projects;
+  scaffolding: typeof scaffolding;
   templates: typeof templates;
   users: typeof users;
 }>;

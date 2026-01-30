@@ -3,6 +3,7 @@ export const PROJECT_STATUS = {
   MATCHING: "matching",
   MATCHED: "matched",
   BUILDING: "building",
+  SCAFFOLDING: "scaffolding",
   COMPLETE: "complete",
 } as const;
 

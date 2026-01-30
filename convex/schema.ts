@@ -15,7 +15,7 @@ export default defineSchema({
   projects: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("complete")),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete")),
     interviewStep: v.optional(v.number()), // 1, 2, or 3
     interviewRound: v.optional(v.number()), // For step 2: 1-3
     appIdea: v.optional(v.string()), // Step 1 input
@@ -27,6 +27,20 @@ export default defineSchema({
     githubRepoUrl: v.optional(v.string()),
     githubRepoFullName: v.optional(v.string()),
     interviewPhase: v.optional(v.union(v.literal("seed"), v.literal("conversation"), v.literal("summary"))),
+    prdMarkdown: v.optional(v.string()),
+    techStackResearch: v.optional(v.any()),
+    techStackChoices: v.optional(v.any()),
+    scaffoldingStatus: v.optional(v.union(
+      v.literal("generating_prd"),
+      v.literal("researching_stack"),
+      v.literal("awaiting_tech_choices"),
+      v.literal("preparing_sandbox"),
+      v.literal("running_sandbox"),
+      v.literal("pushing_files"),
+      v.literal("scaffolding_complete"),
+      v.literal("scaffolding_failed"),
+    )),
+    scaffoldingError: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 
   interviewMessages: defineTable({
