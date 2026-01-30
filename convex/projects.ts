@@ -1,13 +1,15 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { PROJECT_STATUS } from "./lib/constants";
+import { getAuthenticatedUser, getOwnedProject } from "./lib/auth";
 
 export const list = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedUser(ctx);
     return await ctx.db
       .query("projects")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
       .order("desc")
       .collect();
   },
@@ -22,12 +24,12 @@ export const get = query({
 
 export const create = mutation({
   args: {
-    userId: v.id("users"),
     name: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
     return await ctx.db.insert("projects", {
-      userId: args.userId,
+      userId: user._id,
       name: args.name,
       status: PROJECT_STATUS.INTERVIEW,
       interviewStep: 1,
@@ -41,6 +43,7 @@ export const updateStatus = mutation({
     status: v.string(),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, { status: args.status });
   },
 });
@@ -51,6 +54,7 @@ export const updateAppIdea = mutation({
     appIdea: v.string(),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, {
       appIdea: args.appIdea,
       interviewPhase: "conversation",
@@ -65,6 +69,7 @@ export const updateInterviewStep = mutation({
     round: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, {
       interviewStep: args.step,
       ...(args.round !== undefined && { interviewRound: args.round }),
@@ -78,6 +83,7 @@ export const updateInterviewPhase = mutation({
     phase: v.string(),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, {
       interviewPhase: args.phase,
     });
@@ -90,6 +96,7 @@ export const updateRequirements = mutation({
     requirements: v.any(),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, {
       requirements: args.requirements,
       interviewPhase: "summary",
@@ -102,6 +109,8 @@ export const resetInterview = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
+
     // Delete all interview sessions (legacy)
     const sessions = await ctx.db
       .query("interviewSessions")
@@ -152,6 +161,7 @@ export const rename = mutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     await ctx.db.patch(args.projectId, { name: args.name });
   },
 });
@@ -161,6 +171,8 @@ export const remove = mutation({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
+
     // Delete interview messages
     const messages = await ctx.db
       .query("interviewMessages")

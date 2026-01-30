@@ -49,7 +49,7 @@ export default function DashboardPage() {
   const convexUser = useSyncUser();
   const projects = useQuery(
     api.projects.list,
-    convexUser ? { userId: convexUser._id } : "skip"
+    convexUser ? {} : "skip"
   );
   const createProject = useMutation(api.projects.create);
   const updateAppIdea = useMutation(api.projects.updateAppIdea);
@@ -61,7 +61,6 @@ export default function DashboardPage() {
     setCreating(true);
     try {
       const projectId = await createProject({
-        userId: convexUser._id,
         name: idea.trim().slice(0, 50) + (idea.length > 50 ? "..." : ""),
       });
 

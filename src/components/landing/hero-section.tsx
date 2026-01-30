@@ -83,7 +83,6 @@ export function HeroSection() {
     setIsSubmitting(true);
     try {
       const projectId = await createProject({
-        userId: convexUser._id,
         name: appIdea.trim().slice(0, 50) + (appIdea.length > 50 ? "..." : ""),
       });
 
