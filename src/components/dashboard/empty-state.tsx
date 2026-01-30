@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Zap } from "lucide-react";
 
 export function EmptyState() {
   return (
@@ -11,15 +10,11 @@ export function EmptyState() {
       transition={{ delay: 0.3, duration: 0.5 }}
       className="text-center py-16"
     >
-      <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center">
-        <Zap className="w-10 h-10 text-primary" />
-      </div>
       <h3 className="font-serif text-2xl font-medium text-foreground mb-3">
-        Ready to build something?
+        No projects yet
       </h3>
       <p className="text-muted-foreground max-w-md mx-auto">
-        Type your app idea above and we&apos;ll help you turn it into a GitHub
-        repo in minutes.
+        Type your app idea above to get started.
       </p>
     </motion.div>
   );

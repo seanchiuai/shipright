@@ -104,75 +104,99 @@ export const cloneTemplate = action({
     if (!user?.githubToken) throw new Error("GitHub not connected");
 
     const accessToken = decryptToken(user.githubToken);
-    const octokit = new Octokit({ auth: accessToken });
+    const octokit = new Octokit({
+      auth: accessToken,
+      request: { timeout: 30_000 },
+    });
 
-    const { owner, repo, ref, subpath } = parseTemplateUrl(
-      args.templateSourceUrl
-    );
-
-    let files: Array<{ path: string; content: string; isBinary: boolean }>;
     try {
-      files = await fetchRepoFiles(octokit, owner, repo, subpath, ref);
-    } catch (error: unknown) {
-      if ((error as { status?: number }).status === 404) {
+      const { owner, repo, ref, subpath } = parseTemplateUrl(
+        args.templateSourceUrl
+      );
+
+      let files: Array<{ path: string; content: string; isBinary: boolean }>;
+      try {
+        files = await fetchRepoFiles(octokit, owner, repo, subpath, ref);
+      } catch (error: unknown) {
+        if ((error as { status?: number }).status === 404) {
+          throw new Error("TEMPLATE_UNAVAILABLE");
+        }
+        throw error;
+      }
+
+      if (files.length === 0) {
         throw new Error("TEMPLATE_UNAVAILABLE");
       }
-      throw error;
-    }
 
-    if (files.length === 0) {
-      throw new Error("TEMPLATE_UNAVAILABLE");
-    }
+      // Strip subpath prefix from file paths so they're relative to repo root
+      if (subpath) {
+        const prefix = subpath + "/";
+        files = files.map((f) => ({
+          ...f,
+          path: f.path.startsWith(prefix)
+            ? f.path.slice(prefix.length)
+            : f.path,
+        }));
+      }
 
-    // Strip subpath prefix from file paths so they're relative to repo root
-    if (subpath) {
-      const prefix = subpath + "/";
-      files = files.map((f) => ({
-        ...f,
-        path: f.path.startsWith(prefix)
-          ? f.path.slice(prefix.length)
-          : f.path,
-      }));
-    }
-
-    let newRepo;
-    try {
-      const result = await octokit.rest.repos.createForAuthenticatedUser({
-        name: args.newRepoName,
-        private: true,
-        auto_init: true,
-      });
-      newRepo = result.data;
-    } catch (error: unknown) {
-      if ((error as { status?: number }).status === 422) {
-        const suffix = Date.now().toString(36).slice(-4);
+      let newRepo;
+      try {
         const result = await octokit.rest.repos.createForAuthenticatedUser({
-          name: `${args.newRepoName}-${suffix}`,
+          name: args.newRepoName,
           private: true,
           auto_init: true,
         });
         newRepo = result.data;
-      } else {
-        throw error;
+      } catch (error: unknown) {
+        if ((error as { status?: number }).status === 422) {
+          const suffix = Date.now().toString(36).slice(-4);
+          const result = await octokit.rest.repos.createForAuthenticatedUser({
+            name: `${args.newRepoName}-${suffix}`,
+            private: true,
+            auto_init: true,
+          });
+          newRepo = result.data;
+        } else {
+          throw error;
+        }
       }
+
+      await commitFiles(
+        octokit,
+        newRepo.owner.login,
+        newRepo.name,
+        files,
+        `Initial commit from Shipright template: ${repo}`
+      );
+
+      const repoFullName = newRepo.full_name;
+      await ctx.runMutation(api.projects.updateGitHubRepo, {
+        projectId: args.projectId,
+        repoUrl: newRepo.html_url,
+        repoFullName,
+      });
+
+      return { repoUrl: newRepo.html_url, repoFullName };
+    } catch (error: unknown) {
+      const raw = error instanceof Error ? error.message : String(error);
+      const status = (error as { status?: number }).status;
+
+      let userMessage: string;
+      if (raw === "TEMPLATE_UNAVAILABLE") {
+        userMessage = "Template repository unavailable or empty.";
+      } else if (status === 401) {
+        userMessage = "GitHub token expired. Please reconnect.";
+      } else {
+        userMessage = `Repo creation failed: ${raw.slice(0, 200)}`;
+      }
+
+      await ctx.runMutation(api.projects.setRepoFailed, {
+        projectId: args.projectId,
+        error: userMessage,
+      });
+
+      throw error;
     }
-
-    await commitFiles(
-      octokit,
-      newRepo.owner.login,
-      newRepo.name,
-      files,
-      `Initial commit from Shipright template: ${repo}`
-    );
-
-    const repoFullName = newRepo.full_name;
-    await ctx.runMutation(api.projects.updateGitHubRepo, {
-      projectId: args.projectId,
-      repoUrl: newRepo.html_url,
-      repoFullName,
-    });
-
-    return { repoUrl: newRepo.html_url, repoFullName };
   },
 });
 
@@ -330,6 +354,7 @@ async function commitFiles(
         owner,
         repo,
         tree: treeItems,
+        base_tree: parentSha,
       });
       tree = result.data;
       break;

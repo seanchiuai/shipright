@@ -15,7 +15,7 @@ export default defineSchema({
   projects: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete")),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete"), v.literal("repo_failed")),
     interviewStep: v.optional(v.number()), // 1, 2, or 3
     interviewRound: v.optional(v.number()), // For step 2: 1-3
     appIdea: v.optional(v.string()), // Step 1 input
@@ -41,6 +41,8 @@ export default defineSchema({
       v.literal("scaffolding_failed"),
     )),
     scaffoldingError: v.optional(v.string()),
+    repoError: v.optional(v.string()),
+    repoRetryCount: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   interviewMessages: defineTable({

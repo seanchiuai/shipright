@@ -41,7 +41,7 @@ export const create = mutation({
 export const updateStatus = mutation({
   args: {
     projectId: v.id("projects"),
-    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete")),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete"), v.literal("repo_failed")),
   },
   handler: async (ctx, args) => {
     await getOwnedProject(ctx, args.projectId);
@@ -135,6 +135,42 @@ export const updateGitHubRepo = mutation({
       githubRepoUrl: args.repoUrl,
       githubRepoFullName: args.repoFullName,
       status: PROJECT_STATUS.BUILDING,
+    });
+  },
+});
+
+export const setRepoFailed = mutation({
+  args: {
+    projectId: v.id("projects"),
+    error: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const currentRetries = project.repoRetryCount ?? 0;
+    await ctx.db.patch(args.projectId, {
+      status: "repo_failed",
+      repoError: args.error,
+      repoRetryCount: currentRetries + 1,
+    });
+  },
+});
+
+export const retryRepoCreation = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const { project } = await getOwnedProject(ctx, args.projectId);
+    if (project.status !== "repo_failed") throw new Error("Project is not in failed state");
+    if ((project.repoRetryCount ?? 0) >= 3) {
+      throw new Error("Maximum retry attempts reached. Please start over.");
+    }
+
+    await ctx.db.patch(args.projectId, {
+      status: "matched",
+      repoError: undefined,
     });
   },
 });

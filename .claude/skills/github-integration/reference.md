@@ -183,7 +183,10 @@ export const cloneTemplate = action({
     if (!user?.githubToken) throw new Error("GitHub not connected");
 
     const accessToken = decryptToken(user.githubToken);
-    const octokit = new Octokit({ auth: accessToken });
+    const octokit = new Octokit({
+      auth: accessToken,
+      request: { timeout: 30_000 },
+    });
 
     const { owner, repo, ref, subpath } = parseTemplateUrl(args.templateSourceUrl);
 
@@ -387,13 +390,13 @@ async function commitFiles(
   }));
 
   // Retry createTree — GitHub's git backend can lag behind repo creation
-  // No base_tree needed: we replace all content with template files
   let tree;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const result = await octokit.rest.git.createTree({
         owner, repo,
         tree: treeItems,
+        base_tree: parentSha,
       });
       tree = result.data;
       break;
@@ -541,11 +544,43 @@ export const updateGitHubRepo = mutation({
     await ctx.db.patch(args.projectId, {
       githubRepoUrl: args.repoUrl,
       githubRepoFullName: args.repoFullName,
-      status: PROJECT_STATUS.COMPLETE,
+      status: PROJECT_STATUS.BUILDING,
     });
   },
 });
 ```
+
+## Repo Creation Error Handling
+
+`cloneTemplate` wraps its body in try/catch and persists errors to the database via `setRepoFailed`. The UI reads `project.status === "repo_failed"` and shows a persistent error card with retry (max 3 attempts).
+
+```typescript
+// convex/projects.ts
+export const setRepoFailed = mutation({
+  args: { projectId: v.id("projects"), error: v.string() },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+    await ctx.db.patch(args.projectId, {
+      status: "repo_failed",
+      repoError: args.error,
+      repoRetryCount: (project.repoRetryCount ?? 0) + 1,
+    });
+  },
+});
+
+export const retryRepoCreation = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const { project } = await getOwnedProject(ctx, args.projectId);
+    if (project.status !== "repo_failed") throw new Error("Project is not in failed state");
+    if ((project.repoRetryCount ?? 0) >= 3) throw new Error("Maximum retry attempts reached.");
+    await ctx.db.patch(args.projectId, { status: "matched", repoError: undefined });
+  },
+});
+```
+
+Schema fields: `repoError: v.optional(v.string())`, `repoRetryCount: v.optional(v.number())`.
 
 ## Environment Variables
 

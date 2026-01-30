@@ -50,10 +50,13 @@ export default function ProjectDetailsPage() {
   const resumeAfterChoices = useAction(api.scaffolding.resumeAfterChoices);
   const submitTechChoicesAction = useAction(api.scaffolding.submitTechChoices);
   const resetInterview = useMutation(api.projects.resetInterview);
+  const retryRepo = useMutation(api.projects.retryRepoCreation);
+  const setRepoFailed = useMutation(api.projects.setRepoFailed);
 
   const [matching, setMatching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const cloneAttempted = useRef(false);
+  const cloneInFlight = useRef(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const scaffoldingAttempted = useRef(false);
   const [techChoices, setTechChoices] = useState<Record<string, string>>({});
 
@@ -82,8 +85,11 @@ export default function ProjectDetailsPage() {
   // Auto-clone when status is "matched"
   useEffect(() => {
     async function runClone() {
-      if (project?.status !== "matched") return;
-      if (cloneAttempted.current) return;
+      if (project?.status !== "matched") {
+        cloneInFlight.current = false;
+        return;
+      }
+      if (cloneInFlight.current) return;
       if (!matchedTemplate || !convexUser) return;
 
       if (!convexUser.githubToken) {
@@ -91,7 +97,7 @@ export default function ProjectDetailsPage() {
         return;
       }
 
-      cloneAttempted.current = true;
+      cloneInFlight.current = true;
       setError(null);
 
       try {
@@ -106,20 +112,34 @@ export default function ProjectDetailsPage() {
           newRepoName: repoName || "shipright-app",
         });
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to create repository";
-        if (message.includes("TEMPLATE_UNAVAILABLE")) {
-          setError("Template unavailable. Please start over with a different idea.");
-        } else if (message.includes("GitHub connection expired") || message.includes("401")) {
-          setError("GitHub connection expired. Reconnecting...");
+        // Error is persisted in DB by the action (status -> repo_failed).
+        // Only handle GitHub redirect client-side.
+        const message = e instanceof Error ? e.message : "";
+        if (message.includes("401") || message.includes("Bad credentials")) {
           router.push(`/connect-github?returnTo=/project/${projectId}`);
-        } else {
-          setError("Repository creation failed. Please try again or start over.");
         }
-        cloneAttempted.current = false;
+        cloneInFlight.current = false;
       }
     }
     runClone();
   }, [project?.status, project?.name, matchedTemplate, convexUser, projectId, cloneTemplate, router]);
+
+  // Elapsed time indicator for loading states
+  useEffect(() => {
+    const isLoading = project?.status === "matched" ||
+      (project?.status === "building" && !project?.scaffoldingStatus);
+
+    if (!isLoading) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [project?.status, project?.scaffoldingStatus]);
 
   // Auto-trigger scaffolding when repo is created (status: "building")
   useEffect(() => {
@@ -152,14 +172,18 @@ export default function ProjectDetailsPage() {
     }
   }
 
-  function handleRetry() {
-    cloneAttempted.current = false;
-    setError(null);
+  async function handleRetryRepo() {
+    try {
+      setError(null);
+      await retryRepo({ projectId });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Retry failed");
+    }
   }
 
   async function handleStartOver() {
     try {
-      cloneAttempted.current = false;
+      cloneInFlight.current = false;
       await resetInterview({ projectId });
       router.push(`/interview/${projectId}`);
     } catch (e) {
@@ -207,6 +231,7 @@ export default function ProjectDetailsPage() {
     [PROJECT_STATUS.BUILDING]: "Creating Repo",
     [PROJECT_STATUS.SCAFFOLDING]: "Scaffolding",
     [PROJECT_STATUS.COMPLETE]: "Complete",
+    [PROJECT_STATUS.REPO_FAILED]: "Failed",
   };
 
   const scaffoldingSteps = [
@@ -242,15 +267,35 @@ export default function ProjectDetailsPage() {
           &larr; Back to Dashboard
         </Button>
 
-        {/* Error display */}
+        {/* Transient error display */}
         {error && (
           <Card className="mb-6 border-destructive">
             <CardContent className="pt-6 flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
               <p className="text-destructive flex-1">{error}</p>
+              <Button variant="outline" size="sm" onClick={handleStartOver} className="gap-2">
+                Start Over
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Persistent repo creation error */}
+        {project.status === PROJECT_STATUS.REPO_FAILED && (
+          <Card className="mb-6 border-destructive">
+            <CardContent className="pt-6 flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-destructive text-sm">
+                  {project.repoError || "Repository creation failed."}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Attempt {project.repoRetryCount ?? 1} of 3
+                </p>
+              </div>
               <div className="flex gap-2">
-                {!error.includes("unavailable") && (
-                  <Button variant="outline" size="sm" onClick={handleRetry} className="gap-2">
+                {(project.repoRetryCount ?? 0) < 3 && (
+                  <Button variant="outline" size="sm" onClick={handleRetryRepo} className="gap-2">
                     <RefreshCw className="h-4 w-4" />
                     Retry
                   </Button>
@@ -279,6 +324,34 @@ export default function ProjectDetailsPage() {
                   {project.status === PROJECT_STATUS.MATCHED &&
                     "Cloning the template and creating your GitHub repository."}
                 </p>
+                {elapsedSeconds > 30 && elapsedSeconds <= 60 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Taking longer than expected ({elapsedSeconds}s)...
+                  </p>
+                )}
+                {elapsedSeconds > 60 && (
+                  <div className="flex flex-col items-center gap-2 mt-2">
+                    <p className="text-xs text-amber-600">
+                      This is taking too long ({elapsedSeconds}s). Something may have gone wrong.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={async () => {
+                          await setRepoFailed({ projectId, error: "Timed out waiting for repository creation." });
+                        }}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Cancel &amp; Retry
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleStartOver} className="gap-2">
+                        Start Over
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Template info once matched */}
                 {project.status === PROJECT_STATUS.MATCHED &&

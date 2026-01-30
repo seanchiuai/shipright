@@ -23,7 +23,7 @@ export default defineSchema({
   projects: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("complete")),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete"), v.literal("repo_failed")),
     interviewStep: v.optional(v.number()),
     interviewRound: v.optional(v.number()),
     appIdea: v.optional(v.string()),
@@ -366,7 +366,7 @@ export const create = mutation({
 export const updateStatus = mutation({
   args: {
     projectId: v.id("projects"),
-    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("complete")),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete"), v.literal("repo_failed")),
   },
   handler: async (ctx, args) => {
     await getOwnedProject(ctx, args.projectId);

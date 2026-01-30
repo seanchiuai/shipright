@@ -2,19 +2,26 @@
 # This file tracks which phase of development is currently active
 
 current_phase:
-  phase: 4
-  name: "GitHub Repo Creation"
-  description: "OAuth connection, repo from template"
-  started: "2026-01-29"
+  phase: 5
+  name: "Scaffolding Injection"
+  description: "PRD generation, tech stack research, Daytona sandbox + Claude Code fills cc-template placeholders"
+  started: "2026-01-30"
   status: "pending"
   completion_criteria:
-    - "GitHub OAuth flow"
-    - "Repo creation from template"
-    - "User confirmation/authorization"
-    - "Success confirmation page"
+    - "PRD markdown generation from interview requirements"
+    - "Tech stack integration research (with user approval if ambiguous)"
+    - "Daytona sandbox: inject cc-template files into user repo"
+    - "Claude Code fills {{PLACEHOLDER}} template files one by one"
+    - "Scaffolding committed and pushed to user's GitHub repo"
 
 # Phase History
 completed_phases:
+  - phase: 4
+    name: "GitHub Repo Creation"
+    description: "OAuth connection, repo from template"
+    started: "2026-01-29"
+    completed: "2026-01-30"
+    status: "complete"
   - phase: 3
     name: "Template Matching"
     description: "Requirements extraction, scoring algorithm"

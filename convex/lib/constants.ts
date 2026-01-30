@@ -5,6 +5,7 @@ export const PROJECT_STATUS = {
   BUILDING: "building",
   SCAFFOLDING: "scaffolding",
   COMPLETE: "complete",
+  REPO_FAILED: "repo_failed",
 } as const;
 
 export type ProjectStatus = (typeof PROJECT_STATUS)[keyof typeof PROJECT_STATUS];
