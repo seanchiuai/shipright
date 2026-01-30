@@ -52,7 +52,7 @@ export default function InterviewPage() {
   const updateAppIdea = useMutation(api.projects.updateAppIdea);
   const continueConversation = useAction(api.ai.continueConversation);
   const extractRequirements = useAction(api.ai.extractRequirements);
-  const resetInterview = useMutation(api.projects.resetInterview);
+  const updateInterviewPhase = useMutation(api.projects.updateInterviewPhase);
   const updateRequirements = useMutation(api.projects.updateRequirements);
   const updateStatus = useMutation(api.projects.updateStatus);
 
@@ -213,17 +213,14 @@ export default function InterviewPage() {
     }
   }, [loading, projectId, extractRequirements]);
 
-  const handleStartOver = useCallback(async () => {
+  const handleContinueConversation = useCallback(async () => {
     setLoading(true);
     try {
-      await resetInterview({ projectId });
-      seenAiMessages.current.clear();
-      setCurrentInput("");
-      setMultiselectValue([]);
+      await updateInterviewPhase({ projectId, phase: "conversation" });
     } finally {
       setLoading(false);
     }
-  }, [projectId, resetInterview]);
+  }, [projectId, updateInterviewPhase]);
 
   const handleConfirm = useCallback(async () => {
     setLoading(true);
@@ -249,7 +246,6 @@ export default function InterviewPage() {
     if (!requirements) return;
     const updated = { ...requirements };
     if (field === "appName") updated.appName = editValue;
-    else if (field === "problemStatement") updated.problemStatement = editValue;
     await updateRequirements({ projectId, requirements: updated });
     setEditingField(null);
   };
@@ -485,222 +481,190 @@ export default function InterviewPage() {
             {/* Requirements summary */}
             {phase === "summary" && requirements && (
               <motion.div
-                className="bg-white/90 backdrop-blur-sm rounded-2xl border border-stone-200/80 p-6 space-y-4 shadow-sm"
+                className="bg-white rounded-2xl border border-stone-200 p-8 shadow-sm"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
               >
-                <h3 className="font-serif text-xl tracking-tight text-stone-800">Here&apos;s what I understood</h3>
-
-                {/* App Name */}
-                <div className="flex items-start justify-between p-3 rounded-lg bg-stone-50/80">
-                  <div className="flex-1">
-                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">App Name</p>
-                    {editingField === "appName" ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="h-8"
-                        />
-                        <Button size="sm" variant="ghost" onClick={() => saveEdit("appName")}>
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className="font-medium">{requirements.appName}</p>
-                    )}
-                  </div>
-                  {editingField !== "appName" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => startEdit("appName", requirements.appName)}
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
-
-                {/* Type, Platform, Payments */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 rounded-lg bg-stone-50/80">
-                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Type</p>
-                    <p className="font-medium text-sm">{requirements.appType}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-stone-50/80">
-                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Platform</p>
-                    <p className="font-medium text-sm">{requirements.platform}</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-stone-50/80">
-                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Payments</p>
-                    <p className="font-medium text-sm">
-                      {requirements.hasPayments ? (requirements.paymentContext || "Yes") : "None"}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Tagline */}
-                <div className="p-3 rounded-lg bg-stone-50/80">
-                  <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Tagline</p>
-                  <p className="text-sm italic text-stone-600">{requirements.tagline}</p>
-                </div>
-
-                {/* Problem */}
-                <div className="flex items-start justify-between p-3 rounded-lg bg-stone-50/80">
-                  <div className="flex-1">
-                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Problem</p>
-                    {editingField === "problemStatement" ? (
-                      <div className="space-y-2">
-                        <Input
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="h-8"
-                        />
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => saveEdit("problemStatement")}>
+                {/* App name + tagline */}
+                <div className="pb-6 mb-6 border-b border-stone-100">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      {editingField === "appName" ? (
+                        <div className="flex gap-2 items-center">
+                          <Input
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="h-9 text-lg font-medium"
+                          />
+                          <Button size="sm" variant="ghost" onClick={() => saveEdit("appName")}>
                             <Check className="w-4 h-4" />
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
                             <X className="w-4 h-4" />
                           </Button>
                         </div>
-                      </div>
-                    ) : (
-                      <p className="font-medium">{requirements.problemStatement}</p>
-                    )}
-                  </div>
-                  {editingField !== "problemStatement" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => startEdit("problemStatement", requirements.problemStatement)}
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
-
-                {/* Core Action */}
-                <div className="p-3 rounded-lg bg-stone-50/80">
-                  <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Core Action</p>
-                  <p className="font-medium text-sm">{requirements.coreAction}</p>
-                </div>
-
-                {/* Primary User */}
-                <div className="p-3 rounded-lg bg-stone-50/80">
-                  <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Primary User</p>
-                  <p className="font-medium text-sm">{requirements.primaryUser.type}</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">{requirements.primaryUser.coreNeed}</p>
-                </div>
-
-                {/* Secondary Users — editable */}
-                <div className="p-3 rounded-lg bg-stone-50/80">
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">Additional User Roles</p>
-                      <p className="text-[11px] text-stone-400">e.g. admins, sellers, managers — if your app has them</p>
+                      ) : (
+                        <h3 className="font-serif text-2xl tracking-tight text-stone-900">
+                          {requirements.appName}
+                        </h3>
+                      )}
+                      <p className="text-[15px] text-stone-500 mt-1.5 leading-relaxed italic">
+                        {requirements.tagline}
+                      </p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={addSecondaryUser}>
-                      <Plus className="w-3 h-3 mr-1" /> Add
-                    </Button>
+                    {editingField !== "appName" && (
+                      <button
+                        onClick={() => startEdit("appName", requirements.appName)}
+                        className="mt-1 p-1.5 rounded-lg text-stone-300 hover:text-stone-500 hover:bg-stone-50 transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    {requirements.secondaryUsers.map((u, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        {editingField === `user-${i}` ? (
-                          <div className="flex-1 space-y-1">
-                            <Input
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              placeholder="User type"
-                              className="h-7 text-sm"
-                            />
-                            <Input
-                              value={editValue.includes("||") ? editValue.split("||")[1] : u.coreNeed}
-                              onChange={(e) => {
-                                const name = editValue.includes("||") ? editValue.split("||")[0] : editValue;
-                                setEditValue(`${name}||${e.target.value}`);
-                              }}
-                              placeholder="Core need"
-                              className="h-7 text-sm"
-                            />
-                            <div className="flex gap-1">
-                              <Button size="sm" variant="ghost" onClick={() => {
-                                const parts = editValue.split("||");
-                                saveUserEdit(i, parts[0], parts[1] || u.coreNeed);
-                              }}>
-                                <Check className="w-3 h-3" />
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex-1">
-                              <p className="font-medium text-sm">{u.type}</p>
-                              {u.coreNeed && (
-                                <p className="text-[11px] text-stone-400">{u.coreNeed}</p>
-                              )}
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={() => { setEditingField(`user-${i}`); setEditValue(u.type); }}>
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => removeSecondaryUser(i)}>
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                    {requirements.secondaryUsers.length === 0 && (
-                      <p className="text-[12px] text-stone-400 italic">None — most apps only need one user type</p>
+
+                  {/* Platform + payments */}
+                  <div className="flex items-center gap-2 mt-4">
+                    <span className="px-2.5 py-1 text-[11px] font-medium rounded-full bg-stone-100 text-stone-600 tracking-wide">
+                      {requirements.platform}
+                    </span>
+                    {requirements.hasPayments && (
+                      <span className="px-2.5 py-1 text-[11px] font-medium rounded-full bg-stone-100 text-stone-600 tracking-wide">
+                        {requirements.paymentContext || "Payments"}
+                      </span>
                     )}
                   </div>
                 </div>
 
-                {/* Key Features — editable */}
-                <div className="p-3 rounded-lg bg-stone-50/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[11px] uppercase tracking-wider text-stone-400 font-medium">Key Features</p>
-                    <Button variant="ghost" size="sm" onClick={addFeature}>
-                      <Plus className="w-3 h-3 mr-1" /> Add
-                    </Button>
+                {/* Users */}
+                <div className="pb-6 mb-6 border-b border-stone-100">
+                  <p className="text-[12px] font-medium text-stone-400 mb-3">Built for</p>
+                  <p className="text-[15px] text-stone-800 leading-relaxed">
+                    <span className="font-medium">{requirements.primaryUser.type}</span>
+                    {requirements.primaryUser.coreNeed && (
+                      <span className="text-stone-500"> — {requirements.primaryUser.coreNeed}</span>
+                    )}
+                  </p>
+
+                  {/* Additional users */}
+                  {requirements.secondaryUsers.length > 0 && (
+                    <div className="mt-3 space-y-1.5">
+                      {requirements.secondaryUsers.map((u, i) => (
+                        <div key={i} className="flex items-start gap-2 group">
+                          {editingField === `user-${i}` ? (
+                            <div className="flex-1 space-y-1.5">
+                              <Input
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                placeholder="User type"
+                                className="h-7 text-sm"
+                              />
+                              <Input
+                                value={editValue.includes("||") ? editValue.split("||")[1] : u.coreNeed}
+                                onChange={(e) => {
+                                  const name = editValue.includes("||") ? editValue.split("||")[0] : editValue;
+                                  setEditValue(`${name}||${e.target.value}`);
+                                }}
+                                placeholder="Their core need"
+                                className="h-7 text-sm"
+                              />
+                              <div className="flex gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => {
+                                  const parts = editValue.split("||");
+                                  saveUserEdit(i, parts[0], parts[1] || u.coreNeed);
+                                }}>
+                                  <Check className="w-3 h-3" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="flex-1 text-[14px] text-stone-600">
+                                <span className="font-medium text-stone-700">{u.type}</span>
+                                {u.coreNeed && (
+                                  <span className="text-stone-400"> — {u.coreNeed}</span>
+                                )}
+                              </p>
+                              <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => { setEditingField(`user-${i}`); setEditValue(u.type); }}
+                                  className="p-1 rounded text-stone-300 hover:text-stone-500"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => removeSecondaryUser(i)}
+                                  className="p-1 rounded text-stone-300 hover:text-red-400"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={addSecondaryUser}
+                    className="mt-3 inline-flex items-center gap-1 text-[12px] text-stone-400 hover:text-stone-600 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" /> Add user role
+                  </button>
+                </div>
+
+                {/* Features */}
+                <div className="pb-6 mb-6 border-b border-stone-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[12px] font-medium text-stone-400">Features</p>
+                    <button
+                      onClick={addFeature}
+                      className="inline-flex items-center gap-1 text-[12px] text-stone-400 hover:text-stone-600 transition-colors"
+                    >
+                      <Plus className="w-3 h-3" /> Add
+                    </button>
                   </div>
                   <div className="space-y-2">
                     {requirements.keyFeatures.map((f, i) => (
-                      <div key={i} className="flex items-start gap-2">
+                      <div key={i} className="flex items-center gap-2 group">
                         {editingField === `feature-${i}` ? (
-                          <div className="flex-1 flex gap-1">
+                          <div className="flex-1 flex gap-1.5">
                             <Input
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
                               placeholder="Feature"
-                              className="h-7 text-sm flex-1"
+                              className="h-8 text-sm flex-1"
                             />
                             <Button size="sm" variant="ghost" onClick={() => saveFeatureEdit(i, editValue)}>
-                              <Check className="w-3 h-3" />
+                              <Check className="w-3.5 h-3.5" />
                             </Button>
                             <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}>
-                              <X className="w-3 h-3" />
+                              <X className="w-3.5 h-3.5" />
                             </Button>
                           </div>
                         ) : (
                           <>
-                            <span className="flex-1 px-2.5 py-1 text-[12px] rounded-lg bg-stone-100 text-stone-700 font-medium">
+                            <span className="flex-1 px-3 py-1.5 text-[13px] rounded-xl bg-stone-50 text-stone-700 font-medium border border-stone-100">
                               {f}
                             </span>
-                            <Button variant="ghost" size="sm" onClick={() => { setEditingField(`feature-${i}`); setEditValue(f); }}>
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => removeFeature(i)}>
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
+                            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => { setEditingField(`feature-${i}`); setEditValue(f); }}
+                                className="p-1 rounded text-stone-300 hover:text-stone-500"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => removeFeature(i)}
+                                className="p-1 rounded text-stone-300 hover:text-red-400"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
                           </>
                         )}
                       </div>
@@ -710,14 +674,13 @@ export default function InterviewPage() {
 
                 {/* Constraints */}
                 {(requirements.constraints.mustHave.length > 0 || requirements.constraints.mustNotHave.length > 0) && (
-                  <div className="p-3 rounded-lg bg-stone-50/80">
-                    <p className="text-[11px] uppercase tracking-wider text-stone-400 mb-1.5 font-medium">Constraints</p>
+                  <div className="pb-6 mb-6 border-b border-stone-100">
                     {requirements.constraints.mustHave.length > 0 && (
-                      <div className="mb-2">
-                        <p className="text-[11px] text-stone-500 mb-1">Must have:</p>
-                        <div className="flex flex-wrap gap-1">
+                      <div className="mb-3">
+                        <p className="text-[12px] font-medium text-stone-400 mb-2">Must include</p>
+                        <div className="flex flex-wrap gap-1.5">
                           {requirements.constraints.mustHave.map((c, i) => (
-                            <span key={i} className="px-2 py-0.5 text-[12px] rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span key={i} className="px-2.5 py-1 text-[12px] rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 font-medium">
                               {c}
                             </span>
                           ))}
@@ -726,10 +689,10 @@ export default function InterviewPage() {
                     )}
                     {requirements.constraints.mustNotHave.length > 0 && (
                       <div>
-                        <p className="text-[11px] text-stone-500 mb-1">Must not have:</p>
-                        <div className="flex flex-wrap gap-1">
+                        <p className="text-[12px] font-medium text-stone-400 mb-2">Must avoid</p>
+                        <div className="flex flex-wrap gap-1.5">
                           {requirements.constraints.mustNotHave.map((c, i) => (
-                            <span key={i} className="px-2 py-0.5 text-[12px] rounded-md bg-red-50 text-red-700 border border-red-200">
+                            <span key={i} className="px-2.5 py-1 text-[12px] rounded-lg bg-red-50 text-red-600 border border-red-100 font-medium">
                               {c}
                             </span>
                           ))}
@@ -739,31 +702,25 @@ export default function InterviewPage() {
                   </div>
                 )}
 
-                {/* Dev Agent Notes */}
-                {requirements.devAgentNotes && (
-                  <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200/60">
-                    <p className="text-[11px] uppercase tracking-wider text-amber-600 mb-1.5 font-medium">Notes for Dev Agent</p>
-                    <p className="text-[12px] text-amber-800">{requirements.devAgentNotes}</p>
-                  </div>
-                )}
-
                 {/* Actions */}
-                <div className="flex justify-between items-center pt-4 border-t border-stone-200/60">
-                  <button
-                    onClick={handleStartOver}
-                    disabled={loading}
-                    className="text-[13px] text-stone-400 hover:text-stone-600 transition-colors disabled:opacity-50"
-                  >
-                    Start over
-                  </button>
+                <div className="pt-2 space-y-3">
                   <button
                     onClick={handleConfirm}
                     disabled={loading}
-                    className="inline-flex items-center gap-2 h-9 px-5 bg-stone-800 text-white text-[13px] font-medium rounded-xl hover:bg-stone-700 transition-colors disabled:opacity-50 shadow-sm"
+                    className="w-full inline-flex items-center justify-center gap-2 h-11 bg-stone-900 text-white text-[14px] font-medium rounded-xl hover:bg-stone-800 transition-colors disabled:opacity-50 shadow-sm"
                   >
-                    {loading ? "Processing..." : "Find My Template"}
+                    {loading ? "Processing..." : "Build My App"}
                     {!loading && <span>&rarr;</span>}
                   </button>
+                  <div className="text-center">
+                    <button
+                      onClick={handleContinueConversation}
+                      disabled={loading}
+                      className="text-[12px] text-stone-400 hover:text-stone-600 transition-colors disabled:opacity-50"
+                    >
+                      Continue Conversation
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}

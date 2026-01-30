@@ -239,34 +239,43 @@ Note: Step 2 uses chat-based UI with ChatMessage components, ChoiceGrid for sele
 
 ### Interview - Step 3 (Requirements Summary)
 
+Summary card appears inline in the chat after AI extracts requirements. Tiered layout with border-b separators, no background boxes on individual sections. Edit controls appear on hover.
+
 ```
 ┌────────────────────────────────────────────────────────────────────┐
 │  [Logo] Shipright                              [User Avatar ▼]     │
 ├────────────────────────────────────────────────────────────────────┤
 │                                                                    │
-│    Step 3 of 3                                                     │
-│    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━   │
-│                                                                    │
-│    Here's what we understood. Edit anything that's wrong:          │
-│                                                                    │
 │    ┌────────────────────────────────────────────────────────────┐  │
-│    │  App Name: BookShare                              [Edit]   │  │
-│    ├────────────────────────────────────────────────────────────┤  │
-│    │  Problem: People want to share book recs          [Edit]   │  │
-│    ├────────────────────────────────────────────────────────────┤  │
-│    │  Users: Readers, Book clubs                       [Edit]   │  │
-│    ├────────────────────────────────────────────────────────────┤  │
-│    │  Auth: Google login                               [Edit]   │  │
-│    ├────────────────────────────────────────────────────────────┤  │
-│    │  Features:                                        [Edit]   │  │
-│    │  • Add books to reading list                               │  │
-│    │  • Share recommendations                                   │  │
-│    │  • Follow other readers                                    │  │
-│    ├────────────────────────────────────────────────────────────┤  │
-│    │  Payments: None                                   [Edit]   │  │
+│    │                                                            │  │
+│    │  BookShare                                          [✎]    │  │
+│    │  Share and discover book recommendations instantly         │  │
+│    │                                                            │  │
+│    │  (web)  (subscription)                                     │  │
+│    │  ──────────────────────────────────────────────────────     │  │
+│    │                                                            │  │
+│    │  Built for                                                 │  │
+│    │  Readers — who want to find their next favorite book       │  │
+│    │  Book club organizers — manage reading lists        [+ Add] │  │
+│    │  ──────────────────────────────────────────────────────     │  │
+│    │                                                            │  │
+│    │  Features                                          [+ Add] │  │
+│    │  ┌─────────────────┐ ┌───────────────────┐                 │  │
+│    │  │ Reading lists   │ │ Recommendations   │                 │  │
+│    │  └─────────────────┘ └───────────────────┘                 │  │
+│    │  ┌─────────────────┐ ┌───────────────────┐                 │  │
+│    │  │ Follow readers  │ │ Book search       │                 │  │
+│    │  └─────────────────┘ └───────────────────┘                 │  │
+│    │  ──────────────────────────────────────────────────────     │  │
+│    │                                                            │  │
+│    │  Must include: (real-time updates)                         │  │
+│    │  Must avoid: (social media features)                       │  │
+│    │  ──────────────────────────────────────────────────────     │  │
+│    │                                                            │  │
+│    │  [            Build My App →                      ]         │  │
+│    │                Continue Conversation                        │  │
+│    │                                                            │  │
 │    └────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│                      [Start Over]     [Find My Template →]          │
 │                                                                    │
 └────────────────────────────────────────────────────────────────────┘
 ```

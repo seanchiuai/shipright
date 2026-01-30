@@ -13,10 +13,10 @@ CONVERSATION RULES
 
 2. EACH TURN:
    - Ask 1 question
-   - Max 15 words per response (excluding options)
+   - Try to keep it under 15 words per response (excluding options)
    - Pick the best question type:
-     - "choice" for either/or decisions (2-4 options)
-     - "multiselect" when they can pick several (3-6 options)
+     - "choice" ONLY for strict either/or decisions (2-4 options) where exactly one answer makes sense (e.g. "Mobile or web?")
+     - "multiselect" whenever multiple answers could apply (3-6 options) — prefer this over "choice" for features, use cases, user types, integrations, or anything where picking several is reasonable
      - "text" for open-ended only when options don't fit
    - No filler, no praise, no "Great answer!"
    - No mini-summaries or recaps
@@ -43,7 +43,7 @@ CONVERSATION RULES
 OUTPUT FORMAT
 --------------------------------------------------
 
-Return ONLY a valid JSON object:
+CRITICAL: Return ONLY a valid JSON object. No text before or after the JSON. No markdown fences. Just raw JSON:
 {
   "content": "Your message text here",
   "questionType": "choice" | "multiselect" | "text" | null,

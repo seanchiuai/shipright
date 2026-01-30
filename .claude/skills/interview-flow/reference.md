@@ -62,15 +62,17 @@ interviewPhase: v.optional(v.string()),  // "seed" | "conversation" | "summary"
 
 ## Requirements Schema
 
+All fields extracted by AI. Fields marked "internal" are stored but not shown in the summary UI.
+
 ```typescript
 interface Requirements {
   appName: string;
   tagline: string;
-  appType: string;
-  problemStatement: string;
+  appType: string;              // internal — used for template matching
+  problemStatement: string;     // internal — redundant with tagline
   primaryUser: { type: string; coreNeed: string };
   secondaryUsers: Array<{ type: string; coreNeed: string }>;
-  coreAction: string;
+  coreAction: string;           // internal — redundant with features
   hasPayments: boolean;
   paymentContext: string | null;
   platform: string;
@@ -80,7 +82,7 @@ interface Requirements {
     mustHave: string[];
     mustNotHave: string[];
   };
-  devAgentNotes: string;
+  devAgentNotes: string;        // internal — for dev agent only
 }
 ```
 

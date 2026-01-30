@@ -17,8 +17,36 @@ import {
   ChevronRight,
   Plus,
   Package,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { AppNavbar } from "@/components/app-navbar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Id } from "../../../convex/_generated/dataModel";
 
 // Animated gradient background component
 function DashboardBackground() {
@@ -288,9 +316,11 @@ function StatusBadge({ status }: { status: string }) {
 function ProjectCard({
   project,
   onClick,
+  onRename,
+  onDelete,
 }: {
   project: {
-    _id: string;
+    _id: Id<"projects">;
     name: string;
     status: string;
     githubRepoUrl?: string;
@@ -298,6 +328,8 @@ function ProjectCard({
     _creationTime: number;
   };
   onClick: () => void;
+  onRename: () => void;
+  onDelete: () => void;
 }) {
   return (
     <motion.div
@@ -313,7 +345,29 @@ function ProjectCard({
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center group-hover:from-primary/20 group-hover:to-purple-500/20 transition-colors">
             <Folder className="w-6 h-6 text-primary" />
           </div>
-          <StatusBadge status={project.status} />
+          <div className="flex items-center gap-2">
+            <StatusBadge status={project.status} />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100">
+                  <MoreHorizontal className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRename(); }}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         <h3 className="font-serif text-lg font-medium text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
@@ -409,6 +463,9 @@ export default function DashboardPage() {
   const [appIdea, setAppIdea] = useState("");
   const [creating, setCreating] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [renameTarget, setRenameTarget] = useState<{ id: Id<"projects">; name: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{ id: Id<"projects">; name: string } | null>(null);
 
   const convexUser = useSyncUser();
   const projects = useQuery(
@@ -417,6 +474,8 @@ export default function DashboardPage() {
   );
   const createProject = useMutation(api.projects.create);
   const updateAppIdea = useMutation(api.projects.updateAppIdea);
+  const renameProject = useMutation(api.projects.rename);
+  const removeProject = useMutation(api.projects.remove);
 
   async function submitIdea(idea: string) {
     if (!convexUser || !idea.trim()) return;
@@ -594,6 +653,13 @@ export default function DashboardPage() {
                     key={project._id}
                     project={project}
                     onClick={() => router.push(`/project/${project._id}`)}
+                    onRename={() => {
+                      setRenameTarget({ id: project._id, name: project.name });
+                      setRenameValue(project.name);
+                    }}
+                    onDelete={() => {
+                      setDeleteTarget({ id: project._id, name: project.name });
+                    }}
                   />
                 ))}
               </StaggerContainer>
@@ -601,6 +667,69 @@ export default function DashboardPage() {
           )}
         </div>
       </main>
+
+      {/* Rename dialog */}
+      <Dialog open={!!renameTarget} onOpenChange={(open) => !open && setRenameTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename project</DialogTitle>
+          </DialogHeader>
+          <input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && renameValue.trim() && renameTarget) {
+                renameProject({ projectId: renameTarget.id, name: renameValue.trim() });
+                setRenameTarget(null);
+              }
+            }}
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!renameValue.trim()}
+              onClick={() => {
+                if (renameTarget && renameValue.trim()) {
+                  renameProject({ projectId: renameTarget.id, name: renameValue.trim() });
+                  setRenameTarget(null);
+                }
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &ldquo;{deleteTarget?.name}&rdquo; and all its interview data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteTarget) {
+                  removeProject({ projectId: deleteTarget.id });
+                  setDeleteTarget(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
