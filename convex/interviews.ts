@@ -125,6 +125,21 @@ export const addMessage = mutation({
   },
 });
 
+export const clearIsComplete = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const messages = await ctx.db
+      .query("interviewMessages")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const msg of messages) {
+      if (msg.isComplete) {
+        await ctx.db.patch(msg._id, { isComplete: undefined });
+      }
+    }
+  },
+});
+
 export const clearMessages = mutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {

@@ -9,11 +9,11 @@ import { api } from "../../../convex/_generated/api";
 import { useSyncUser } from "@/hooks/useSyncUser";
 
 const placeholders = [
-  "A marketplace for local artisans",
-  "Project management for freelancers",
-  "Subscription box analytics dashboard",
-  "Community platform for dog owners",
-  "Booking system for fitness trainers",
+  "A marketplace like Airbnb",
+  "A social network for professionals",
+  "E-commerce store for unique products",
+  "A task management tool",
+  "Fitness tracking mobile app",
 ];
 
 export function HeroSection() {
@@ -149,7 +149,11 @@ export function HeroSection() {
               <button
                 onClick={handleSubmit}
                 disabled={!appIdea.trim() || isSubmitting}
-                className="h-9 px-5 bg-foreground text-background text-sm font-medium rounded-lg flex items-center gap-2 transition-all hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
+                className={`h-9 px-5 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
+                  appIdea.trim() && !isSubmitting
+                    ? "bg-stone-500 text-white hover:bg-stone-400 shadow-sm"
+                    : "bg-stone-100 text-stone-300 cursor-not-allowed"
+                }`}
               >
                 {isSubmitting ? (
                   <div className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />

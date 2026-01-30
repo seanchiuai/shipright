@@ -64,6 +64,7 @@ Implementation patterns live in `.claude/skills/`:
 - `clerk-auth/`, `convex-patterns/`, `ui-components/`
 - `interview-flow/`, `template-matching/`, `github-integration/`
 - `daytona-sandbox/`, `scaffolding-generation/`, `deployment/`
+- `e2e-testing/` - Browser E2E testing with agent-browser
 
 ## Environment Variables
 

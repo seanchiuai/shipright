@@ -195,17 +195,27 @@ export const continueConversation = action({
       role: v.string(),
       content: v.string(),
     })),
+    exchangeCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const vertex = getVertexProvider();
 
-    const messages = [
+    const messages: { role: "user" | "assistant" | "system"; content: string }[] = [
       { role: "user" as const, content: `The user wants to build: "${args.appIdea}"` },
       ...args.history.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       })),
     ];
+
+    // Soft nudge to wrap up after 6+ exchanges instead of a hard cap
+    const count = args.exchangeCount ?? 0;
+    if (count >= 6) {
+      messages.push({
+        role: "user" as const,
+        content: "[SYSTEM] You've asked enough questions. Wrap it up now and set isComplete: true — unless this app is genuinely complex and you still have critical unknowns.",
+      });
+    }
 
     const { text } = await generateText({
       model: vertex("gemini-2.5-flash"),

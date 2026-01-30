@@ -15,7 +15,6 @@ import Image from "next/image";
 import { AppNavbar } from "@/components/app-navbar";
 import {
   ChatMessage,
-  ChoiceCard,
   ChoiceGrid,
   MagicTextarea,
   AIConversation,
@@ -49,6 +48,7 @@ export default function InterviewPage() {
 
   // Mutations and actions
   const addMessage = useMutation(api.interviews.addMessage);
+  const clearIsComplete = useMutation(api.interviews.clearIsComplete);
   const updateAppIdea = useMutation(api.projects.updateAppIdea);
   const continueConversation = useAction(api.ai.continueConversation);
   const extractRequirements = useAction(api.ai.extractRequirements);
@@ -63,7 +63,6 @@ export default function InterviewPage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [multiselectValue, setMultiselectValue] = useState<string[]>([]);
-  const [customInputMode, setCustomInputMode] = useState(false);
 
   // Track which AI message IDs we've already seen (for typewriter)
   const seenAiMessages = useRef<Set<string>>(new Set());
@@ -164,7 +163,6 @@ export default function InterviewPage() {
       setLoading(true);
       setCurrentInput("");
       setMultiselectValue([]);
-      setCustomInputMode(false);
 
       try {
         await addMessage({ projectId, role: "user", content: answerText });
@@ -181,15 +179,16 @@ export default function InterviewPage() {
           seenAiMessages.current.add(m._id);
         });
 
+        const newExchangeCount = exchangeCount + 1;
         const result = await continueConversation({
           projectId,
           appIdea: project.appIdea,
           history,
+          exchangeCount: newExchangeCount,
         });
 
-        // Check if AI signals completion or we've hit the cap
-        const newExchangeCount = exchangeCount + 1;
-        if (result.isComplete || newExchangeCount >= 6) {
+        // Only trigger summary when AI decides conversation is complete
+        if (result.isComplete) {
           await extractRequirements({ projectId });
         }
       } catch (e) {
@@ -214,13 +213,32 @@ export default function InterviewPage() {
   }, [loading, projectId, extractRequirements]);
 
   const handleContinueConversation = useCallback(async () => {
+    if (loading || !project?.appIdea || !messages) return;
     setLoading(true);
     try {
+      await clearIsComplete({ projectId });
       await updateInterviewPhase({ projectId, phase: "conversation" });
+
+      // Mark existing AI messages as seen so only the new one typewriters
+      seenAiMessages.current.clear();
+      messages.filter((m) => m.role === "assistant").forEach((m) => {
+        seenAiMessages.current.add(m._id);
+      });
+
+      const history = [
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        { role: "user", content: "[The user reviewed the requirements summary and wants to continue the conversation to clarify or adjust something]" },
+      ];
+
+      await continueConversation({
+        projectId,
+        appIdea: project.appIdea,
+        history,
+      });
     } finally {
       setLoading(false);
     }
-  }, [projectId, updateInterviewPhase]);
+  }, [projectId, loading, project?.appIdea, messages, clearIsComplete, updateInterviewPhase, continueConversation]);
 
   const handleConfirm = useCallback(async () => {
     setLoading(true);
@@ -329,7 +347,7 @@ export default function InterviewPage() {
   const showChoiceInput = lastAiMsg && !isComplete && phase === "conversation" &&
     (lastAiMsg.questionType === "choice" || lastAiMsg.questionType === "multiselect") &&
     lastAiMsg.options;
-  const showTextInput = phase === "seed" || (phase === "conversation" && !isComplete && (!showChoiceInput || customInputMode));
+  const showTextInput = phase === "seed" || (phase === "conversation" && !isComplete);
 
   // Example idea chips for seed phase
   const exampleIdeas = [
@@ -414,19 +432,10 @@ export default function InterviewPage() {
                             }}
                             multiSelect={msg.questionType === "multiselect"}
                           />
-                          {!customInputMode && (
-                            <div className="pt-0.5">
-                              <ChoiceCard
-                                label="Something else"
-                                selected={false}
-                                onClick={() => setCustomInputMode(true)}
-                                icon={<Pencil className="w-3.5 h-3.5" />}
-                                multiSelect={msg.questionType === "multiselect"}
-                                delay={(msg.options?.length ?? 0) * 0.04}
-                              />
-                            </div>
-                          )}
-                          {msg.questionType === "multiselect" && (
+                          <p className="pt-1.5 text-[11px] text-stone-400 italic">
+                            Answer in text box below if none apply
+                          </p>
+                          {msg.questionType === "multiselect" && multiselectValue.length > 0 && (
                             <motion.div
                               className="pt-2 flex justify-end"
                               initial={{ opacity: 0 }}
