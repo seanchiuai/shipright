@@ -115,7 +115,7 @@ export function MagicTextarea({
             className={cn(
               "w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200",
               canSubmit
-                ? "bg-stone-800 text-white hover:bg-stone-700 shadow-sm"
+                ? "bg-stone-500 text-white hover:bg-stone-400 shadow-sm"
                 : "bg-stone-100 text-stone-300 cursor-not-allowed"
             )}
           >
