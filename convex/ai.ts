@@ -9,8 +9,6 @@ import { api } from "./_generated/api";
 import {
   QUESTION_SYSTEM_PROMPT,
   REQUIREMENTS_SYSTEM_PROMPT,
-  ENCOURAGEMENT_SYSTEM_PROMPT,
-  COMPLETION_SYSTEM_PROMPT,
   CONVERSATION_SYSTEM_PROMPT,
 } from "../prompts";
 
@@ -95,7 +93,7 @@ export const generateInterviewQuestions = action({
       }>;
     };
 
-    // Strip extra fields the AI may add (e.g. "context") — Convex rejects unknown fields
+    // Strip extra fields the AI may add — Convex rejects unknown fields
     const cleanQuestions = result.questions.map((q) => ({
       id: q.id,
       question: q.question,
@@ -104,7 +102,6 @@ export const generateInterviewQuestions = action({
       ...(q.required !== undefined ? { required: q.required } : {}),
     }));
 
-    // Save questions and preamble to database
     await ctx.runMutation(api.interviews.saveQuestions, {
       projectId: args.projectId,
       round: args.round,
@@ -116,74 +113,6 @@ export const generateInterviewQuestions = action({
       preamble: result.preamble,
       questions: cleanQuestions,
     };
-  },
-});
-
-export const generateEncouragement = action({
-  args: {
-    appIdea: v.string(),
-    question: v.string(),
-    answer: v.string(),
-  },
-  handler: async (_, args) => {
-    const vertex = getVertexProvider();
-
-    const prompt = `App idea: "${args.appIdea}"
-Question asked: "${args.question}"
-User's answer: "${args.answer}"
-
-Generate a brief encouragement.`;
-
-    const { text } = await generateText({
-      model: vertex("gemini-2.5-flash"),
-      system: ENCOURAGEMENT_SYSTEM_PROMPT,
-      prompt,
-    });
-
-    return { encouragement: text.trim() };
-  },
-});
-
-export const generateCompletionMessage = action({
-  args: {
-    projectId: v.id("projects"),
-  },
-  handler: async (ctx, args): Promise<{ message: string }> => {
-    const vertex = getVertexProvider();
-
-    // Get project for app idea
-    const project = await ctx.runQuery(api.projects.get, {
-      projectId: args.projectId,
-    }) as { appIdea?: string } | null;
-
-    if (!project?.appIdea) {
-      throw new Error("Project has no app idea");
-    }
-
-    // Get all interview rounds
-    const rounds = await ctx.runQuery(api.interviews.getRounds, {
-      projectId: args.projectId,
-    }) as Array<{ questions?: unknown[]; answers?: Record<string, unknown> }>;
-
-    let prompt: string = `App idea: "${project.appIdea}"`;
-
-    if (rounds.length > 0) {
-      prompt += "\n\nKey details gathered:\n";
-      for (const round of rounds) {
-        prompt += `Questions: ${JSON.stringify(round.questions)}\n`;
-        prompt += `Answers: ${JSON.stringify(round.answers)}\n`;
-      }
-    }
-
-    prompt += "\n\nGenerate an excited completion message.";
-
-    const result = await generateText({
-      model: vertex("gemini-2.5-flash"),
-      system: COMPLETION_SYSTEM_PROMPT,
-      prompt,
-    });
-
-    return { message: result.text.trim() };
   },
 });
 
@@ -208,7 +137,7 @@ export const continueConversation = action({
       })),
     ];
 
-    // Soft nudge to wrap up after 6+ exchanges instead of a hard cap
+    // Soft nudge to wrap up after 6+ exchanges
     const count = args.exchangeCount ?? 0;
     if (count >= 6) {
       messages.push({
@@ -319,19 +248,6 @@ export const extractRequirements = action({
       for (const msg of messages) {
         const label = msg.role === "assistant" ? "Interviewer" : "User";
         prompt += `${label}: ${msg.content}\n`;
-      }
-    } else {
-      // Fallback to legacy interview rounds
-      const rounds = await ctx.runQuery(api.interviews.getRounds, {
-        projectId: args.projectId,
-      });
-      if (rounds.length > 0) {
-        prompt += "\n\nInterview data:\n";
-        for (const round of rounds) {
-          prompt += `\nRound ${(round as { round: number }).round}:\n`;
-          prompt += `Questions: ${JSON.stringify((round as { questions?: unknown }).questions)}\n`;
-          prompt += `Answers: ${JSON.stringify((round as { answers?: unknown }).answers)}\n`;
-        }
       }
     }
 

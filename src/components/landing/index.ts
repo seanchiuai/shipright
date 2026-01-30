@@ -1,6 +1,5 @@
 export { FadeIn } from "./fade-in";
 export { StaggerChildren, StaggerItem } from "./stagger-children";
-export { GradientBackground } from "./gradient-background";
 export { Header } from "./header";
 export { HeroSection } from "./hero-section";
 export { DemoSection } from "./demo-section";

@@ -62,15 +62,6 @@ export const getBySlug = query({
   },
 });
 
-// Query: Get template by name (backwards compatibility)
-export const getByName = query({
-  args: { name: v.string() },
-  handler: async (ctx, args) => {
-    const templates = await ctx.db.query("templates").collect();
-    return templates.find((t) => t.name === args.name) || null;
-  },
-});
-
 // Mutation: Sync templates from JSON file
 // - Inserts new templates (by slug)
 // - Updates existing templates (matches by slug, falls back to name)
@@ -185,36 +176,3 @@ export const sync = mutation({
   },
 });
 
-// Mutation: Seed templates (legacy - redirects to sync)
-export const seed = mutation({
-  args: {},
-  handler: async (ctx) => {
-    // Check if templates already exist
-    const existing = await ctx.db.query("templates").first();
-    if (existing) {
-      return { message: "Templates already exist. Use sync to update.", count: 0 };
-    }
-
-    // Run sync for initial population
-    const stats = { added: 0 };
-    for (const template of templatesData.templates) {
-      await ctx.db.insert("templates", {
-        slug: template.slug,
-        name: template.name,
-        description: template.description,
-        sourceUrl: template.sourceUrl,
-        stack: template.stack,
-        capabilities: template.capabilities,
-        tags: template.tags,
-        integrations: template.integrations,
-        useCases: template.useCases,
-        complexity: template.complexity as "starter" | "intermediate" | "advanced" | undefined,
-        maintained: template.maintained,
-        lastVerified: template.lastVerified,
-      });
-      stats.added++;
-    }
-
-    return { message: "Templates seeded", count: stats.added };
-  },
-});

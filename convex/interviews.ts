@@ -1,32 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const getRounds = query({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("interviewSessions")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .order("asc")
-      .collect();
-  },
-});
-
-export const getRound = query({
-  args: {
-    projectId: v.id("projects"),
-    round: v.number(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("interviewSessions")
-      .withIndex("by_project_round", (q) =>
-        q.eq("projectId", args.projectId).eq("round", args.round)
-      )
-      .first();
-  },
-});
-
 export const saveQuestions = mutation({
   args: {
     projectId: v.id("projects"),
@@ -43,7 +17,6 @@ export const saveQuestions = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    // Check if round already exists
     const existing = await ctx.db
       .query("interviewSessions")
       .withIndex("by_project_round", (q) =>
@@ -67,30 +40,6 @@ export const saveQuestions = mutation({
     });
   },
 });
-
-export const saveAnswers = mutation({
-  args: {
-    projectId: v.id("projects"),
-    round: v.number(),
-    answers: v.any(),
-  },
-  handler: async (ctx, args) => {
-    const session = await ctx.db
-      .query("interviewSessions")
-      .withIndex("by_project_round", (q) =>
-        q.eq("projectId", args.projectId).eq("round", args.round)
-      )
-      .first();
-
-    if (!session) {
-      throw new Error(`Interview session for round ${args.round} not found`);
-    }
-
-    await ctx.db.patch(session._id, { answers: args.answers });
-  },
-});
-
-// --- Message-based interview functions ---
 
 export const getMessages = query({
   args: { projectId: v.id("projects") },
