@@ -13,7 +13,7 @@ import {
 } from "../prompts";
 
 // Parse JSON from AI response (may be wrapped in code blocks)
-function parseJsonResponse(text: string): unknown {
+export function parseJsonResponse(text: string): unknown {
   let jsonText = text.trim();
   if (jsonText.includes("```")) {
     const match = jsonText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
@@ -186,7 +186,7 @@ export const resumeAfterChoices = action({
 });
 
 // Build the prompt that Claude Code will use in the sandbox
-function buildSandboxPrompt(params: {
+export function buildSandboxPrompt(params: {
   prdMarkdown: string;
   techStackResolved: Array<{ need: string; library: string; package: string; reason: string }>;
   techStackChoices: Record<string, string> | null;
@@ -360,9 +360,9 @@ export const executeSandbox = action({
         120,
       );
 
-      // Run Claude Code with prompt
+      // Run Claude Code with prompt (bypassPermissions needed for file writes in non-interactive mode)
       const claudeResult = await sandbox.process.executeCommand(
-        'cd /workspace/project && claude --print "$(cat /workspace/prompt.txt)"',
+        'cd /workspace/project && claude --print --permission-mode bypassPermissions "$(cat /workspace/prompt.txt)"',
         "/workspace/project",
         undefined,
         600, // 10 minutes
