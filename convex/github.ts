@@ -5,6 +5,9 @@ import { v } from "convex/values";
 import { api } from "./_generated/api";
 import { Octokit } from "octokit";
 import { encryptToken, decryptToken } from "../lib/encryption";
+import { formatLogEntry } from "./lib/logger";
+import { buildEventArgs } from "./pipelineEvents";
+import { reportToSentry } from "./lib/sentry";
 
 export const exchangeGitHubCode = action({
   args: { code: v.string() },
@@ -97,6 +100,11 @@ export const cloneTemplate = action({
     newRepoName: v.string(),
   },
   handler: async (ctx, args) => {
+    const startedAt = Date.now();
+    const pid = args.projectId;
+    console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "cloning_repo", status: "started" }));
+    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "started" }) });
+
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
 
@@ -176,6 +184,10 @@ export const cloneTemplate = action({
         repoFullName,
       });
 
+      const durationMs = Date.now() - startedAt;
+      console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "cloning_repo", status: "completed", durationMs }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "completed", durationMs, metadata: { repoFullName } }) });
+
       return { repoUrl: newRepo.html_url, repoFullName };
     } catch (error: unknown) {
       const raw = error instanceof Error ? error.message : String(error);
@@ -189,6 +201,11 @@ export const cloneTemplate = action({
       } else {
         userMessage = `Repo creation failed: ${raw.slice(0, 200)}`;
       }
+
+      const durationMs = Date.now() - startedAt;
+      console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "cloning_repo", status: "failed", durationMs, error: userMessage }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "failed", durationMs, error: userMessage }) });
+      await reportToSentry({ message: `Clone template failed: ${userMessage}`, context: { projectId: pid, step: "cloneTemplate" } });
 
       await ctx.runMutation(api.projects.setRepoFailed, {
         projectId: args.projectId,
@@ -207,11 +224,18 @@ async function fetchRepoFiles(
   path: string = "",
   ref?: string
 ): Promise<Array<{ path: string; content: string; isBinary: boolean }>> {
+  // Resolve the ref to use — default to repo's default branch
+  let resolvedRef = ref;
+  if (!resolvedRef) {
+    const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
+    resolvedRef = repoData.default_branch;
+  }
+
   // Single API call to get the entire file tree
   const { data: tree } = await octokit.rest.git.getTree({
     owner,
     repo,
-    tree_sha: ref || "HEAD",
+    tree_sha: resolvedRef,
     recursive: "true",
   });
 
@@ -356,7 +380,7 @@ async function commitFiles(
 
   // Retry createTree — GitHub's git backend can lag behind repo creation
   let tree;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const result = await octokit.rest.git.createTree({
         owner,
@@ -367,8 +391,9 @@ async function commitFiles(
       tree = result.data;
       break;
     } catch (error: unknown) {
-      if (attempt === 2) throw error;
-      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      if (attempt === 4) throw error;
+      // Exponential backoff: 2s, 4s, 8s, 16s
+      await new Promise((r) => setTimeout(r, 2000 * Math.pow(2, attempt)));
     }
   }
 

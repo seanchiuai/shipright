@@ -146,7 +146,10 @@ export const setRepoFailed = mutation({
   },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
+    if (!project) {
+      console.warn(`setRepoFailed: project ${args.projectId} not found (likely deleted)`);
+      return;
+    }
 
     const currentRetries = project.repoRetryCount ?? 0;
     await ctx.db.patch(args.projectId, {
@@ -270,6 +273,26 @@ export const updateScaffoldingStatus = mutation({
       patch.status = "complete";
     }
     await ctx.db.patch(args.projectId, patch);
+  },
+});
+
+export const recreateRepo = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const { project } = await getOwnedProject(ctx, args.projectId);
+    if (!project.templateId) throw new Error("No template matched");
+
+    await ctx.db.patch(args.projectId, {
+      githubRepoUrl: undefined,
+      githubRepoFullName: undefined,
+      repoError: undefined,
+      repoRetryCount: 0,
+      scaffoldingStatus: undefined,
+      scaffoldingError: undefined,
+      status: PROJECT_STATUS.MATCHED,
+    });
   },
 });
 
