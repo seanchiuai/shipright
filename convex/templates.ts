@@ -4,6 +4,26 @@ import { v } from "convex/values";
 // Import template data from JSON (bundled at build time)
 import templatesData from "../data/templates.json";
 
+// Deep equality check that handles different key orders
+export const deepEqual = (a: unknown, b: unknown): boolean => {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (a === null || b === null) return a === b;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((v, i) => deepEqual(v, b[i]));
+  }
+  if (typeof a === "object" && typeof b === "object") {
+    const aObj = a as Record<string, unknown>;
+    const bObj = b as Record<string, unknown>;
+    const aKeys = Object.keys(aObj);
+    const bKeys = Object.keys(bObj);
+    if (aKeys.length !== bKeys.length) return false;
+    return aKeys.every((k) => deepEqual(aObj[k], bObj[k]));
+  }
+  return false;
+};
+
 // Template capabilities type (matches JSON schema)
 export type TemplateCapabilities = {
   auth: {
@@ -93,25 +113,6 @@ export const sync = mutation({
 
         if (existing) {
           // Update existing template (including adding slug if missing)
-          // Deep equality check that handles different key orders
-          const deepEqual = (a: unknown, b: unknown): boolean => {
-            if (a === b) return true;
-            if (typeof a !== typeof b) return false;
-            if (a === null || b === null) return a === b;
-            if (Array.isArray(a) && Array.isArray(b)) {
-              if (a.length !== b.length) return false;
-              return a.every((v, i) => deepEqual(v, b[i]));
-            }
-            if (typeof a === "object" && typeof b === "object") {
-              const aObj = a as Record<string, unknown>;
-              const bObj = b as Record<string, unknown>;
-              const aKeys = Object.keys(aObj);
-              const bKeys = Object.keys(bObj);
-              if (aKeys.length !== bKeys.length) return false;
-              return aKeys.every((k) => deepEqual(aObj[k], bObj[k]));
-            }
-            return false;
-          };
           const hasChanges =
             existing.slug !== template.slug ||
             existing.name !== template.name ||

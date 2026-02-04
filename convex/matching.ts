@@ -17,7 +17,7 @@ const weightsSchema = z.object({
   reasoning: z.string(),
 });
 
-type Weights = {
+export type Weights = {
   auth: number;
   database: number;
   payments: number;
@@ -25,7 +25,7 @@ type Weights = {
   ui: number;
 };
 
-type Requirements = {
+export type Requirements = {
   appName: string;
   tagline: string;
   appType: string;
@@ -41,7 +41,7 @@ type Requirements = {
   devAgentNotes: string;
 };
 
-type Template = {
+export type Template = {
   _id: string;
   slug?: string;
   name: string;
@@ -57,7 +57,7 @@ type Template = {
   lastVerified?: string;
 };
 
-type MatchResult = {
+export type MatchResult = {
   template: Template;
   score: number;
   scoreBreakdown: {
@@ -72,7 +72,7 @@ type MatchResult = {
   included: string[];
 };
 
-const DEFAULT_WEIGHTS: Weights = {
+export const DEFAULT_WEIGHTS: Weights = {
   auth: 0.25,
   database: 0.25,
   payments: 0.2,
@@ -80,7 +80,7 @@ const DEFAULT_WEIGHTS: Weights = {
   ui: 0.1,
 };
 
-function requirementsSummary(req: Requirements): string {
+export function requirementsSummary(req: Requirements): string {
   const users = [req.primaryUser.type, ...req.secondaryUsers.map((u) => u.type)].join(", ");
   return `App: ${req.appName} (${req.appType})
 Problem: ${req.problemStatement}
@@ -143,7 +143,7 @@ Examples:
 }
 
 // V1 scoring: infer needs from classification-level requirements
-function scoreAuth(
+export function scoreAuth(
   _requirements: Requirements,
   tmplAuth: TemplateCapabilities["auth"]
 ): number {
@@ -153,7 +153,7 @@ function scoreAuth(
   return 40;
 }
 
-function scoreDatabase(
+export function scoreDatabase(
   _requirements: Requirements,
   tmplDb: TemplateCapabilities["database"]
 ): number {
@@ -162,7 +162,7 @@ function scoreDatabase(
   return 90;
 }
 
-function scorePayments(
+export function scorePayments(
   requirements: Requirements,
   tmplPay: TemplateCapabilities["payments"]
 ): number {
@@ -172,7 +172,7 @@ function scorePayments(
   return 100;
 }
 
-function scoreFeatures(
+export function scoreFeatures(
   requirements: Requirements,
   tmplFeatures: TemplateCapabilities["features"]
 ): number {
@@ -207,7 +207,7 @@ function scoreFeatures(
   return Math.round(50 + (matches / checked) * 50);
 }
 
-function scoreUI(
+export function scoreUI(
   _requirements: Requirements,
   tmplUI: TemplateCapabilities["ui"]
 ): number {
@@ -218,7 +218,7 @@ function scoreUI(
   return Math.min(100, score);
 }
 
-function identifyGaps(
+export function identifyGaps(
   requirements: Requirements,
   template: Template
 ): string[] {
@@ -261,7 +261,7 @@ function identifyGaps(
   return [...new Set(gaps)];
 }
 
-function identifyIncluded(template: Template): string[] {
+export function identifyIncluded(template: Template): string[] {
   const included: string[] = [];
   const caps = template.capabilities;
 

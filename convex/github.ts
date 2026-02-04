@@ -68,7 +68,7 @@ export const validateToken = action({
 });
 
 /** Parse a template sourceUrl into owner, repo, ref, and subpath */
-function parseTemplateUrl(sourceUrl: string): {
+export function parseTemplateUrl(sourceUrl: string): {
   owner: string;
   repo: string;
   ref?: string;
@@ -264,7 +264,7 @@ const BINARY_EXTENSIONS = new Set([
   ".lock",
 ]);
 
-function isBinaryFile(filename: string, size: number): boolean {
+export function isBinaryFile(filename: string, size: number): boolean {
   if (size > 1024 * 1024) return true; // >1MB treat as binary
   const ext = filename.slice(filename.lastIndexOf(".")).toLowerCase();
   return BINARY_EXTENSIONS.has(ext);

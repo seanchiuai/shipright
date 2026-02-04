@@ -19,7 +19,17 @@ npm run dev        # Next.js dev server
 npx convex dev     # Convex dev server (separate terminal)
 npm run type-check # TypeScript check
 npm run lint       # Linting
+npm test           # Unit tests (Vitest)
+npm run test:watch # Tests in watch mode
 ```
+
+## Testing & CI
+
+- **Unit/integration tests:** Vitest + React Testing Library (`src/**/*.test.{ts,tsx}`, `convex/**/*.test.ts`)
+- **E2E tests:** agent-browser (local only)
+- **CI:** GitHub Actions on push/PR to `main` — runs type-check, lint, unit tests
+
+See `docs/testing.md` for details.
 
 ## Development Phases
 
