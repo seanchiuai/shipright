@@ -337,6 +337,14 @@ async function commitFiles(
 ) {
   const parentSha = await waitForRef(octokit, owner, repo, "heads/main");
 
+  // Resolve commit SHA to tree SHA — createTree requires a tree SHA for base_tree
+  const { data: parentCommit } = await octokit.rest.git.getCommit({
+    owner,
+    repo,
+    commit_sha: parentSha,
+  });
+  const baseTreeSha = parentCommit.tree.sha;
+
   const blobs = await createBlobsBatched(octokit, owner, repo, files);
 
   const treeItems = blobs.map((blob) => ({
@@ -354,7 +362,7 @@ async function commitFiles(
         owner,
         repo,
         tree: treeItems,
-        base_tree: parentSha,
+        base_tree: baseTreeSha,
       });
       tree = result.data;
       break;
