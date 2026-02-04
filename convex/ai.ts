@@ -13,7 +13,7 @@ import {
 import { getVertexProvider } from "./lib/vertex";
 
 // Parse JSON that might be wrapped in markdown code blocks or extra text
-function parseJsonResponse(text: string): unknown {
+export function parseJsonResponse(text: string): unknown {
   let jsonText = text.trim();
   if (jsonText.includes("```")) {
     const match = jsonText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
@@ -87,13 +87,6 @@ export const generateInterviewQuestions = action({
       ...(q.options ? { options: q.options } : {}),
       ...(q.required !== undefined ? { required: q.required } : {}),
     }));
-
-    await ctx.runMutation(api.interviews.saveQuestions, {
-      projectId: args.projectId,
-      round: args.round,
-      preamble: result.preamble,
-      questions: cleanQuestions,
-    });
 
     return {
       preamble: result.preamble,

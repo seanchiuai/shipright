@@ -70,7 +70,6 @@ const { text } = await generateText({
 - Messages stored in `interviewMessages` table (reactive query)
 - Phase tracked via `projects.interviewPhase`
 - Final requirements stored in `projects.requirements`
-- Legacy `interviewSessions` table kept for backward compat (unused for new interviews)
 - Convex actions for AI API calls
 
 ## Key Files

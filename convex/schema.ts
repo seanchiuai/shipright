@@ -57,19 +57,6 @@ export default defineSchema({
     .index("by_project", ["projectId"])
     .index("by_project_timestamp", ["projectId", "timestamp"]),
 
-  interviewSessions: defineTable({
-    projectId: v.id("projects"),
-    round: v.number(),
-    preamble: v.optional(v.string()),
-    questions: v.optional(v.array(v.object({
-      id: v.string(),
-      question: v.string(),
-      type: v.string(), // "text" | "choice" | "multiselect"
-      options: v.optional(v.array(v.string())),
-      required: v.optional(v.boolean()),
-    }))),
-    answers: v.optional(v.any()), // Record<string, string | string[]>
-  }).index("by_project", ["projectId"]).index("by_project_round", ["projectId", "round"]),
 
   templates: defineTable({
     slug: v.optional(v.string()), // Unique identifier for sync (optional for backwards compat)

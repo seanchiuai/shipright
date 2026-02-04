@@ -49,19 +49,6 @@ export default defineSchema({
     .index("by_project", ["projectId"])
     .index("by_project_timestamp", ["projectId", "timestamp"]),
 
-  interviewSessions: defineTable({
-    projectId: v.id("projects"),
-    round: v.number(),
-    preamble: v.optional(v.string()),
-    questions: v.optional(v.array(v.object({
-      id: v.string(),
-      question: v.string(),
-      type: v.string(), // "text" | "choice" | "multiselect"
-      options: v.optional(v.array(v.string())),
-      required: v.optional(v.boolean()),
-    }))),
-    answers: v.optional(v.any()), // Record<string, string | string[]>
-  }).index("by_project", ["projectId"]).index("by_project_round", ["projectId", "round"]),
 
   templates: defineTable({
     slug: v.optional(v.string()),
@@ -151,13 +138,6 @@ export async function deleteProjectData(ctx: MutationCtx, projectId: Id<"project
     await ctx.db.delete(msg._id);
   }
 
-  const sessions = await ctx.db
-    .query("interviewSessions")
-    .withIndex("by_project", (q) => q.eq("projectId", projectId))
-    .collect();
-  for (const session of sessions) {
-    await ctx.db.delete(session._id);
-  }
 }
 ```
 
@@ -486,13 +466,6 @@ export const generateInterviewQuestions = action({
       model: vertex("gemini-2.5-flash"),
       system: QUESTION_SYSTEM_PROMPT,
       prompt: `The user wants to build: "${args.appIdea}"`,
-    });
-
-    // Save to database via mutation
-    await ctx.runMutation(api.interviews.saveQuestions, {
-      projectId: args.projectId,
-      round: args.round,
-      questions: JSON.parse(text),
     });
 
     return JSON.parse(text);

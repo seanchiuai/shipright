@@ -1,46 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const saveQuestions = mutation({
-  args: {
-    projectId: v.id("projects"),
-    round: v.number(),
-    preamble: v.optional(v.string()),
-    questions: v.array(
-      v.object({
-        id: v.string(),
-        question: v.string(),
-        type: v.string(),
-        options: v.optional(v.array(v.string())),
-        required: v.optional(v.boolean()),
-      })
-    ),
-  },
-  handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("interviewSessions")
-      .withIndex("by_project_round", (q) =>
-        q.eq("projectId", args.projectId).eq("round", args.round)
-      )
-      .first();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        questions: args.questions,
-        ...(args.preamble ? { preamble: args.preamble } : {}),
-      });
-      return existing._id;
-    }
-
-    return await ctx.db.insert("interviewSessions", {
-      projectId: args.projectId,
-      round: args.round,
-      preamble: args.preamble,
-      questions: args.questions,
-    });
-  },
-});
-
 export const getMessages = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
