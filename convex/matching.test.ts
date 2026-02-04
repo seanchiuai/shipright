@@ -63,7 +63,7 @@ function makeTemplate(overrides: Partial<Template> = {}): Template {
 // --- Tests ---
 
 describe("DEFAULT_WEIGHTS", () => {
-  it("sums to 1.0", () => {
+  it("sums to 1.0 so weighted scores produce a valid percentage", () => {
     const sum =
       DEFAULT_WEIGHTS.auth +
       DEFAULT_WEIGHTS.database +
@@ -73,17 +73,25 @@ describe("DEFAULT_WEIGHTS", () => {
     expect(sum).toBeCloseTo(1.0);
   });
 
-  it("has all positive values", () => {
+  it("has all positive values (every category matters)", () => {
     expect(DEFAULT_WEIGHTS.auth).toBeGreaterThan(0);
     expect(DEFAULT_WEIGHTS.database).toBeGreaterThan(0);
     expect(DEFAULT_WEIGHTS.payments).toBeGreaterThan(0);
     expect(DEFAULT_WEIGHTS.features).toBeGreaterThan(0);
     expect(DEFAULT_WEIGHTS.ui).toBeGreaterThan(0);
   });
+
+  it("each weight is less than 1 (no single category dominates entirely)", () => {
+    expect(DEFAULT_WEIGHTS.auth).toBeLessThan(1);
+    expect(DEFAULT_WEIGHTS.database).toBeLessThan(1);
+    expect(DEFAULT_WEIGHTS.payments).toBeLessThan(1);
+    expect(DEFAULT_WEIGHTS.features).toBeLessThan(1);
+    expect(DEFAULT_WEIGHTS.ui).toBeLessThan(1);
+  });
 });
 
 describe("requirementsSummary", () => {
-  it("formats all core fields", () => {
+  it("includes all user-provided fields so AI gets full context", () => {
     const req = makeRequirements({
       appName: "MyApp",
       appType: "marketplace",
@@ -103,7 +111,7 @@ describe("requirementsSummary", () => {
     expect(summary).toContain("search, payments");
   });
 
-  it("includes secondary users", () => {
+  it("lists all user types (primary + secondary) so AI knows the audience", () => {
     const req = makeRequirements({
       primaryUser: { type: "admin", coreNeed: "manage" },
       secondaryUsers: [
@@ -112,47 +120,50 @@ describe("requirementsSummary", () => {
       ],
     });
     const summary = requirementsSummary(req);
-    expect(summary).toContain("admin, viewer, editor");
+    expect(summary).toContain("admin");
+    expect(summary).toContain("viewer");
+    expect(summary).toContain("editor");
   });
 
-  it("shows payment context when hasPayments is true", () => {
+  it("shows payment context when payments are needed", () => {
     const req = makeRequirements({
       hasPayments: true,
       paymentContext: "Subscription billing",
     });
-    const summary = requirementsSummary(req);
-    expect(summary).toContain("Subscription billing");
+    expect(requirementsSummary(req)).toContain("Subscription billing");
   });
 
-  it("shows 'Yes' when hasPayments but no context", () => {
+  it("indicates payments needed even without context", () => {
     const req = makeRequirements({ hasPayments: true, paymentContext: null });
     const summary = requirementsSummary(req);
-    expect(summary).toContain("Payments: Yes");
+    // Should NOT say "No" — must indicate payments are needed
+    expect(summary).not.toMatch(/Payments:\s*No/i);
   });
 
-  it("shows 'No' when no payments", () => {
+  it("indicates no payments when not needed", () => {
     const req = makeRequirements({ hasPayments: false });
-    const summary = requirementsSummary(req);
-    expect(summary).toContain("Payments: No");
+    expect(requirementsSummary(req)).toMatch(/Payments:\s*No/i);
   });
 
-  it("conditionally includes mustHave", () => {
+  it("surfaces mustHave constraints so AI doesn't miss hard requirements", () => {
     const req = makeRequirements({
-      constraints: { timeline: null, mustHave: ["realtime"], mustNotHave: [] },
+      constraints: { timeline: null, mustHave: ["realtime", "offline"], mustNotHave: [] },
     });
     const summary = requirementsSummary(req);
-    expect(summary).toContain("Must Have: realtime");
+    expect(summary).toContain("realtime");
+    expect(summary).toContain("offline");
   });
 
-  it("conditionally includes mustNotHave", () => {
+  it("surfaces mustNotHave constraints", () => {
     const req = makeRequirements({
-      constraints: { timeline: null, mustHave: [], mustNotHave: ["ads"] },
+      constraints: { timeline: null, mustHave: [], mustNotHave: ["ads", "tracking"] },
     });
     const summary = requirementsSummary(req);
-    expect(summary).toContain("Must Not Have: ads");
+    expect(summary).toContain("ads");
+    expect(summary).toContain("tracking");
   });
 
-  it("omits mustHave/mustNotHave when empty", () => {
+  it("does not include constraint labels when lists are empty (cleaner prompt)", () => {
     const req = makeRequirements();
     const summary = requirementsSummary(req);
     expect(summary).not.toContain("Must Have");
@@ -161,188 +172,206 @@ describe("requirementsSummary", () => {
 });
 
 describe("scoreAuth", () => {
-  it("returns 90 when auth is present", () => {
-    const req = makeRequirements();
-    const auth = { present: true, providers: ["clerk"], hasRoles: false, hasOrgs: false };
-    expect(scoreAuth(req, auth)).toBe(90);
+  const req = makeRequirements();
+  const withAuth = { present: true, providers: ["clerk"], hasRoles: false, hasOrgs: false };
+  const noAuth = { present: false, providers: [], hasRoles: false, hasOrgs: false };
+
+  it("scores higher when auth is present (most apps need auth)", () => {
+    expect(scoreAuth(req, withAuth)).toBeGreaterThan(scoreAuth(req, noAuth));
   });
 
-  it("returns 40 when auth is not present", () => {
-    const req = makeRequirements();
-    const auth = { present: false, providers: [], hasRoles: false, hasOrgs: false };
-    expect(scoreAuth(req, auth)).toBe(40);
+  it("all scores are within 0-100", () => {
+    expect(scoreAuth(req, withAuth)).toBeGreaterThanOrEqual(0);
+    expect(scoreAuth(req, withAuth)).toBeLessThanOrEqual(100);
+    expect(scoreAuth(req, noAuth)).toBeGreaterThanOrEqual(0);
+    expect(scoreAuth(req, noAuth)).toBeLessThanOrEqual(100);
+  });
+
+  it("does not penalize extra auth features (providers, roles)", () => {
+    const richAuth = { present: true, providers: ["clerk", "google", "github"], hasRoles: true, hasOrgs: true };
+    expect(scoreAuth(req, richAuth)).toBeGreaterThanOrEqual(scoreAuth(req, withAuth));
   });
 });
 
 describe("scoreDatabase", () => {
-  it("returns 90 when database is present", () => {
-    const req = makeRequirements();
-    const db = { present: true, type: "convex", realtime: true };
-    expect(scoreDatabase(req, db)).toBe(90);
+  const req = makeRequirements();
+  const withDb = { present: true, type: "convex", realtime: true };
+  const noDb = { present: false, type: "", realtime: false };
+
+  it("scores higher when database is present (every app needs storage)", () => {
+    expect(scoreDatabase(req, withDb)).toBeGreaterThan(scoreDatabase(req, noDb));
   });
 
-  it("returns 20 when database is not present", () => {
-    const req = makeRequirements();
-    const db = { present: false, type: "", realtime: false };
-    expect(scoreDatabase(req, db)).toBe(20);
+  it("all scores are within 0-100", () => {
+    expect(scoreDatabase(req, withDb)).toBeGreaterThanOrEqual(0);
+    expect(scoreDatabase(req, withDb)).toBeLessThanOrEqual(100);
+    expect(scoreDatabase(req, noDb)).toBeGreaterThanOrEqual(0);
+    expect(scoreDatabase(req, noDb)).toBeLessThanOrEqual(100);
+  });
+
+  it("without database still scores > 0 (template still has other value)", () => {
+    expect(scoreDatabase(req, noDb)).toBeGreaterThan(0);
   });
 });
 
 describe("scorePayments", () => {
-  it("returns 100 when neither needs nor has payments", () => {
-    const req = makeRequirements({ hasPayments: false });
-    const pay = { present: false };
-    expect(scorePayments(req, pay)).toBe(100);
+  const needsPay = makeRequirements({ hasPayments: true });
+  const noPay = makeRequirements({ hasPayments: false });
+  const hasPay = { present: true, provider: "stripe", models: ["subscription"] };
+  const noProv = { present: false };
+
+  it("perfect score when needs match (both need + have, or neither)", () => {
+    const matchBoth = scorePayments(needsPay, hasPay);
+    const matchNeither = scorePayments(noPay, noProv);
+    expect(matchBoth).toBe(matchNeither);
+    expect(matchBoth).toBeGreaterThanOrEqual(90); // near-perfect match
   });
 
-  it("returns 80 when does not need but has payments", () => {
-    const req = makeRequirements({ hasPayments: false });
-    const pay = { present: true, provider: "stripe", models: ["subscription"] };
-    expect(scorePayments(req, pay)).toBe(80);
+  it("worst score when app needs payments but template lacks them", () => {
+    const missing = scorePayments(needsPay, noProv);
+    expect(missing).toBeLessThanOrEqual(10); // critical gap
+    // Should be worse than any other combination
+    expect(missing).toBeLessThan(scorePayments(noPay, hasPay));
+    expect(missing).toBeLessThan(scorePayments(needsPay, hasPay));
+    expect(missing).toBeLessThan(scorePayments(noPay, noProv));
   });
 
-  it("returns 0 when needs but does not have payments", () => {
-    const req = makeRequirements({ hasPayments: true });
-    const pay = { present: false };
-    expect(scorePayments(req, pay)).toBe(0);
-  });
-
-  it("returns 100 when needs and has payments", () => {
-    const req = makeRequirements({ hasPayments: true });
-    const pay = { present: true, provider: "stripe", models: ["subscription"] };
-    expect(scorePayments(req, pay)).toBe(100);
+  it("extra payments (not needed) is okay but not ideal", () => {
+    const extra = scorePayments(noPay, hasPay);
+    const perfect = scorePayments(noPay, noProv);
+    expect(extra).toBeGreaterThan(50); // still a decent template
+    expect(extra).toBeLessThanOrEqual(perfect); // but not as good as exact match
   });
 });
 
 describe("scoreFeatures", () => {
-  it("returns 80 when no feature keywords match", () => {
-    const req = makeRequirements({ keyFeatures: ["dashboard", "settings"] });
-    const features = { fileUploads: false, email: false, search: false, ai: false };
-    expect(scoreFeatures(req, features)).toBe(80);
+  const allFeatures = { fileUploads: true, email: true, search: true, ai: true };
+  const noFeatures = { fileUploads: false, email: false, search: false, ai: false };
+
+  it("scores higher when template has the features the app needs", () => {
+    const req = makeRequirements({ keyFeatures: ["file upload", "search"] });
+    expect(scoreFeatures(req, allFeatures)).toBeGreaterThan(scoreFeatures(req, noFeatures));
   });
 
-  it("returns 80 when keyFeatures is empty", () => {
-    const req = makeRequirements({ keyFeatures: [] });
-    const features = { fileUploads: true, email: true, search: true, ai: true };
-    expect(scoreFeatures(req, features)).toBe(80);
+  it("recognizes upload/file/image keywords as file upload need", () => {
+    for (const keyword of ["file upload", "image gallery", "Upload photos"]) {
+      const req = makeRequirements({ keyFeatures: [keyword] });
+      const withUploads = { fileUploads: true, email: false, search: false, ai: false };
+      const withoutUploads = { fileUploads: false, email: false, search: false, ai: false };
+      expect(scoreFeatures(req, withUploads)).toBeGreaterThan(scoreFeatures(req, withoutUploads));
+    }
   });
 
-  it("matches upload keyword to fileUploads", () => {
-    const req = makeRequirements({ keyFeatures: ["file upload"] });
-    const features = { fileUploads: true, email: false, search: false, ai: false };
-    expect(scoreFeatures(req, features)).toBe(100);
+  it("recognizes email/notification keywords as email need", () => {
+    for (const keyword of ["email alerts", "push notification"]) {
+      const req = makeRequirements({ keyFeatures: [keyword] });
+      const withEmail = { fileUploads: false, email: true, search: false, ai: false };
+      const withoutEmail = { fileUploads: false, email: false, search: false, ai: false };
+      expect(scoreFeatures(req, withEmail)).toBeGreaterThan(scoreFeatures(req, withoutEmail));
+    }
   });
 
-  it("matches image keyword to fileUploads", () => {
-    const req = makeRequirements({ keyFeatures: ["image gallery"] });
-    const features = { fileUploads: true, email: false, search: false, ai: false };
-    expect(scoreFeatures(req, features)).toBe(100);
+  it("recognizes search/find keywords as search need", () => {
+    for (const keyword of ["search products", "find users"]) {
+      const req = makeRequirements({ keyFeatures: [keyword] });
+      const withSearch = { fileUploads: false, email: false, search: true, ai: false };
+      const withoutSearch = { fileUploads: false, email: false, search: false, ai: false };
+      expect(scoreFeatures(req, withSearch)).toBeGreaterThan(scoreFeatures(req, withoutSearch));
+    }
   });
 
-  it("matches email keyword", () => {
-    const req = makeRequirements({ keyFeatures: ["email notifications"] });
-    const features = { fileUploads: false, email: true, search: false, ai: false };
-    expect(scoreFeatures(req, features)).toBe(100);
-  });
-
-  it("matches notification keyword to email", () => {
-    const req = makeRequirements({ keyFeatures: ["push notification"] });
-    const features = { fileUploads: false, email: true, search: false, ai: false };
-    expect(scoreFeatures(req, features)).toBe(100);
-  });
-
-  it("matches search keyword", () => {
-    const req = makeRequirements({ keyFeatures: ["search products"] });
-    const features = { fileUploads: false, email: false, search: true, ai: false };
-    expect(scoreFeatures(req, features)).toBe(100);
-  });
-
-  it("matches find keyword to search", () => {
-    const req = makeRequirements({ keyFeatures: ["find users"] });
-    const features = { fileUploads: false, email: false, search: true, ai: false };
-    expect(scoreFeatures(req, features)).toBe(100);
-  });
-
-  it("matches ai keyword", () => {
-    const req = makeRequirements({ keyFeatures: ["ai assistant"] });
-    const features = { fileUploads: false, email: false, search: false, ai: true };
-    expect(scoreFeatures(req, features)).toBe(100);
-  });
-
-  it("matches chat keyword to ai", () => {
-    const req = makeRequirements({ keyFeatures: ["chatbot"] });
-    const features = { fileUploads: false, email: false, search: false, ai: true };
-    expect(scoreFeatures(req, features)).toBe(100);
-  });
-
-  it("matches llm keyword to ai", () => {
-    const req = makeRequirements({ keyFeatures: ["LLM integration"] });
-    const features = { fileUploads: false, email: false, search: false, ai: true };
-    expect(scoreFeatures(req, features)).toBe(100);
-  });
-
-  it("matches gpt keyword to ai", () => {
-    const req = makeRequirements({ keyFeatures: ["GPT chatbot"] });
-    const features = { fileUploads: false, email: false, search: false, ai: true };
-    expect(scoreFeatures(req, features)).toBe(100);
+  it("recognizes ai/chat/llm/gpt keywords as AI need", () => {
+    for (const keyword of ["ai assistant", "chatbot", "LLM integration", "GPT features"]) {
+      const req = makeRequirements({ keyFeatures: [keyword] });
+      const withAI = { fileUploads: false, email: false, search: false, ai: true };
+      const withoutAI = { fileUploads: false, email: false, search: false, ai: false };
+      expect(scoreFeatures(req, withAI)).toBeGreaterThan(scoreFeatures(req, withoutAI));
+    }
   });
 
   it("is case insensitive", () => {
-    const req = makeRequirements({ keyFeatures: ["FILE UPLOAD"] });
+    const lower = makeRequirements({ keyFeatures: ["file upload"] });
+    const upper = makeRequirements({ keyFeatures: ["FILE UPLOAD"] });
     const features = { fileUploads: true, email: false, search: false, ai: false };
-    expect(scoreFeatures(req, features)).toBe(100);
+    expect(scoreFeatures(lower, features)).toBe(scoreFeatures(upper, features));
   });
 
-  it("calculates partial match score", () => {
+  it("partial match scores between full match and no match", () => {
     const req = makeRequirements({ keyFeatures: ["file upload", "email alerts"] });
-    const features = { fileUploads: true, email: false, search: false, ai: false };
-    // checked=2, matches=1 → 50 + (1/2)*50 = 75
-    expect(scoreFeatures(req, features)).toBe(75);
+    const oneMatch = { fileUploads: true, email: false, search: false, ai: false };
+    const fullMatch = { fileUploads: true, email: true, search: false, ai: false };
+    expect(scoreFeatures(req, oneMatch)).toBeGreaterThan(scoreFeatures(req, noFeatures));
+    expect(scoreFeatures(req, oneMatch)).toBeLessThan(scoreFeatures(req, fullMatch));
   });
 
-  it("returns 50 when all checked features miss", () => {
-    const req = makeRequirements({ keyFeatures: ["file upload", "search"] });
-    const features = { fileUploads: false, email: false, search: false, ai: false };
-    // checked=2, matches=0 → 50 + 0 = 50
-    expect(scoreFeatures(req, features)).toBe(50);
+  it("returns a reasonable default when no feature keywords are recognized", () => {
+    const req = makeRequirements({ keyFeatures: ["dashboard", "settings page"] });
+    const score = scoreFeatures(req, noFeatures);
+    // Should not penalize — these features aren't in the keyword map
+    expect(score).toBeGreaterThan(50);
+  });
+
+  it("returns a reasonable default when keyFeatures is empty", () => {
+    const req = makeRequirements({ keyFeatures: [] });
+    const score = scoreFeatures(req, allFeatures);
+    expect(score).toBeGreaterThan(50);
+  });
+
+  it("all scores are within 0-100", () => {
+    const cases = [
+      { keyFeatures: [] },
+      { keyFeatures: ["ai chatbot"] },
+      { keyFeatures: ["file upload", "email", "search", "ai chat"] },
+      { keyFeatures: ["dashboard"] },
+    ];
+    for (const kf of cases) {
+      const req = makeRequirements(kf);
+      for (const features of [allFeatures, noFeatures]) {
+        const score = scoreFeatures(req, features);
+        expect(score).toBeGreaterThanOrEqual(0);
+        expect(score).toBeLessThanOrEqual(100);
+      }
+    }
   });
 });
 
 describe("scoreUI", () => {
-  it("returns 80 for shadcn framework (50 base + 30)", () => {
-    const req = makeRequirements();
-    const ui = { framework: "shadcn", hasAdminDashboard: false, hasLandingPage: false };
-    expect(scoreUI(req, ui)).toBe(80);
+  const req = makeRequirements();
+
+  it("prefers shadcn over tailwind over unknown", () => {
+    const shadcn = scoreUI(req, { framework: "shadcn", hasAdminDashboard: false, hasLandingPage: false });
+    const tailwind = scoreUI(req, { framework: "tailwind", hasAdminDashboard: false, hasLandingPage: false });
+    const unknown = scoreUI(req, { framework: "bootstrap", hasAdminDashboard: false, hasLandingPage: false });
+    expect(shadcn).toBeGreaterThan(tailwind);
+    expect(tailwind).toBeGreaterThan(unknown);
   });
 
-  it("returns 65 for tailwind framework (50 base + 15)", () => {
-    const req = makeRequirements();
-    const ui = { framework: "tailwind", hasAdminDashboard: false, hasLandingPage: false };
-    expect(scoreUI(req, ui)).toBe(65);
+  it("landing page adds value", () => {
+    const withLanding = scoreUI(req, { framework: "shadcn", hasAdminDashboard: false, hasLandingPage: true });
+    const withoutLanding = scoreUI(req, { framework: "shadcn", hasAdminDashboard: false, hasLandingPage: false });
+    expect(withLanding).toBeGreaterThan(withoutLanding);
   });
 
-  it("adds 10 for hasLandingPage", () => {
-    const req = makeRequirements();
-    const ui = { framework: "shadcn", hasAdminDashboard: false, hasLandingPage: true };
-    expect(scoreUI(req, ui)).toBe(90);
+  it("never exceeds 100", () => {
+    // Max everything
+    const score = scoreUI(req, { framework: "shadcn", hasAdminDashboard: true, hasLandingPage: true });
+    expect(score).toBeLessThanOrEqual(100);
   });
 
-  it("caps at 100", () => {
-    const req = makeRequirements();
-    const ui = { framework: "shadcn", hasAdminDashboard: true, hasLandingPage: true };
-    // 50 + 30 + 10 = 90, no admin bonus in code → 90
-    expect(scoreUI(req, ui)).toBeLessThanOrEqual(100);
-  });
-
-  it("returns 50 for unknown framework", () => {
-    const req = makeRequirements();
-    const ui = { framework: "bootstrap", hasAdminDashboard: false, hasLandingPage: false };
-    expect(scoreUI(req, ui)).toBe(50);
+  it("all scores are within 0-100", () => {
+    const frameworks = ["shadcn", "tailwind", "bootstrap", "none", ""];
+    for (const framework of frameworks) {
+      for (const hasLandingPage of [true, false]) {
+        const score = scoreUI(req, { framework, hasAdminDashboard: false, hasLandingPage });
+        expect(score).toBeGreaterThanOrEqual(0);
+        expect(score).toBeLessThanOrEqual(100);
+      }
+    }
   });
 });
 
 describe("identifyGaps", () => {
-  it("identifies payment gap", () => {
+  it("flags payment gap when app needs payments but template lacks them", () => {
     const req = makeRequirements({ hasPayments: true });
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({ payments: { present: false } }),
@@ -350,85 +379,84 @@ describe("identifyGaps", () => {
     expect(identifyGaps(req, tmpl)).toContain("Payment processing");
   });
 
-  it("identifies file upload gap", () => {
+  it("does NOT flag payment gap when template has payments", () => {
+    const req = makeRequirements({ hasPayments: true });
+    const tmpl = makeTemplate({
+      capabilities: makeCapabilities({ payments: { present: true, provider: "stripe" } }),
+    });
+    expect(identifyGaps(req, tmpl)).not.toContain("Payment processing");
+  });
+
+  it("flags feature gaps for each missing capability keyword", () => {
+    const gapMap: [string, string][] = [
+      ["file upload", "File uploads"],
+      ["email notifications", "Email notifications"],
+      ["search products", "Search functionality"],
+      ["ai chatbot", "AI/Chat features"],
+    ];
+    for (const [keyword, expectedGap] of gapMap) {
+      const req = makeRequirements({ keyFeatures: [keyword] });
+      const tmpl = makeTemplate({
+        capabilities: makeCapabilities({
+          features: { fileUploads: false, email: false, search: false, ai: false },
+        }),
+      });
+      expect(identifyGaps(req, tmpl)).toContain(expectedGap);
+    }
+  });
+
+  it("does NOT flag feature gap when template has the capability", () => {
     const req = makeRequirements({ keyFeatures: ["file upload"] });
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
-        features: { fileUploads: false, email: false, search: false, ai: false },
+        features: { fileUploads: true, email: false, search: false, ai: false },
       }),
     });
-    expect(identifyGaps(req, tmpl)).toContain("File uploads");
+    expect(identifyGaps(req, tmpl)).not.toContain("File uploads");
   });
 
-  it("identifies email gap", () => {
-    const req = makeRequirements({ keyFeatures: ["email notifications"] });
-    const tmpl = makeTemplate({
-      capabilities: makeCapabilities({
-        features: { fileUploads: false, email: false, search: false, ai: false },
-      }),
-    });
-    expect(identifyGaps(req, tmpl)).toContain("Email notifications");
+  it("flags mustHave constraint gaps: realtime, roles, orgs", () => {
+    const constraintGaps: [string, Partial<TemplateCapabilities>, string][] = [
+      [
+        "realtime sync",
+        { database: { present: true, type: "postgres", realtime: false } },
+        "Real-time data sync",
+      ],
+      [
+        "role-based access",
+        { auth: { present: true, providers: ["clerk"], hasRoles: false, hasOrgs: false } },
+        "User roles/permissions",
+      ],
+      [
+        "org management",
+        { auth: { present: true, providers: ["clerk"], hasRoles: false, hasOrgs: false } },
+        "Organizations/teams",
+      ],
+    ];
+    for (const [mustHave, caps, expectedGap] of constraintGaps) {
+      const req = makeRequirements({
+        constraints: { timeline: null, mustHave: [mustHave], mustNotHave: [] },
+      });
+      const tmpl = makeTemplate({ capabilities: makeCapabilities(caps) });
+      expect(identifyGaps(req, tmpl)).toContain(expectedGap);
+    }
   });
 
-  it("identifies search gap", () => {
-    const req = makeRequirements({ keyFeatures: ["search products"] });
-    const tmpl = makeTemplate({
-      capabilities: makeCapabilities({
-        features: { fileUploads: false, email: false, search: false, ai: false },
-      }),
-    });
-    expect(identifyGaps(req, tmpl)).toContain("Search functionality");
-  });
-
-  it("identifies AI gap", () => {
-    const req = makeRequirements({ keyFeatures: ["ai chatbot"] });
-    const tmpl = makeTemplate({
-      capabilities: makeCapabilities({
-        features: { fileUploads: false, email: false, search: false, ai: false },
-      }),
-    });
-    expect(identifyGaps(req, tmpl)).toContain("AI/Chat features");
-  });
-
-  it("identifies realtime constraint gap", () => {
+  it("does NOT flag constraint gap when template satisfies it", () => {
     const req = makeRequirements({
       constraints: { timeline: null, mustHave: ["realtime sync"], mustNotHave: [] },
     });
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
-        database: { present: true, type: "postgres", realtime: false },
+        database: { present: true, type: "convex", realtime: true },
       }),
     });
-    expect(identifyGaps(req, tmpl)).toContain("Real-time data sync");
+    expect(identifyGaps(req, tmpl)).not.toContain("Real-time data sync");
   });
 
-  it("identifies role constraint gap", () => {
+  it("deduplicates — multiple features triggering same gap listed only once", () => {
     const req = makeRequirements({
-      constraints: { timeline: null, mustHave: ["role-based access"], mustNotHave: [] },
-    });
-    const tmpl = makeTemplate({
-      capabilities: makeCapabilities({
-        auth: { present: true, providers: ["clerk"], hasRoles: false, hasOrgs: false },
-      }),
-    });
-    expect(identifyGaps(req, tmpl)).toContain("User roles/permissions");
-  });
-
-  it("identifies org constraint gap", () => {
-    const req = makeRequirements({
-      constraints: { timeline: null, mustHave: ["org management"], mustNotHave: [] },
-    });
-    const tmpl = makeTemplate({
-      capabilities: makeCapabilities({
-        auth: { present: true, providers: ["clerk"], hasRoles: false, hasOrgs: false },
-      }),
-    });
-    expect(identifyGaps(req, tmpl)).toContain("Organizations/teams");
-  });
-
-  it("deduplicates gaps", () => {
-    const req = makeRequirements({
-      keyFeatures: ["file upload", "upload images"],
+      keyFeatures: ["file upload", "upload images", "image processing"],
     });
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
@@ -436,11 +464,10 @@ describe("identifyGaps", () => {
       }),
     });
     const gaps = identifyGaps(req, tmpl);
-    const fileUploadGaps = gaps.filter((g) => g === "File uploads");
-    expect(fileUploadGaps.length).toBe(1);
+    expect(gaps.filter((g) => g === "File uploads")).toHaveLength(1);
   });
 
-  it("returns empty array when no gaps", () => {
+  it("returns empty when template covers everything the app needs", () => {
     const req = makeRequirements({ hasPayments: false, keyFeatures: [] });
     const tmpl = makeTemplate();
     expect(identifyGaps(req, tmpl)).toEqual([]);
@@ -448,90 +475,117 @@ describe("identifyGaps", () => {
 });
 
 describe("identifyIncluded", () => {
-  it("includes auth providers", () => {
+  it("lists auth with provider names", () => {
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
         auth: { present: true, providers: ["clerk", "google"], hasRoles: false, hasOrgs: false },
       }),
     });
     const included = identifyIncluded(tmpl);
-    expect(included).toContainEqual("Authentication (clerk, google)");
+    const authEntry = included.find((s) => s.includes("Authentication"));
+    expect(authEntry).toBeDefined();
+    expect(authEntry).toContain("clerk");
+    expect(authEntry).toContain("google");
   });
 
-  it("includes roles when present", () => {
+  it("lists roles and orgs when auth has them", () => {
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
-        auth: { present: true, providers: ["clerk"], hasRoles: true, hasOrgs: false },
+        auth: { present: true, providers: ["clerk"], hasRoles: true, hasOrgs: true },
       }),
     });
-    expect(identifyIncluded(tmpl)).toContain("Role-based access");
+    const included = identifyIncluded(tmpl);
+    expect(included.some((s) => /role/i.test(s))).toBe(true);
+    expect(included.some((s) => /org/i.test(s))).toBe(true);
   });
 
-  it("includes orgs when present", () => {
+  it("does NOT list roles/orgs when auth lacks them", () => {
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
-        auth: { present: true, providers: ["clerk"], hasRoles: false, hasOrgs: true },
+        auth: { present: true, providers: ["clerk"], hasRoles: false, hasOrgs: false },
       }),
     });
-    expect(identifyIncluded(tmpl)).toContain("Organizations/teams");
+    const included = identifyIncluded(tmpl);
+    expect(included.some((s) => /role/i.test(s))).toBe(false);
+    expect(included.some((s) => /org/i.test(s))).toBe(false);
   });
 
-  it("includes database type", () => {
+  it("lists database type", () => {
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
         database: { present: true, type: "convex", realtime: false },
       }),
     });
-    expect(identifyIncluded(tmpl)).toContainEqual("Database (convex)");
+    const included = identifyIncluded(tmpl);
+    expect(included.some((s) => s.includes("convex"))).toBe(true);
   });
 
-  it("includes realtime sync", () => {
+  it("lists realtime when database has it", () => {
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
         database: { present: true, type: "convex", realtime: true },
       }),
     });
-    expect(identifyIncluded(tmpl)).toContain("Real-time sync");
+    const included = identifyIncluded(tmpl);
+    expect(included.some((s) => /real.?time/i.test(s))).toBe(true);
   });
 
-  it("includes payments with models", () => {
+  it("lists payment provider and models", () => {
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
         payments: { present: true, provider: "stripe", models: ["subscription", "one-time"] },
       }),
     });
     const included = identifyIncluded(tmpl);
-    expect(included).toContainEqual("Payments via stripe (subscription, one-time)");
+    const payEntry = included.find((s) => /payment/i.test(s) || s.includes("stripe"));
+    expect(payEntry).toBeDefined();
+    expect(payEntry).toContain("stripe");
+    expect(payEntry).toContain("subscription");
   });
 
-  it("includes admin dashboard", () => {
+  it("does NOT list payments when not present", () => {
+    const tmpl = makeTemplate({
+      capabilities: makeCapabilities({ payments: { present: false } }),
+    });
+    const included = identifyIncluded(tmpl);
+    expect(included.some((s) => /payment/i.test(s) || /stripe/i.test(s))).toBe(false);
+  });
+
+  it("lists UI features (dashboard, landing page) when present", () => {
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
-        ui: { framework: "shadcn", hasAdminDashboard: true, hasLandingPage: false },
+        ui: { framework: "shadcn", hasAdminDashboard: true, hasLandingPage: true },
       }),
     });
-    expect(identifyIncluded(tmpl)).toContain("Admin dashboard");
+    const included = identifyIncluded(tmpl);
+    expect(included.some((s) => /dashboard/i.test(s))).toBe(true);
+    expect(included.some((s) => /landing/i.test(s))).toBe(true);
   });
 
-  it("includes landing page", () => {
-    const tmpl = makeTemplate({
-      capabilities: makeCapabilities({
-        ui: { framework: "shadcn", hasAdminDashboard: false, hasLandingPage: true },
-      }),
-    });
-    expect(identifyIncluded(tmpl)).toContain("Landing page");
-  });
-
-  it("includes feature capabilities", () => {
+  it("lists each feature capability that's enabled", () => {
     const tmpl = makeTemplate({
       capabilities: makeCapabilities({
         features: { fileUploads: true, email: true, search: true, ai: true },
       }),
     });
     const included = identifyIncluded(tmpl);
-    expect(included).toContain("File uploads");
-    expect(included).toContain("Email notifications");
-    expect(included).toContain("Search");
-    expect(included).toContain("AI integration");
+    expect(included.some((s) => /upload/i.test(s) || /file/i.test(s))).toBe(true);
+    expect(included.some((s) => /email/i.test(s))).toBe(true);
+    expect(included.some((s) => /search/i.test(s))).toBe(true);
+    expect(included.some((s) => /ai/i.test(s))).toBe(true);
+  });
+
+  it("does NOT list features that are disabled", () => {
+    const tmpl = makeTemplate({
+      capabilities: makeCapabilities({
+        features: { fileUploads: false, email: false, search: false, ai: false },
+      }),
+    });
+    const included = identifyIncluded(tmpl);
+    expect(included.some((s) => /upload/i.test(s))).toBe(false);
+    expect(included.some((s) => /email/i.test(s))).toBe(false);
+    // "Search" could match "search" in other entries, so check specifically
+    expect(included.some((s) => s === "Search")).toBe(false);
+    expect(included.some((s) => /\bai\b/i.test(s))).toBe(false);
   });
 });

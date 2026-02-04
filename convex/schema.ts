@@ -72,4 +72,16 @@ export default defineSchema({
     maintained: v.optional(v.boolean()),
     lastVerified: v.optional(v.string()),
   }).index("by_slug", ["slug"]),
+
+  pipelineEvents: defineTable({
+    projectId: v.id("projects"),
+    step: v.string(),
+    status: v.string(),
+    durationMs: v.optional(v.number()),
+    error: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_timestamp", ["projectId", "timestamp"]),
 });

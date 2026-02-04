@@ -53,6 +53,7 @@ export default function ProjectDetailsPage() {
   const retryRepo = useMutation(api.projects.retryRepoCreation);
   const setRepoFailed = useMutation(api.projects.setRepoFailed);
   const restartRepo = useMutation(api.projects.restartRepoCreation);
+  const recreateRepo = useMutation(api.projects.recreateRepo);
 
   const [matching, setMatching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +124,8 @@ export default function ProjectDetailsPage() {
       }
     }
     runClone();
-  }, [project?.status, project?.name, matchedTemplate, convexUser, projectId, cloneTemplate, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- cloneTemplate is unstable (new ref each render); cloneInFlight guards re-entry
+  }, [project?.status, project?.name, matchedTemplate, convexUser, projectId, router]);
 
   // Elapsed time indicator for loading states
   useEffect(() => {
@@ -189,6 +191,17 @@ export default function ProjectDetailsPage() {
       await restartRepo({ projectId });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to restart");
+    }
+  }
+
+  async function handleRecreateRepo() {
+    try {
+      cloneInFlight.current = false;
+      scaffoldingAttempted.current = false;
+      setError(null);
+      await recreateRepo({ projectId });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to recreate repo");
     }
   }
 
@@ -485,23 +498,62 @@ export default function ProjectDetailsPage() {
         )}
 
         {/* Scaffolding failed */}
-        {isScaffoldingFailed && (
-          <Card className="mb-6 border-destructive">
-            <CardContent className="pt-6 flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-              <p className="text-destructive flex-1 text-sm">
-                {project.scaffoldingError || "Scaffolding failed. Please try again."}
-              </p>
-              <Button variant="outline" size="sm" onClick={() => {
-                scaffoldingAttempted.current = false;
-                setError(null);
-              }} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {isScaffoldingFailed && (() => {
+          const errMsg = project.scaffoldingError || "";
+          const isRepoDeleted = errMsg.includes("was deleted");
+          const isRepoRenamed = errMsg.includes("renamed or moved");
+          const isPermDenied = errMsg.includes("no longer have write access");
+          const isTokenExpired = errMsg.includes("connection has expired");
+          const isRepoError = isRepoDeleted || isRepoRenamed || isPermDenied || isTokenExpired;
+
+          return (
+            <Card className="mb-6 border-destructive">
+              <CardContent className="pt-6 flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+                <p className="text-destructive flex-1 text-sm">
+                  {errMsg || "Scaffolding failed. Please try again."}
+                </p>
+                <div className="flex gap-2">
+                  {(isRepoDeleted || isRepoRenamed) && (
+                    <Button variant="outline" size="sm" onClick={handleRecreateRepo} className="gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Recreate Repo
+                    </Button>
+                  )}
+                  {isTokenExpired && (
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/connect-github?returnTo=/project/${projectId}`)} className="gap-2">
+                      <ExternalLink className="h-4 w-4" />
+                      Reconnect GitHub
+                    </Button>
+                  )}
+                  {isPermDenied && (
+                    <Button variant="outline" size="sm" asChild className="gap-2">
+                      <a href="https://github.com/settings/applications" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                        GitHub Settings
+                      </a>
+                    </Button>
+                  )}
+                  {!isRepoError && (
+                    <Button variant="outline" size="sm" onClick={async () => {
+                      setError(null);
+                      scaffoldingAttempted.current = true;
+                      try {
+                        await runScaffolding({ projectId });
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : "Retry failed");
+                        scaffoldingAttempted.current = false;
+                      }
+                    }} className="gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Retry
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Success: repo created */}
         {project.status === PROJECT_STATUS.COMPLETE && project.githubRepoUrl && (

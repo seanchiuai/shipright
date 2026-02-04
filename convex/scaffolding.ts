@@ -11,6 +11,11 @@ import {
   PRD_GENERATION_PROMPT,
   TECH_STACK_RESEARCH_PROMPT,
 } from "../prompts";
+import { Octokit } from "octokit";
+import { formatLogEntry } from "./lib/logger";
+import { buildEventArgs } from "./pipelineEvents";
+import { reportToSentry } from "./lib/sentry";
+import { validateRepoAccess, parseRepoFullName } from "./lib/github";
 
 // Parse JSON from AI response (may be wrapped in code blocks)
 export function parseJsonResponse(text: string): unknown {
@@ -32,6 +37,11 @@ export function parseJsonResponse(text: string): unknown {
 export const generatePrd = action({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args): Promise<{ prdMarkdown: string }> => {
+    const startedAt = Date.now();
+    const pid = args.projectId;
+    console.log(formatLogEntry({ action: "generatePrd", projectId: pid, step: "generating_prd", status: "started" }));
+    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "generating_prd", status: "started" }) });
+
     const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
     if (!project?.requirements) throw new Error("Project has no requirements");
 
@@ -47,6 +57,10 @@ export const generatePrd = action({
       prdMarkdown: result.text,
     });
 
+    const durationMs = Date.now() - startedAt;
+    console.log(formatLogEntry({ action: "generatePrd", projectId: pid, step: "generating_prd", status: "completed", durationMs }));
+    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "generating_prd", status: "completed", durationMs }) });
+
     return { prdMarkdown: result.text };
   },
 });
@@ -55,6 +69,11 @@ export const generatePrd = action({
 export const researchTechStack = action({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
+    const startedAt = Date.now();
+    const pid = args.projectId;
+    console.log(formatLogEntry({ action: "researchTechStack", projectId: pid, step: "researching_stack", status: "started" }));
+    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "researching_stack", status: "started" }) });
+
     const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
     if (!project?.templateId) throw new Error("Project has no template");
 
@@ -83,6 +102,10 @@ export const researchTechStack = action({
       projectId: args.projectId,
       techStackResearch: techStack,
     });
+
+    const durationMs = Date.now() - startedAt;
+    console.log(formatLogEntry({ action: "researchTechStack", projectId: pid, step: "researching_stack", status: "completed", durationMs }));
+    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "researching_stack", status: "completed", durationMs, metadata: { resolvedCount: techStack.resolved?.length ?? 0, choicesCount: techStack.choices?.length ?? 0 } }) });
 
     // If choices exist, pause for user input
     if (techStack.choices?.length > 0) {
@@ -157,6 +180,7 @@ export const runScaffoldingPipeline = action({
       await ctx.runAction(api.scaffolding.executeSandbox, { projectId: args.projectId });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown scaffolding error";
+      await reportToSentry({ message: `Scaffolding pipeline failed: ${message}`, context: { projectId: args.projectId, step: "runScaffoldingPipeline" } });
       await ctx.runMutation(api.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "scaffolding_failed",
@@ -175,6 +199,7 @@ export const resumeAfterChoices = action({
       await ctx.runAction(api.scaffolding.executeSandbox, { projectId: args.projectId });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown scaffolding error";
+      await reportToSentry({ message: `Resume after choices failed: ${message}`, context: { projectId: args.projectId, step: "resumeAfterChoices" } });
       await ctx.runMutation(api.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "scaffolding_failed",
@@ -244,6 +269,11 @@ After all files are complete, do a final review pass.`;
 export const executeSandbox = action({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
+    const sandboxStartedAt = Date.now();
+    const pid = args.projectId;
+    console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "preparing_sandbox", status: "started" }));
+    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "preparing_sandbox", status: "started" }) });
+
     const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
     if (!project) throw new Error("Project not found");
     if (!project.githubRepoFullName) throw new Error("No GitHub repo");
@@ -253,6 +283,24 @@ export const executeSandbox = action({
     const user = await ctx.runQuery(api.users.current, {});
     if (!user?.githubToken) throw new Error("GitHub not connected");
     const githubToken = decryptToken(user.githubToken);
+
+    // Checkpoint A: Validate repo exists before expensive sandbox creation
+    const repoParsed = parseRepoFullName(project.githubRepoFullName);
+    if (!repoParsed) throw new Error("Invalid repo name format");
+    const octokit = new Octokit({ auth: githubToken });
+    const repoCheck = await validateRepoAccess(octokit, repoParsed.owner, repoParsed.repo);
+    if (!repoCheck.accessible) {
+      const errorMsg = `Repo unavailable before sandbox: ${repoCheck.message}`;
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "repo_validation", status: "failed", error: errorMsg }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "repo_validation", status: "failed", error: errorMsg, metadata: { reason: repoCheck.reason } }) });
+      await reportToSentry({ message: errorMsg, context: { projectId: pid, step: "repo_validation", reason: repoCheck.reason } });
+      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+        projectId: args.projectId,
+        scaffoldingStatus: "scaffolding_failed",
+        scaffoldingError: repoCheck.message,
+      });
+      return { success: false, reason: repoCheck.reason };
+    }
 
     // Get template info
     const templates = await ctx.runQuery(api.templates.list, {});
@@ -292,7 +340,7 @@ export const executeSandbox = action({
         ephemeral: true,
         autoStopInterval: 15,
         envVars: {
-          ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "",
+          CLAUDE_CODE_OAUTH_TOKEN: process.env.CLAUDE_CODE_OAUTH_TOKEN || "",
           GITHUB_TOKEN: githubToken,
         },
         labels: { project: "shipright", projectId: args.projectId },
@@ -303,53 +351,52 @@ export const executeSandbox = action({
         scaffoldingStatus: "running_sandbox",
       });
 
-      // Clone user's repo
-      const cloneResult = await sandbox.process.executeCommand(
-        `git clone https://${githubToken}@github.com/${project.githubRepoFullName}.git /workspace/project`,
+      const claudeStartedAt = Date.now();
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "running_sandbox", status: "started" }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "running_sandbox", status: "started" }) });
+
+      // Clone user's repo using SDK git API (relative paths resolve from sandbox workdir)
+      await sandbox.git.clone(
+        `https://github.com/${project.githubRepoFullName}.git`,
+        "project",
         undefined,
         undefined,
-        60,
+        "x-access-token",
+        githubToken,
       );
-      if (cloneResult.exitCode !== 0) {
-        throw new Error(`Git clone failed: ${cloneResult.result}`);
-      }
 
       // Clone cc-template (public repo)
-      const ccCloneResult = await sandbox.process.executeCommand(
-        "git clone https://github.com/seanchiuai/cc-template.git /workspace/cc-template",
-        undefined,
-        undefined,
-        60,
+      await sandbox.git.clone(
+        "https://github.com/seanchiuai/cc-template.git",
+        "cc-template",
       );
-      if (ccCloneResult.exitCode !== 0) {
-        throw new Error(`cc-template clone failed: ${ccCloneResult.result}`);
-      }
 
       // Copy infrastructure files (.claude/ directory)
       await sandbox.process.executeCommand(
-        "cp -r /workspace/cc-template/.claude /workspace/project/",
+        "cp -r cc-template/.claude project/",
       );
 
       // Copy template files
       await sandbox.process.executeCommand(
-        "cp /workspace/cc-template/template-CLAUDE.md /workspace/project/ && " +
-        "cp /workspace/cc-template/TASKS.md /workspace/project/ && " +
-        "mkdir -p /workspace/project/docs /workspace/project/prompts && " +
-        "cp /workspace/cc-template/docs/PRD.md /workspace/project/docs/ && " +
-        "cp /workspace/cc-template/docs/design.md /workspace/project/docs/ && " +
-        "cp /workspace/cc-template/docs/development-progress.yaml /workspace/project/docs/ && " +
-        "cp /workspace/cc-template/prompts/phase-1.md /workspace/project/prompts/",
+        "cp cc-template/template-CLAUDE.md project/ && " +
+        "cp cc-template/TASKS.md project/ && " +
+        "mkdir -p project/docs project/prompts && " +
+        "cp cc-template/docs/PRD.md project/docs/ && " +
+        "cp cc-template/docs/design.md project/docs/ && " +
+        "cp cc-template/docs/development-progress.yaml project/docs/ && " +
+        "cp cc-template/prompts/phase-1.md project/prompts/",
       );
 
       // Write prompt file (avoids shell escaping issues)
       await sandbox.fs.uploadFile(
         Buffer.from(prompt, "utf-8"),
-        "/workspace/prompt.txt",
+        "prompt.txt",
       );
 
       // Configure git
       await sandbox.process.executeCommand(
-        'cd /workspace/project && git config user.name "Shipright" && git config user.email "bot@shipright.dev"',
+        'git config user.name "Shipright" && git config user.email "bot@shipright.dev"',
+        "project",
       );
 
       // Install Claude Code CLI in sandbox
@@ -362,8 +409,8 @@ export const executeSandbox = action({
 
       // Run Claude Code with prompt (bypassPermissions needed for file writes in non-interactive mode)
       const claudeResult = await sandbox.process.executeCommand(
-        'cd /workspace/project && claude --print --permission-mode bypassPermissions "$(cat /workspace/prompt.txt)"',
-        "/workspace/project",
+        'claude --print --permission-mode bypassPermissions "$(cat ../prompt.txt)"',
+        "project",
         undefined,
         600, // 10 minutes
       );
@@ -372,15 +419,36 @@ export const executeSandbox = action({
         throw new Error(`Claude Code failed: ${claudeResult.result?.slice(0, 500)}`);
       }
 
+      const claudeDurationMs = Date.now() - claudeStartedAt;
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "running_sandbox", status: "completed", durationMs: claudeDurationMs }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "running_sandbox", status: "completed", durationMs: claudeDurationMs }) });
+
+      // Checkpoint B: Validate repo still exists before pushing
+      const prePushCheck = await validateRepoAccess(octokit, repoParsed.owner, repoParsed.repo);
+      if (!prePushCheck.accessible) {
+        const errorMsg = `Repo unavailable before push (Claude Code output lost): ${prePushCheck.message}`;
+        console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "repo_validation_pre_push", status: "failed", error: errorMsg }));
+        await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "repo_validation_pre_push", status: "failed", error: errorMsg, metadata: { reason: prePushCheck.reason } }) });
+        await reportToSentry({ message: errorMsg, context: { projectId: pid, step: "repo_validation_pre_push", reason: prePushCheck.reason } });
+        await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+          projectId: args.projectId,
+          scaffoldingStatus: "scaffolding_failed",
+          scaffoldingError: `Scaffolding completed but could not push: ${prePushCheck.message}`,
+        });
+        return { success: false, reason: prePushCheck.reason };
+      }
+
       // Commit and push
       await ctx.runMutation(api.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "pushing_files",
       });
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "pushing_files", status: "started" }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "pushing_files", status: "started" }) });
 
       const pushResult = await sandbox.process.executeCommand(
-        'cd /workspace/project && git add . && git commit -m "Add project scaffolding via Shipright" && git push origin main',
-        "/workspace/project",
+        'git add . && git commit -m "Add project scaffolding via Shipright" && git push origin main',
+        "project",
         undefined,
         60,
       );
@@ -395,9 +463,19 @@ export const executeSandbox = action({
         scaffoldingStatus: "scaffolding_complete",
       });
 
+      const totalDurationMs = Date.now() - sandboxStartedAt;
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "pushing_files", status: "completed" }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "pushing_files", status: "completed" }) });
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "scaffolding_complete", status: "completed", durationMs: totalDurationMs }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "scaffolding_complete", status: "completed", durationMs: totalDurationMs }) });
+
       return { success: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Sandbox execution failed";
+      const durationMs = Date.now() - sandboxStartedAt;
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "scaffolding_failed", status: "failed", durationMs, error: message }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "scaffolding_failed", status: "failed", durationMs, error: message }) });
+      await reportToSentry({ message: `Sandbox execution failed: ${message}`, context: { projectId: pid, step: "executeSandbox", durationMs: String(durationMs) } });
       await ctx.runMutation(api.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "scaffolding_failed",

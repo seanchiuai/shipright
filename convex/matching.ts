@@ -7,6 +7,8 @@ import { TemplateCapabilities } from "./templates";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { getVertexProvider } from "./lib/vertex";
+import { formatLogEntry } from "./lib/logger";
+import { buildEventArgs } from "./pipelineEvents";
 
 const weightsSchema = z.object({
   auth: z.number().min(0).max(1),
@@ -297,6 +299,11 @@ export const matchTemplate = action({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args): Promise<MatchResult> => {
+    const startedAt = Date.now();
+    const pid = args.projectId;
+    console.log(formatLogEntry({ action: "matchTemplate", projectId: pid, step: "matching", status: "started" }));
+    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "matching", status: "started" }) });
+
     const project = await ctx.runQuery(api.projects.get, {
       projectId: args.projectId,
     });
@@ -376,6 +383,10 @@ export const matchTemplate = action({
       matchScore: bestMatch!.score,
       matchGaps: bestMatch!.gaps,
     });
+
+    const durationMs = Date.now() - startedAt;
+    console.log(formatLogEntry({ action: "matchTemplate", projectId: pid, step: "matching", status: "completed", durationMs }));
+    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "matching", status: "completed", durationMs, metadata: { templateName: bestMatch!.template.name, score: bestMatch!.score, gapCount: bestMatch!.gaps.length } }) });
 
     return bestMatch!;
   },
