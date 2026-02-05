@@ -27,6 +27,10 @@ export type Weights = {
   ui: number;
 };
 
+/**
+ * Extracted requirements from interview.
+ * NOTE: Keep in sync with src/lib/types.ts:Requirements
+ */
 export type Requirements = {
   appName: string;
   tagline: string;

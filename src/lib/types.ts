@@ -1,3 +1,7 @@
+/**
+ * Extracted requirements from interview.
+ * NOTE: Keep in sync with convex/matching.ts:Requirements
+ */
 export type Requirements = {
   appName: string;
   tagline: string;
