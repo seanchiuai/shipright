@@ -300,8 +300,11 @@ async function waitForRef(
   owner: string,
   repo: string,
   refName: string,
-  maxRetries = 5
+  maxRetries = 8
 ): Promise<string> {
+  // Initial delay to let GitHub's git backend initialize
+  await new Promise((r) => setTimeout(r, 2000));
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       const { data: ref } = await octokit.rest.git.getRef({
@@ -312,11 +315,41 @@ async function waitForRef(
       return ref.object.sha;
     } catch (error: unknown) {
       if (i === maxRetries - 1) throw error;
-      // Wait with exponential backoff: 500ms, 1s, 2s, 4s, 8s
-      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, i)));
+      // Wait with exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, i)));
     }
   }
   throw new Error("Failed to get ref after retries");
+}
+
+/** Create a single blob with retry logic */
+async function createBlobWithRetry(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  file: { path: string; content: string; isBinary: boolean },
+  maxRetries = 3
+): Promise<{ path: string; sha: string }> {
+  const content = file.isBinary
+    ? file.content // already base64
+    : Buffer.from(file.content).toString("base64");
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const { data: blob } = await octokit.rest.git.createBlob({
+        owner,
+        repo,
+        content,
+        encoding: "base64",
+      });
+      return { path: file.path, sha: blob.sha };
+    } catch (error: unknown) {
+      if (attempt === maxRetries - 1) throw error;
+      // Backoff: 1s, 2s, 4s
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+    }
+  }
+  throw new Error(`Failed to create blob for ${file.path}`);
 }
 
 /** Create blobs in batches to avoid overwhelming the API */
@@ -332,21 +365,13 @@ async function createBlobsBatched(
   for (let i = 0; i < files.length; i += batchSize) {
     const batch = files.slice(i, i + batchSize);
     const batchResults = await Promise.all(
-      batch.map(async (file) => {
-        const content = file.isBinary
-          ? file.content // already base64
-          : Buffer.from(file.content).toString("base64");
-
-        const { data: blob } = await octokit.rest.git.createBlob({
-          owner,
-          repo,
-          content,
-          encoding: "base64",
-        });
-        return { path: file.path, sha: blob.sha };
-      })
+      batch.map((file) => createBlobWithRetry(octokit, owner, repo, file))
     );
     results.push(...batchResults);
+    // Small delay between batches to avoid rate limiting
+    if (i + batchSize < files.length) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
   }
 
   return results;
@@ -379,8 +404,9 @@ async function commitFiles(
   }));
 
   // Retry createTree — GitHub's git backend can lag behind repo creation
+  // Increased retries and backoff for better resilience
   let tree;
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     try {
       const result = await octokit.rest.git.createTree({
         owner,
@@ -391,9 +417,11 @@ async function commitFiles(
       tree = result.data;
       break;
     } catch (error: unknown) {
-      if (attempt === 4) throw error;
-      // Exponential backoff: 2s, 4s, 8s, 16s
-      await new Promise((r) => setTimeout(r, 2000 * Math.pow(2, attempt)));
+      if (attempt === 7) throw error;
+      // Exponential backoff: 3s, 6s, 12s, 24s, 48s, 96s, 192s
+      const delay = 3000 * Math.pow(2, attempt);
+      console.log(`createTree attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
     }
   }
 
