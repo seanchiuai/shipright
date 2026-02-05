@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { PROJECT_STATUS } from "./lib/constants";
 import { getAuthenticatedUser, getOwnedProject } from "./lib/auth";
 import { deleteProjectData } from "./lib/cascade";
+import { ValidationError } from "./lib/errors";
 
 export const list = query({
   args: {},
@@ -166,9 +167,11 @@ export const retryRepoCreation = mutation({
   },
   handler: async (ctx, args) => {
     const { project } = await getOwnedProject(ctx, args.projectId);
-    if (project.status !== "repo_failed") throw new Error("Project is not in failed state");
+    if (project.status !== "repo_failed") {
+      throw new ValidationError("Project is not in failed state", { projectId: args.projectId, status: project.status });
+    }
     if ((project.repoRetryCount ?? 0) >= 3) {
-      throw new Error("Maximum retry attempts reached. Use restart instead.");
+      throw new ValidationError("Maximum retry attempts reached. Use restart instead.", { projectId: args.projectId, retryCount: project.repoRetryCount });
     }
 
     await ctx.db.patch(args.projectId, {
@@ -184,7 +187,9 @@ export const restartRepoCreation = mutation({
   },
   handler: async (ctx, args) => {
     const { project } = await getOwnedProject(ctx, args.projectId);
-    if (project.status !== "repo_failed") throw new Error("Project is not in failed state");
+    if (project.status !== "repo_failed") {
+      throw new ValidationError("Project is not in failed state", { projectId: args.projectId, status: project.status });
+    }
 
     await ctx.db.patch(args.projectId, {
       status: "matched",
@@ -298,7 +303,9 @@ export const recreateRepo = mutation({
   },
   handler: async (ctx, args) => {
     const { project } = await getOwnedProject(ctx, args.projectId);
-    if (!project.templateId) throw new Error("No template matched");
+    if (!project.templateId) {
+      throw new ValidationError("No template matched for this project", { projectId: args.projectId });
+    }
 
     await ctx.db.patch(args.projectId, {
       githubRepoUrl: undefined,

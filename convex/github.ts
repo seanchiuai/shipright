@@ -8,12 +8,13 @@ import { encryptToken, decryptToken } from "../lib/encryption";
 import { formatLogEntry } from "./lib/logger";
 import { buildEventArgs } from "./pipelineEvents";
 import { reportToSentry } from "./lib/sentry";
+import { AuthenticationError, ExternalServiceError, ShiprightError, getUserMessage } from "./lib/errors";
 
 export const exchangeGitHubCode = action({
   args: { code: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new AuthenticationError("Not authenticated");
 
     const response = await fetch(
       "https://github.com/login/oauth/access_token",
@@ -34,7 +35,7 @@ export const exchangeGitHubCode = action({
     const data = await response.json();
 
     if (data.error) {
-      throw new Error(`GitHub OAuth error: ${data.error_description}`);
+      throw new ExternalServiceError("github", `OAuth error: ${data.error_description}`, { errorCode: data.error });
     }
 
     const encryptedToken = encryptToken(data.access_token);
@@ -50,7 +51,7 @@ export const validateToken = action({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new AuthenticationError("Not authenticated");
 
     const user = await ctx.runQuery(api.users.current, {});
     if (!user?.githubToken) return { valid: false, reason: "no_token" };
@@ -106,10 +107,10 @@ export const cloneTemplate = action({
     await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "started" }) });
 
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new AuthenticationError("Not authenticated");
 
     const user = await ctx.runQuery(api.users.current, {});
-    if (!user?.githubToken) throw new Error("GitHub not connected");
+    if (!user?.githubToken) throw new AuthenticationError("GitHub not connected", { hasUser: !!user });
 
     const accessToken = decryptToken(user.githubToken);
     const octokit = new Octokit({
@@ -127,13 +128,13 @@ export const cloneTemplate = action({
         files = await fetchRepoFiles(octokit, owner, repo, subpath, ref);
       } catch (error: unknown) {
         if ((error as { status?: number }).status === 404) {
-          throw new Error("TEMPLATE_UNAVAILABLE");
+          throw new ExternalServiceError("github", "Template repository not found", { owner, repo, subpath });
         }
         throw error;
       }
 
       if (files.length === 0) {
-        throw new Error("TEMPLATE_UNAVAILABLE");
+        throw new ExternalServiceError("github", "Template repository is empty", { owner, repo, subpath });
       }
 
       // Strip subpath prefix from file paths so they're relative to repo root
@@ -155,6 +156,7 @@ export const cloneTemplate = action({
           auto_init: true,
         });
         newRepo = result.data;
+        console.log(`Created repo: ${newRepo.full_name}`);
       } catch (error: unknown) {
         if ((error as { status?: number }).status === 422) {
           const suffix = Date.now().toString(36).slice(-4);
@@ -164,11 +166,17 @@ export const cloneTemplate = action({
             auto_init: true,
           });
           newRepo = result.data;
+          console.log(`Created repo with suffix: ${newRepo.full_name}`);
         } else {
           throw error;
         }
       }
 
+      // Additional delay to ensure GitHub's git backend is fully ready
+      console.log(`Waiting 5s for GitHub backend to stabilize...`);
+      await new Promise((r) => setTimeout(r, 5000));
+
+      console.log(`Starting commit of ${files.length} files to ${newRepo.full_name}`);
       await commitFiles(
         octokit,
         newRepo.owner.login,
@@ -190,15 +198,16 @@ export const cloneTemplate = action({
 
       return { repoUrl: newRepo.html_url, repoFullName };
     } catch (error: unknown) {
-      const raw = error instanceof Error ? error.message : String(error);
       const status = (error as { status?: number }).status;
 
+      // Use structured error message if available, otherwise build user-friendly message
       let userMessage: string;
-      if (raw === "TEMPLATE_UNAVAILABLE") {
-        userMessage = "Template repository unavailable or empty.";
+      if (error instanceof ShiprightError) {
+        userMessage = getUserMessage(error);
       } else if (status === 401) {
         userMessage = "GitHub token expired. Please reconnect.";
       } else {
+        const raw = error instanceof Error ? error.message : String(error);
         userMessage = `Repo creation failed: ${raw.slice(0, 200)}`;
       }
 
@@ -384,17 +393,23 @@ async function commitFiles(
   files: Array<{ path: string; content: string; isBinary: boolean }>,
   message: string
 ) {
+  console.log(`[commitFiles] Waiting for main branch ref...`);
   const parentSha = await waitForRef(octokit, owner, repo, "heads/main");
+  console.log(`[commitFiles] Got parent SHA: ${parentSha}`);
 
   // Resolve commit SHA to tree SHA — createTree requires a tree SHA for base_tree
+  console.log(`[commitFiles] Getting parent commit...`);
   const { data: parentCommit } = await octokit.rest.git.getCommit({
     owner,
     repo,
     commit_sha: parentSha,
   });
   const baseTreeSha = parentCommit.tree.sha;
+  console.log(`[commitFiles] Got base tree SHA: ${baseTreeSha}`);
 
+  console.log(`[commitFiles] Creating ${files.length} blobs...`);
   const blobs = await createBlobsBatched(octokit, owner, repo, files);
+  console.log(`[commitFiles] Created ${blobs.length} blobs successfully`);
 
   const treeItems = blobs.map((blob) => ({
     path: blob.path,
@@ -404,29 +419,52 @@ async function commitFiles(
   }));
 
   // Retry createTree — GitHub's git backend can lag behind repo creation
-  // Increased retries and backoff for better resilience
+  // Try with base_tree first, then without if it fails (creates new tree from scratch)
+  console.log(`[commitFiles] Creating tree with ${treeItems.length} items, base_tree: ${baseTreeSha}`);
   let tree;
+  let useBaseTree = true;
+
   for (let attempt = 0; attempt < 8; attempt++) {
     try {
-      const result = await octokit.rest.git.createTree({
+      const treeParams: {
+        owner: string;
+        repo: string;
+        tree: typeof treeItems;
+        base_tree?: string;
+      } = {
         owner,
         repo,
         tree: treeItems,
-        base_tree: baseTreeSha,
-      });
+      };
+
+      // After 3 failed attempts with base_tree, try without it
+      if (useBaseTree && attempt < 3) {
+        treeParams.base_tree = baseTreeSha;
+      } else if (attempt === 3) {
+        console.log(`[commitFiles] Switching to create tree without base_tree`);
+        useBaseTree = false;
+      }
+
+      const result = await octokit.rest.git.createTree(treeParams);
       tree = result.data;
+      console.log(`[commitFiles] Tree created successfully: ${tree.sha}`);
       break;
     } catch (error: unknown) {
-      if (attempt === 7) throw error;
+      const errMsg = error instanceof Error ? error.message : String(error);
+      if (attempt === 7) {
+        console.log(`[commitFiles] createTree failed after 8 attempts: ${errMsg}`);
+        throw error;
+      }
       // Exponential backoff: 3s, 6s, 12s, 24s, 48s, 96s, 192s
       const delay = 3000 * Math.pow(2, attempt);
-      console.log(`createTree attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+      console.log(`[commitFiles] createTree attempt ${attempt + 1} failed (${errMsg}), retrying in ${delay}ms...`);
       await new Promise((r) => setTimeout(r, delay));
     }
   }
 
   if (!tree) throw new Error("Failed to create git tree");
 
+  console.log(`[commitFiles] Creating commit...`);
   const { data: commit } = await octokit.rest.git.createCommit({
     owner,
     repo,
@@ -434,11 +472,14 @@ async function commitFiles(
     tree: tree.sha,
     parents: [parentSha],
   });
+  console.log(`[commitFiles] Commit created: ${commit.sha}`);
 
+  console.log(`[commitFiles] Updating ref...`);
   await octokit.rest.git.updateRef({
     owner,
     repo,
     ref: "heads/main",
     sha: commit.sha,
   });
+  console.log(`[commitFiles] Done!`);
 }
