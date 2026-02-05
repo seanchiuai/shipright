@@ -19,7 +19,9 @@ convex/lib/
 ├── retry.ts             — Exponential backoff for external APIs
 ├── errors.ts            — Structured error types with user messages
 ├── github.ts            — GitHub API helpers (validateRepoAccess, parseRepoFullName)
-└── vertex.ts            — Shared Vertex AI provider config
+├── vertex.ts            — Shared Vertex AI provider config
+├── json.ts              — JSON parsing (handles markdown code blocks)
+└── logger.ts            — Structured log formatting for pipeline actions
 ```
 
 ## Step 1: PRD Generation

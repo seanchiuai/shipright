@@ -68,6 +68,8 @@ See [reference.md](reference.md) for complete schema with tables:
 - `convex/lib/errors.ts` - Structured error types with user-friendly messages
 - `convex/lib/github.ts` - GitHub API utilities (validateRepoAccess, parseRepoFullName)
 - `convex/lib/sentry.ts` - Error reporting to Sentry
+- `convex/lib/json.ts` - JSON parsing utilities (handles markdown code blocks)
+- `convex/lib/logger.ts` - Structured log formatting for pipeline actions
 
 ## User Storage
 

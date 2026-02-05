@@ -236,6 +236,12 @@ import { validateRepoAccess, parseRepoFullName } from "./lib/github";
 
 // convex/lib/sentry.ts — Error reporting
 import { reportToSentry } from "./lib/sentry";
+
+// convex/lib/json.ts — JSON parsing (handles markdown code blocks)
+import { parseJsonResponse } from "./lib/json";
+
+// convex/lib/logger.ts — Structured log formatting
+import { formatLogEntry } from "./lib/logger";
 ```
 
 ## User Functions (JWT-Verified)
