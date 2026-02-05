@@ -9,9 +9,17 @@ convex/scaffolding.ts
 ├── generatePrd          — Step 1: Requirements → PRD markdown
 ├── researchTechStack    — Step 2: Identify integrations, recommend libraries
 ├── submitTechChoices    — Step 2b: Save user's picks for ambiguous choices
-├── runScaffoldingPipeline — Orchestrator: Steps 1-2, then sandbox if no choices needed
+├── runScaffoldingPipeline — Orchestrator: Steps 1-2, then schedules sandbox
 ├── resumeAfterChoices   — Resume pipeline after user picks
-└── executeSandbox       — Steps 3-7: Daytona sandbox lifecycle
+├── executeSandbox       — Steps 3-5: Sandbox setup, files, launch Claude Code
+└── pollSandbox          — Step 6-7: Poll for completion, commit+push, cleanup
+
+convex/lib/
+├── credentials.ts       — Unified credential manager for sandbox provisioning
+├── retry.ts             — Exponential backoff for external APIs
+├── errors.ts            — Structured error types with user messages
+├── github.ts            — GitHub API helpers (validateRepoAccess, parseRepoFullName)
+└── vertex.ts            — Shared Vertex AI provider config
 ```
 
 ## Step 1: PRD Generation
@@ -184,10 +192,10 @@ export const resumeAfterChoices = action({
 });
 ```
 
-## Schema Changes
+## Schema (projects table scaffolding fields)
 
 ```typescript
-// Add to projects table in convex/schema.ts
+// convex/schema.ts - projects table (scaffolding-related fields)
 prdMarkdown: v.optional(v.string()),
 techStackResearch: v.optional(v.any()),
 techStackChoices: v.optional(v.any()),
@@ -202,16 +210,33 @@ scaffoldingStatus: v.optional(v.union(
   v.literal("scaffolding_failed"),
 )),
 scaffoldingError: v.optional(v.string()),
+sandboxId: v.optional(v.string()),
+sandboxSessionId: v.optional(v.string()),
+sandboxCommandId: v.optional(v.string()),
 
-// Add "scaffolding" to status union
+// Project status union (includes "scaffolding")
 status: v.union(
   v.literal("interview"),
   v.literal("matching"),
   v.literal("matched"),
-  v.literal("scaffolding"),  // NEW
   v.literal("building"),
+  v.literal("scaffolding"),
   v.literal("complete"),
+  v.literal("repo_failed"),
 ),
+
+// Pipeline events table (separate from projects)
+pipelineEvents: defineTable({
+  projectId: v.id("projects"),
+  step: v.string(),
+  status: v.string(),
+  durationMs: v.optional(v.number()),
+  error: v.optional(v.string()),
+  metadata: v.optional(v.any()),
+  timestamp: v.number(),
+})
+  .index("by_project", ["projectId"])
+  .index("by_project_timestamp", ["projectId", "timestamp"]),
 ```
 
 ## Error Recovery

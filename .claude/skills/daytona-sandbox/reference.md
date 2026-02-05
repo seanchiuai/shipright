@@ -14,232 +14,226 @@ npm install @daytonaio/sdk
 // convex/scaffolding.ts
 import { Daytona } from "@daytonaio/sdk";
 
-const daytona = new Daytona();
+const daytona = new Daytona({
+  apiKey: process.env.DAYTONA_API_KEY,
+  apiUrl: process.env.DAYTONA_API_URL || "https://app.daytona.io/api",
+});
 
+// Non-ephemeral sandbox (persists across actions for polling)
 const sandbox = await daytona.create({
   language: "typescript",
-  name: `shipright-${projectId}`,
-  ephemeral: true,
-  envVars: {
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-    GITHUB_TOKEN: decryptedGithubToken,
-  },
-  autoStopInterval: 15, // Stop after 15 min inactivity
+  autoStopInterval: 30, // Stop after 30 min inactivity
+  envVars: { GITHUB_TOKEN: decryptedGithubToken },
   labels: { project: "shipright", projectId },
-});
+}, { timeout: 120 });
 ```
 
 **Configuration Options**:
 - `language` - Runtime: `"python"`, `"typescript"`, or `"javascript"`
-- `name` - Optional custom sandbox name
-- `envVars` - Environment variables object
-- `autoStopInterval` - Minutes of inactivity before auto-stop (0 = disabled)
-- `ephemeral` - Auto-delete when stopped (boolean)
+- `envVars` - Environment variables object (NOT for Claude Code auth — use filesystem)
+- `autoStopInterval` - Minutes of inactivity before auto-stop (30 recommended)
 - `labels` - Key-value metadata tags
+- `{ timeout: 120 }` - Creation timeout in seconds
 
-## Sandbox Command Sequence
+**Note**: We use non-ephemeral sandboxes because `pollSandbox` runs as a separate scheduled action and needs to reconnect via `daytona.get(sandboxId)`.
 
-```bash
-# 1. Clone user's repo
-git clone https://${GITHUB_TOKEN}@github.com/${repoFullName}.git /workspace/project
+## Credential Provisioning
 
-# 2. Clone cc-template (public repo, no auth needed)
-git clone https://github.com/seanchiuai/cc-template.git /workspace/cc-template
-
-# 3. Copy infrastructure files (as-is, no customization)
-cp -r /workspace/cc-template/.claude /workspace/project/
-
-# 4. Copy template files (these get customized by Claude Code)
-cp /workspace/cc-template/template-CLAUDE.md /workspace/project/
-cp /workspace/cc-template/TASKS.md /workspace/project/
-mkdir -p /workspace/project/docs /workspace/project/prompts
-cp /workspace/cc-template/docs/PRD.md /workspace/project/docs/
-cp /workspace/cc-template/docs/design.md /workspace/project/docs/
-cp /workspace/cc-template/docs/development-progress.yaml /workspace/project/docs/
-cp /workspace/cc-template/prompts/phase-1.md /workspace/project/prompts/
-
-# 5. Write prompt file (avoids shell escaping issues)
-cat > /workspace/prompt.txt << 'PROMPT_EOF'
-[assembled prompt content]
-PROMPT_EOF
-
-# 6. Configure git
-cd /workspace/project
-git config user.name "Shipright"
-git config user.email "bot@shipright.dev"
-
-# 7. Run Claude Code with prompt file
-claude --print "$(cat /workspace/prompt.txt)"
-
-# 8. Commit and push
-git add . && git commit -m "Add project scaffolding via Shipright" && git push origin main
-```
-
-## Executing Commands
+Claude Code auth requires filesystem credentials, NOT env vars. Use the unified credential manager:
 
 ```typescript
-// Clone repository
-const cloneResult = await sandbox.process.exec(
-  `git clone https://${githubToken}@github.com/${repoFullName}.git /workspace/project`
+// convex/lib/credentials.ts
+import { buildSandboxCredentials, provisionSandboxCredentials, validateCredentialsAvailable } from "./lib/credentials";
+
+// 1. Validate credentials BEFORE creating sandbox
+validateCredentialsAvailable(githubToken);
+
+// 2. Build credentials object
+const credentials = buildSandboxCredentials(githubToken);
+
+// 3. Provision to sandbox after creation
+await provisionSandboxCredentials(sandbox, credentials);
+```
+
+**What gets provisioned**:
+- `~/.claude/.credentials.json` — Claude Code OAuth credentials
+- `~/.claude.json` — OAuth account config
+- `~/.git-credentials` — Git credential store for push auth
+- Git global config — credential.helper, user.name, user.email
+
+## Sandbox Setup Sequence
+
+```typescript
+// Clone repos using SDK (relative paths work, absolute don't)
+await sandbox.git.clone(
+  `https://github.com/${repoFullName}.git`,
+  "project",           // Relative path from workdir
+  undefined, undefined,
+  "x-access-token", githubToken,  // Git auth
+);
+await sandbox.git.clone("https://github.com/seanchiuai/cc-template.git", "cc-template");
+
+// Copy template files
+await sandbox.process.executeCommand("cp -r cc-template/.claude project/");
+await sandbox.process.executeCommand(
+  "cp cc-template/template-CLAUDE.md project/ && " +
+  "cp cc-template/TASKS.md project/ && " +
+  "mkdir -p project/docs project/prompts && " +
+  "cp cc-template/docs/PRD.md project/docs/ && " +
+  "cp cc-template/docs/design.md project/docs/ && " +
+  "cp cc-template/docs/development-progress.yaml project/docs/ && " +
+  "cp cc-template/prompts/phase-1.md project/prompts/"
 );
 
-if (cloneResult.exitCode !== 0) {
-  throw new Error(`Git clone failed: ${cloneResult.result}`);
-}
+// Upload prompt file
+await sandbox.fs.uploadFile(Buffer.from(prompt, "utf-8"), "prompt.txt");
 
-// Run Claude Code
-const claudeResult = await sandbox.process.exec(
-  `cd /workspace/project && claude --print "$(cat /workspace/prompt.txt)"`,
-  { cwd: "/workspace/project", timeout: 600000 } // 10 minutes
+// Configure git identity in project dir
+await sandbox.process.executeCommand(
+  'git config user.name "Shipright" && git config user.email "bot@shipright.dev"',
+  "project"
 );
 ```
 
-**exec() Parameters**:
-- `command` (required) - Shell command to execute
-- `cwd` - Working directory (optional)
-- `timeout` - Timeout in milliseconds (optional)
+## Launching Claude Code (Async with Polling)
 
-**exec() Returns**:
+Claude Code runs asynchronously via nohup + launcher script. The `-p` flag buffers output until completion.
+
 ```typescript
-{
-  exitCode: number;
-  result: string; // Combined stdout/stderr
-}
+// Install Claude Code CLI
+await sandbox.process.executeCommand("npm install -g @anthropic-ai/claude-code", undefined, undefined, 90);
+
+// Write launcher script (avoids complex shell quoting issues)
+const homeDir = "/home/daytona";
+const launcherScript = `#!/bin/bash
+cd ${homeDir}/project
+claude -p "$(cat ${homeDir}/prompt.txt)" --model claude-sonnet-4-20250514 --permission-mode bypassPermissions > /tmp/claude_output.txt 2>&1
+echo $? > /tmp/claude_exit_code
+`;
+await sandbox.fs.uploadFile(Buffer.from(launcherScript, "utf-8"), `${homeDir}/run_claude.sh`);
+await sandbox.process.executeCommand("chmod +x ~/run_claude.sh");
+
+// Launch as background process
+await sandbox.process.executeCommand("nohup ~/run_claude.sh > /dev/null 2>&1 &");
+
+// Save sandbox ID for polling action
+await ctx.runMutation(api.projects.saveSandboxInfo, {
+  projectId, sandboxId: sandbox.id, sandboxSessionId: "nohup", sandboxCommandId: "nohup",
+});
+
+// Schedule polling (start checking after 60s)
+await ctx.scheduler.runAfter(60000, api.scaffolding.pollSandbox, { projectId });
 ```
 
-## Prompt Construction
+**executeCommand() Parameters**:
+- `command` - Shell command to execute
+- `cwd` - Working directory (optional, relative path)
+- `user` - User to run as (optional)
+- `timeout` - Timeout in seconds (optional)
+
+**executeCommand() Returns**:
+```typescript
+{ exitCode: number; result: string; }
+```
+
+## Polling for Completion
+
+`pollSandbox` runs as a scheduled action every 30s to check if Claude Code finished:
 
 ```typescript
-function buildSandboxPrompt(params: {
-  ccTemplateClaude: string;    // cc-template's CLAUDE.md (meta-instructions)
-  prdMarkdown: string;         // Generated PRD from Step 1
-  techStack: TechStackResult;  // Resolved + user-chosen integrations
-  requirements: Requirements;   // Raw interview requirements
-  templateName: string;
-  templateStack: string[];
-  templateGaps: string[];
-}): string {
-  return `${params.ccTemplateClaude}
+// convex/scaffolding.ts
+export const pollSandbox = action({
+  args: { projectId: v.id("projects"), pollCount: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+    const sandbox = await daytona.get(project.sandboxId!);
 
----
+    // Check for exit code file
+    const checkResult = await sandbox.process.executeCommand('cat /tmp/claude_exit_code 2>/dev/null || echo "RUNNING"');
+    const exitCodeStr = (checkResult.result || "").trim();
 
-## Project Context
+    if (exitCodeStr === "RUNNING" || exitCodeStr === "") {
+      // Timeout after 40 polls (~20 min)
+      if (args.pollCount >= 40) {
+        throw new ExternalServiceError("anthropic", "Claude Code timed out");
+      }
+      // Re-schedule poll in 30s
+      await ctx.scheduler.runAfter(30000, api.scaffolding.pollSandbox, {
+        projectId: args.projectId,
+        pollCount: (args.pollCount || 0) + 1,
+      });
+      return;
+    }
 
-### Generated PRD
-${params.prdMarkdown}
+    const exitCode = parseInt(exitCodeStr, 10);
+    if (exitCode !== 0) {
+      const output = await sandbox.process.executeCommand('tail -30 /tmp/claude_output.txt');
+      throw new ExternalServiceError("anthropic", `Claude Code failed (exit ${exitCode})`);
+    }
 
-### Tech Stack
-Base template: ${params.templateName} (${params.templateStack.join(', ')})
-Template gaps: ${params.templateGaps.join(', ')}
+    // Success — commit and push with retry
+    await withRetry(async () => {
+      const result = await sandbox.process.executeCommand(
+        'cd project && git add . && git commit -m "Add project scaffolding via Shipright" && git push origin main',
+        undefined, undefined, 60,
+      );
+      if (result.exitCode !== 0) throw new Error(`Git push failed: ${result.result}`);
+    }, GITHUB_RETRY_CONFIG, { operation: "git_push" });
 
-Resolved integrations:
-${JSON.stringify(params.techStack.resolved, null, 2)}
+    // Cleanup sandbox
+    await daytona.delete(sandbox);
 
-### Raw Requirements
-${JSON.stringify(params.requirements, null, 2)}
-
----
-
-## Instructions
-
-Fill in each template file ONE BY ONE in this exact order:
-
-1. docs/PRD.md - Use the Generated PRD above. Adapt to template format.
-2. docs/design.md - Create UI specs based on PRD features and user flows.
-3. template-CLAUDE.md - Fill in project details, then rename to CLAUDE.md.
-4. TASKS.md - Create tasks referencing user stories from PRD.
-5. docs/development-progress.yaml - Define phases matching CLAUDE.md.
-6. prompts/phase-N.md - One prompt per phase, referencing user stories and skills.
-7. .claude/skills/ - Generate domain-specific skills for each integration.
-
-For each file:
-- Read the template first to understand the {{PLACEHOLDER}} format
-- Fill in every placeholder with project-specific content
-- Do NOT leave any {{PLACEHOLDER}} unfilled
-- Commit each file individually with a descriptive message
-
-After all files are complete, do a final review pass.`;
-}
+    await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      projectId, scaffoldingStatus: "scaffolding_complete",
+    });
+  },
+});
 ```
 
 ## Lifecycle Management
 
 ```typescript
-// Stop sandbox
-await sandbox.stop();
+// Reconnect to existing sandbox (for polling from separate action)
+const sandbox = await daytona.get(sandboxId);
 
 // Delete sandbox permanently
 await daytona.delete(sandbox);
-
-// Find existing sandbox
-const sandbox = await daytona.findOne(sandboxId);
 ```
 
-## Complete Example
+**Key Pattern**: `executeSandbox` saves `sandboxId` to project, then `pollSandbox` reconnects via `daytona.get(sandboxId)`. This avoids Convex's 10-minute action timeout by splitting into scheduled actions.
 
-```typescript
-// convex/scaffolding.ts - executeSandbox action
-export const executeSandbox = action({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, args) => {
-    const daytona = new Daytona();
+## Architecture Overview
 
-    try {
-      // 1. Fetch project data
-      const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
-      const user = await ctx.runQuery(api.users.getById, { userId: project.userId });
-      const githubToken = decryptToken(user.githubToken);
+The scaffolding pipeline splits into two scheduled actions to avoid Convex's 10-minute action timeout:
 
-      // 2. Fetch cc-template CLAUDE.md (meta-instructions)
-      const ccTemplateClaude = await fetchCcTemplateClaude();
-
-      // 3. Build prompt
-      const prompt = buildSandboxPrompt({
-        ccTemplateClaude,
-        prdMarkdown: project.prdMarkdown,
-        techStack: { ...project.techStackResearch, ...project.techStackChoices },
-        requirements: project.requirements,
-        templateName: project.templateName,
-        templateStack: matchedTemplate.stack,
-        templateGaps: project.matchGaps || [],
-      });
-
-      // 4. Create sandbox
-      const sandbox = await daytona.create({
-        language: "typescript",
-        ephemeral: true,
-        autoStopInterval: 15,
-        envVars: {
-          ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-          GITHUB_TOKEN: githubToken,
-        },
-      });
-
-      // 5. Clone repos, copy files, run Claude Code (see command sequence above)
-      // ...
-
-      // 6. Cleanup
-      await daytona.delete(sandbox);
-
-      // 7. Update status
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
-        projectId: args.projectId,
-        scaffoldingStatus: "scaffolding_complete",
-        status: "complete",
-      });
-
-      return { success: true };
-    } catch (error: any) {
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
-        projectId: args.projectId,
-        scaffoldingStatus: "scaffolding_failed",
-        scaffoldingError: error.message,
-      });
-      throw error;
-    }
-  },
-});
 ```
+runScaffoldingPipeline
+  ├── generatePrd (Gemini)
+  ├── researchTechStack (Gemini)
+  └── scheduler.runAfter(0, executeSandbox)  ← schedules independent action
+
+executeSandbox
+  ├── Validate credentials
+  ├── Create sandbox (non-ephemeral)
+  ├── Provision credentials to filesystem
+  ├── Clone repos, copy files
+  ├── Install Claude Code CLI
+  ├── Write launcher script + launch via nohup
+  ├── Save sandboxId to project
+  └── scheduler.runAfter(60000, pollSandbox)  ← schedules independent action
+
+pollSandbox (runs every 30s)
+  ├── Reconnect to sandbox via daytona.get()
+  ├── Check /tmp/claude_exit_code
+  ├── If RUNNING: re-schedule poll
+  ├── If done: commit + push + cleanup
+  └── Update scaffoldingStatus
+```
+
+**Key Infrastructure**:
+- `convex/lib/credentials.ts` — Unified credential provisioning
+- `convex/lib/retry.ts` — Exponential backoff for external APIs
+- `convex/lib/errors.ts` — Structured error types with user messages
 
 ## Error Handling
 
@@ -267,12 +261,17 @@ try {
 ```bash
 # Convex environment
 DAYTONA_API_KEY=dtn_...
-DAYTONA_API_URL=https://api.daytona.io
-ANTHROPIC_API_KEY=sk-ant-...
+DAYTONA_API_URL=https://app.daytona.io/api
+
+# Claude Code OAuth (NOT API key — OAuth tokens from macOS Keychain)
+CLAUDE_CODE_CREDENTIALS_JSON=...  # From: security find-generic-password -s "Claude Code-credentials" -w
+CLAUDE_CODE_OAUTH_ACCOUNT_JSON=... # Optional: OAuth account config
 ```
 
 Set in Convex:
 ```bash
 npx convex env set DAYTONA_API_KEY <value>
-npx convex env set ANTHROPIC_API_KEY <your-api-key>
+npx convex env set CLAUDE_CODE_CREDENTIALS_JSON "$(security find-generic-password -s 'Claude Code-credentials' -w)"
 ```
+
+**Note**: Claude Code uses OAuth credentials stored in `~/.claude/.credentials.json`, NOT the `ANTHROPIC_API_KEY` env var. The API rejects OAuth tokens sent via that env var.

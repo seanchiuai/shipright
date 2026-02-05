@@ -23,6 +23,7 @@ Convex is our reactive database and serverless backend. It provides:
 - **Phase 2**: Store interview sessions and questions
 - **Phase 3**: Store templates and match scores
 - **Phase 4**: Store GitHub tokens and repo URLs
+- **Phase 5**: Scaffolding pipeline state, sandbox IDs, pipeline events
 - **All phases**: User data, projects, build summaries
 
 ## Function Types
@@ -62,6 +63,11 @@ See [reference.md](reference.md) for complete schema with tables:
 - `convex/lib/cascade.ts` - `deleteProjectData(ctx, projectId)` — deletes messages
 - `convex/lib/vertex.ts` - `getVertexProvider()` — shared Vertex AI provider config
 - `convex/lib/constants.ts` - `PROJECT_STATUS`, `INTERVIEW_PHASE`, `MESSAGE_ROLE` enums
+- `convex/lib/credentials.ts` - Sandbox credential provisioning for Claude Code + git
+- `convex/lib/retry.ts` - Exponential backoff for external API calls
+- `convex/lib/errors.ts` - Structured error types with user-friendly messages
+- `convex/lib/github.ts` - GitHub API utilities (validateRepoAccess, parseRepoFullName)
+- `convex/lib/sentry.ts` - Error reporting to Sentry
 
 ## User Storage
 

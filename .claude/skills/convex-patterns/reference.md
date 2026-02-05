@@ -35,6 +35,26 @@ export default defineSchema({
     githubRepoUrl: v.optional(v.string()),
     githubRepoFullName: v.optional(v.string()),
     interviewPhase: v.optional(v.union(v.literal("seed"), v.literal("conversation"), v.literal("summary"))),
+    // Scaffolding pipeline fields
+    prdMarkdown: v.optional(v.string()),
+    techStackResearch: v.optional(v.any()),
+    techStackChoices: v.optional(v.any()),
+    scaffoldingStatus: v.optional(v.union(
+      v.literal("generating_prd"),
+      v.literal("researching_stack"),
+      v.literal("awaiting_tech_choices"),
+      v.literal("preparing_sandbox"),
+      v.literal("running_sandbox"),
+      v.literal("pushing_files"),
+      v.literal("scaffolding_complete"),
+      v.literal("scaffolding_failed"),
+    )),
+    scaffoldingError: v.optional(v.string()),
+    sandboxId: v.optional(v.string()),
+    sandboxSessionId: v.optional(v.string()),
+    sandboxCommandId: v.optional(v.string()),
+    repoError: v.optional(v.string()),
+    repoRetryCount: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   interviewMessages: defineTable({
@@ -64,6 +84,18 @@ export default defineSchema({
     maintained: v.optional(v.boolean()),
     lastVerified: v.optional(v.string()),
   }).index("by_slug", ["slug"]),
+
+  pipelineEvents: defineTable({
+    projectId: v.id("projects"),
+    step: v.string(),
+    status: v.string(),
+    durationMs: v.optional(v.number()),
+    error: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_timestamp", ["projectId", "timestamp"]),
 });
 ```
 
@@ -170,7 +202,9 @@ export const PROJECT_STATUS = {
   MATCHING: "matching",
   MATCHED: "matched",
   BUILDING: "building",
+  SCAFFOLDING: "scaffolding",
   COMPLETE: "complete",
+  REPO_FAILED: "repo_failed",
 } as const;
 
 export const INTERVIEW_PHASE = {
@@ -183,6 +217,25 @@ export const MESSAGE_ROLE = {
   USER: "user",
   ASSISTANT: "assistant",
 } as const;
+```
+
+### Infrastructure Helpers (convex/lib/)
+
+```typescript
+// convex/lib/credentials.ts — Sandbox credential provisioning
+import { buildSandboxCredentials, provisionSandboxCredentials, validateCredentialsAvailable } from "./lib/credentials";
+
+// convex/lib/retry.ts — Exponential backoff with configurable strategies
+import { withRetry, GITHUB_RETRY_CONFIG, DAYTONA_RETRY_CONFIG } from "./lib/retry";
+
+// convex/lib/errors.ts — Structured errors with user messages
+import { PipelineError, ExternalServiceError, NotFoundError, getUserMessage, wrapError } from "./lib/errors";
+
+// convex/lib/github.ts — GitHub API utilities
+import { validateRepoAccess, parseRepoFullName } from "./lib/github";
+
+// convex/lib/sentry.ts — Error reporting
+import { reportToSentry } from "./lib/sentry";
 ```
 
 ## User Functions (JWT-Verified)
