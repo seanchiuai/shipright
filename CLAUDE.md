@@ -59,6 +59,30 @@ Interview → Template Matching (base stack only)
 
 **Template matching decides base stack only.** Integrations (Stripe, SendGrid, etc.) are researched separately after matching.
 
+## Architecture Principles (Learned from Failures)
+
+### Distributed Systems Mindset
+We integrate Convex + Daytona + GitHub + Claude Code. Treat as distributed system, not monolith:
+- **Assume failure** — retry with backoff, circuit breakers, idempotency
+- **Explicit state** — pipeline state machine, not scattered fields
+- **No shared timeouts** — use `scheduler.runAfter()` for long operations
+
+### Auth in Sandboxes
+- Write credentials to filesystem (`~/.claude/.credentials.json`), not env vars
+- OAuth tokens ≠ API keys — Anthropic API rejects OAuth tokens via `ANTHROPIC_API_KEY`
+- Git push needs `~/.git-credentials` + `credential.helper store`
+
+### Async Execution
+- `ctx.runAction()` shares parent's 10-min budget — avoid nesting
+- `scheduler.runAfter()` gets own budget — use for long operations
+- Scheduled actions have NO auth context — store userId, use internal queries
+- Complex shell commands break — write launcher scripts to filesystem
+
+### Error Philosophy
+- Use structured error types with user-friendly messages
+- Error handlers must never throw (cascading failures)
+- Log rich context for debugging, show simple messages to users
+
 ## Ralph Loop Workflow
 
 Each phase runs as one Ralph loop. Prompts live in `prompts/`. Run `/ralph-loop:help` before creating new prompts.

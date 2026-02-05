@@ -5,7 +5,7 @@
 export function buildSentryEnvelope(params: {
   message: string;
   dsn: string;
-  context?: Record<string, string>;
+  context?: Record<string, unknown>;
 }): string {
   if (!params.dsn) return "";
 
@@ -44,7 +44,7 @@ export function getSentryIngestUrl(dsn: string): string | null {
 
 export async function reportToSentry(params: {
   message: string;
-  context?: Record<string, string>;
+  context?: Record<string, unknown>;
 }): Promise<void> {
   const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN || "";
   const envelope = buildSentryEnvelope({ ...params, dsn });
