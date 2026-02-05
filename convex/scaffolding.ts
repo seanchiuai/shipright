@@ -31,6 +31,65 @@ import {
 } from "./lib/errors";
 import { parseJsonResponse } from "./lib/json";
 
+/** Polling configuration for sandbox completion checks */
+export const POLLING_CONFIG = {
+  initialDelayMs: 60_000,
+  intervalMs: 30_000,
+  maxAttempts: 40,
+  timeoutMinutes: 20,
+} as const;
+
+/** Timeout configuration for sandbox operations (seconds) */
+export const SANDBOX_TIMEOUTS = {
+  createSandbox: 120,
+  npmInstall: 90,
+  gitPush: 60,
+} as const;
+
+/** Claude Code model configuration */
+const CLAUDE_CODE_CONFIG = {
+  model: "claude-sonnet-4-20250514",
+  permissionMode: "bypassPermissions",
+} as const;
+
+/** Setup sandbox: clone repos, copy template files, configure git */
+async function setupSandboxEnvironment(
+  sandbox: Awaited<ReturnType<Daytona["create"]>>,
+  repoFullName: string,
+  githubToken: string,
+  prompt: string,
+): Promise<void> {
+  await sandbox.git.clone(`https://github.com/${repoFullName}.git`, "project", undefined, undefined, "x-access-token", githubToken);
+  await sandbox.git.clone("https://github.com/seanchiuai/cc-template.git", "cc-template");
+  await sandbox.process.executeCommand("cp -r cc-template/.claude project/");
+  await sandbox.process.executeCommand(
+    "cp cc-template/template-CLAUDE.md project/ && " +
+    "cp cc-template/TASKS.md project/ && " +
+    "mkdir -p project/docs project/prompts && " +
+    "cp cc-template/docs/PRD.md project/docs/ && " +
+    "cp cc-template/docs/design.md project/docs/ && " +
+    "cp cc-template/docs/development-progress.yaml project/docs/ && " +
+    "cp cc-template/prompts/phase-1.md project/prompts/",
+  );
+  await sandbox.fs.uploadFile(Buffer.from(prompt, "utf-8"), "prompt.txt");
+  await sandbox.process.executeCommand('git config user.name "Shipright" && git config user.email "bot@shipright.dev"', "project");
+}
+
+/** Install Claude Code CLI and launch as background process */
+async function launchClaudeCodeProcess(sandbox: Awaited<ReturnType<Daytona["create"]>>): Promise<void> {
+  await sandbox.process.executeCommand("npm install -g @anthropic-ai/claude-code", undefined, undefined, SANDBOX_TIMEOUTS.npmInstall);
+  const homeResult = await sandbox.process.executeCommand("echo $HOME");
+  const homeDir = (homeResult.result || "").trim() || "/home/daytona";
+  const launcherScript = `#!/bin/bash
+cd /home/daytona/project
+claude -p "$(cat /home/daytona/prompt.txt)" --model ${CLAUDE_CODE_CONFIG.model} --permission-mode ${CLAUDE_CODE_CONFIG.permissionMode} > /tmp/claude_output.txt 2>&1
+echo $? > /tmp/claude_exit_code
+`;
+  await sandbox.fs.uploadFile(Buffer.from(launcherScript, "utf-8"), `${homeDir}/run_claude.sh`);
+  await sandbox.process.executeCommand("chmod +x ~/run_claude.sh");
+  await sandbox.process.executeCommand("nohup ~/run_claude.sh > /dev/null 2>&1 &");
+}
+
 // Step 1: Generate PRD markdown from interview requirements
 export const generatePrd = action({
   args: { projectId: v.id("projects") },
@@ -325,7 +384,7 @@ export const executeSandbox = action({
           autoStopInterval: 30,
           envVars: { GITHUB_TOKEN: githubToken },
           labels: { project: "shipright", projectId: args.projectId },
-        }, { timeout: 120 }),
+        }, { timeout: SANDBOX_TIMEOUTS.createSandbox }),
         DAYTONA_RETRY_CONFIG,
         { operation: "daytona.create", projectId: pid },
       );
@@ -336,48 +395,11 @@ export const executeSandbox = action({
       const credentials = buildSandboxCredentials(githubToken);
       await provisionSandboxCredentials(sandbox, credentials);
 
-      // Clone repos and copy template files
-      await sandbox.git.clone(
-        `https://github.com/${project.githubRepoFullName}.git`,
-        "project",
-        undefined, undefined,
-        "x-access-token", githubToken,
-      );
-      await sandbox.git.clone("https://github.com/seanchiuai/cc-template.git", "cc-template");
-      await sandbox.process.executeCommand("cp -r cc-template/.claude project/");
-      await sandbox.process.executeCommand(
-        "cp cc-template/template-CLAUDE.md project/ && " +
-        "cp cc-template/TASKS.md project/ && " +
-        "mkdir -p project/docs project/prompts && " +
-        "cp cc-template/docs/PRD.md project/docs/ && " +
-        "cp cc-template/docs/design.md project/docs/ && " +
-        "cp cc-template/docs/development-progress.yaml project/docs/ && " +
-        "cp cc-template/prompts/phase-1.md project/prompts/",
-      );
-      await sandbox.fs.uploadFile(Buffer.from(prompt, "utf-8"), "prompt.txt");
+      // Setup environment (clone repos, copy files, configure git)
+      await setupSandboxEnvironment(sandbox, project.githubRepoFullName, githubToken, prompt);
 
-      // Configure git identity for commits in project dir
-      await sandbox.process.executeCommand(
-        'git config user.name "Shipright" && git config user.email "bot@shipright.dev"',
-        "project",
-      );
-
-      // Install Claude Code CLI
-      await sandbox.process.executeCommand("npm install -g @anthropic-ai/claude-code", undefined, undefined, 90);
-
-      // Write launcher script (avoids complex shell quoting issues with nohup)
-      const homeResult = await sandbox.process.executeCommand("echo $HOME");
-      const homeDir = (homeResult.result || "").trim() || "/home/daytona";
-      const launcherScript = `#!/bin/bash
-cd /home/daytona/project
-claude -p "$(cat /home/daytona/prompt.txt)" --model claude-sonnet-4-20250514 --permission-mode bypassPermissions > /tmp/claude_output.txt 2>&1
-echo $? > /tmp/claude_exit_code
-`;
-      await sandbox.fs.uploadFile(Buffer.from(launcherScript, "utf-8"), `${homeDir}/run_claude.sh`);
-      await sandbox.process.executeCommand("chmod +x ~/run_claude.sh");
-
-      // Launch as background process
-      await sandbox.process.executeCommand("nohup ~/run_claude.sh > /dev/null 2>&1 &");
+      // Launch Claude Code as background process
+      await launchClaudeCodeProcess(sandbox);
 
       // Save sandbox ID so pollSandbox can reconnect
       await ctx.runMutation(api.projects.saveSandboxInfo, {
@@ -394,8 +416,8 @@ echo $? > /tmp/claude_exit_code
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "running_sandbox", status: "started" }));
       await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "running_sandbox", status: "started" }) });
 
-      // Schedule polling action to check completion (start checking after 60s)
-      await ctx.scheduler.runAfter(60000, api.scaffolding.pollSandbox, { projectId: args.projectId });
+      // Schedule polling action to check completion
+      await ctx.scheduler.runAfter(POLLING_CONFIG.initialDelayMs, api.scaffolding.pollSandbox, { projectId: args.projectId });
     } catch (error: unknown) {
       const wrapped = wrapError(error, "sandbox_setup", { projectId: pid });
       const userMessage = getUserMessage(wrapped);
@@ -510,7 +532,7 @@ export const pollSandbox = action({
         async () => {
           const result = await sandbox!.process.executeCommand(
             'cd project && git add . && git commit -m "Add project scaffolding via Shipright" && git push origin main',
-            undefined, undefined, 60,
+            undefined, undefined, SANDBOX_TIMEOUTS.gitPush,
           );
           if (result.exitCode !== 0) {
             throw new Error(`Git push failed: ${result.result?.slice(0, 500)}`);
