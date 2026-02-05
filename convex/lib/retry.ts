@@ -131,21 +131,3 @@ export async function withRetry<T>(
   throw lastError;
 }
 
-/**
- * Wrap an async function to add retry behavior.
- *
- * @example
- * const resilientCreateTree = withRetryWrapper(
- *   (params) => octokit.rest.git.createTree(params),
- *   GITHUB_RETRY_CONFIG,
- *   'createTree'
- * );
- */
-export function withRetryWrapper<Args extends unknown[], Return>(
-  fn: (...args: Args) => Promise<Return>,
-  config: RetryConfig,
-  operationName: string,
-): (...args: Args) => Promise<Return> {
-  return (...args: Args) =>
-    withRetry(() => fn(...args), config, { operation: operationName });
-}

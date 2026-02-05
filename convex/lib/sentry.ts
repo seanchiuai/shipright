@@ -31,7 +31,7 @@ export function buildSentryEnvelope(params: {
   return `${header}\n${itemHeader}\n${payload}`;
 }
 
-export function getSentryIngestUrl(dsn: string): string | null {
+function getSentryIngestUrl(dsn: string): string | null {
   if (!dsn) return null;
   try {
     const url = new URL(dsn);
