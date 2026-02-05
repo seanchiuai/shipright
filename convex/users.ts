@@ -21,6 +21,13 @@ export const getByClerkId = internalQuery({
   },
 });
 
+export const getById = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.userId);
+  },
+});
+
 // JWT-verified: uses ctx.auth.getUserIdentity()
 export const current = query({
   args: {},

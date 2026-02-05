@@ -276,6 +276,22 @@ export const updateScaffoldingStatus = mutation({
   },
 });
 
+export const saveSandboxInfo = mutation({
+  args: {
+    projectId: v.id("projects"),
+    sandboxId: v.string(),
+    sandboxSessionId: v.string(),
+    sandboxCommandId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, {
+      sandboxId: args.sandboxId,
+      sandboxSessionId: args.sandboxSessionId,
+      sandboxCommandId: args.sandboxCommandId,
+    });
+  },
+});
+
 export const recreateRepo = mutation({
   args: {
     projectId: v.id("projects"),
