@@ -112,6 +112,29 @@ export const cloneTemplate = action({
     const user = await ctx.runQuery(api.users.current, {});
     if (!user?.githubToken) throw new AuthenticationError("GitHub not connected", { hasUser: !!user });
 
+    // Atomically claim the project for repo creation (prevents race conditions)
+    const claim = await ctx.runMutation(api.projects.claimForRepoCreation, { projectId: args.projectId }) as {
+      claimed: boolean;
+      reason?: string;
+      existingRepo?: string;
+    };
+    if (!claim.claimed) {
+      if (claim.existingRepo) {
+        // Project already has a repo - return it
+        const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId }) as {
+          githubRepoUrl?: string;
+          githubRepoFullName?: string;
+        } | null;
+        if (project?.githubRepoUrl && project?.githubRepoFullName) {
+          console.log(`Project already has repo: ${project.githubRepoFullName}, skipping creation`);
+          return { repoUrl: project.githubRepoUrl, repoFullName: project.githubRepoFullName };
+        }
+      }
+      console.log(`Could not claim project for repo creation: ${claim.reason}`);
+      throw new Error(`Cannot create repo: ${claim.reason}`);
+    }
+    console.log(`Claimed project for repo creation`);
+
     const accessToken = decryptToken(user.githubToken);
     const octokit = new Octokit({
       auth: accessToken,
@@ -148,49 +171,53 @@ export const cloneTemplate = action({
         }));
       }
 
+      // Create repo WITHOUT auto_init and IMMEDIATELY save it to project
+      // This prevents orphan repos on retry
       let newRepo;
       try {
         const result = await octokit.rest.repos.createForAuthenticatedUser({
           name: args.newRepoName,
           private: true,
-          auto_init: true,
+          auto_init: false, // We create initial commit ourselves
         });
         newRepo = result.data;
-        console.log(`Created repo: ${newRepo.full_name}`);
+        console.log(`Created empty repo: ${newRepo.full_name}`);
       } catch (error: unknown) {
         if ((error as { status?: number }).status === 422) {
           const suffix = Date.now().toString(36).slice(-4);
           const result = await octokit.rest.repos.createForAuthenticatedUser({
             name: `${args.newRepoName}-${suffix}`,
             private: true,
-            auto_init: true,
+            auto_init: false,
           });
           newRepo = result.data;
-          console.log(`Created repo with suffix: ${newRepo.full_name}`);
+          console.log(`Created empty repo with suffix: ${newRepo.full_name}`);
         } else {
           throw error;
         }
       }
 
-      // Additional delay to ensure GitHub's git backend is fully ready
-      console.log(`Waiting 5s for GitHub backend to stabilize...`);
-      await new Promise((r) => setTimeout(r, 5000));
-
-      console.log(`Starting commit of ${files.length} files to ${newRepo.full_name}`);
-      await commitFiles(
-        octokit,
-        newRepo.owner.login,
-        newRepo.name,
-        files,
-        `Initial commit from Shipright template: ${repo}`
-      );
-
+      // Save repo URL immediately so we don't create duplicates on retry
       const repoFullName = newRepo.full_name;
       await ctx.runMutation(api.projects.updateGitHubRepo, {
         projectId: args.projectId,
         repoUrl: newRepo.html_url,
         repoFullName,
       });
+      console.log(`Saved repo URL to project immediately`);
+
+      // Small delay for GitHub backend
+      console.log(`Waiting 3s for GitHub backend to stabilize...`);
+      await new Promise((r) => setTimeout(r, 3000));
+
+      console.log(`Starting commit of ${files.length} files to ${newRepo.full_name}`);
+      await commitFilesInitial(
+        octokit,
+        newRepo.owner.login,
+        newRepo.name,
+        files,
+        `Initial commit from Shipright template: ${repo}`
+      );
 
       const durationMs = Date.now() - startedAt;
       console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "cloning_repo", status: "completed", durationMs }));
@@ -482,4 +509,100 @@ async function commitFiles(
     sha: commit.sha,
   });
   console.log(`[commitFiles] Done!`);
+}
+
+/** Create initial commit in an empty repo (no parent commit, no auto_init) */
+async function commitFilesInitial(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  files: Array<{ path: string; content: string; isBinary: boolean }>,
+  message: string
+) {
+  // Separate binary and text files
+  const binaryFiles = files.filter((f) => f.isBinary);
+  const textFiles = files.filter((f) => !f.isBinary);
+  console.log(`[commitFilesInitial] ${textFiles.length} text files, ${binaryFiles.length} binary files`);
+
+  // Create blobs only for binary files (text files use inline content)
+  let binaryBlobs: Array<{ path: string; sha: string }> = [];
+  if (binaryFiles.length > 0) {
+    console.log(`[commitFilesInitial] Creating ${binaryFiles.length} blobs for binary files...`);
+    binaryBlobs = await createBlobsBatched(octokit, owner, repo, binaryFiles);
+    console.log(`[commitFilesInitial] Created ${binaryBlobs.length} binary blobs`);
+  }
+
+  // Build tree items - use inline content for text files
+  type TreeItem = {
+    path: string;
+    mode: "100644";
+    type: "blob";
+    content?: string;
+    sha?: string;
+  };
+
+  const treeItems: TreeItem[] = [
+    // Text files with inline content
+    ...textFiles.map((file) => ({
+      path: file.path,
+      mode: "100644" as const,
+      type: "blob" as const,
+      content: file.content,
+    })),
+    // Binary files with blob SHA
+    ...binaryBlobs.map((blob) => ({
+      path: blob.path,
+      mode: "100644" as const,
+      type: "blob" as const,
+      sha: blob.sha,
+    })),
+  ];
+
+  // Create tree WITHOUT base_tree (fresh tree for empty repo)
+  console.log(`[commitFilesInitial] Creating tree with ${treeItems.length} items...`);
+  let tree;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const result = await octokit.rest.git.createTree({
+        owner,
+        repo,
+        tree: treeItems,
+      });
+      tree = result.data;
+      console.log(`[commitFilesInitial] Tree created: ${tree.sha}`);
+      break;
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      if (attempt === 4) {
+        console.log(`[commitFilesInitial] createTree failed after 5 attempts: ${errMsg}`);
+        throw error;
+      }
+      const delay = 2000 * Math.pow(2, attempt);
+      console.log(`[commitFilesInitial] createTree attempt ${attempt + 1} failed (${errMsg}), retrying in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  if (!tree) throw new Error("Failed to create git tree");
+
+  // Create initial commit (no parents)
+  console.log(`[commitFilesInitial] Creating initial commit...`);
+  const { data: commit } = await octokit.rest.git.createCommit({
+    owner,
+    repo,
+    message,
+    tree: tree.sha,
+    parents: [],
+  });
+  console.log(`[commitFilesInitial] Commit created: ${commit.sha}`);
+
+  // Create the main branch
+  console.log(`[commitFilesInitial] Creating main branch...`);
+  await octokit.rest.git.createRef({
+    owner,
+    repo,
+    ref: "refs/heads/main",
+    sha: commit.sha,
+  });
+  console.log(`[commitFilesInitial] Done!`);
 }

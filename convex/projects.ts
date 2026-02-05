@@ -125,6 +125,28 @@ export const resetInterview = mutation({
   },
 });
 
+/** Atomically claim a project for repo creation. Prevents race conditions. */
+export const claimForRepoCreation = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      return { claimed: false, reason: "Project not found" };
+    }
+    // Only allow claiming if status is "matched"
+    if (project.status !== PROJECT_STATUS.MATCHED) {
+      return { claimed: false, reason: `Wrong status: ${project.status}` };
+    }
+    // If already has a repo, no need to create
+    if (project.githubRepoUrl) {
+      return { claimed: false, reason: "Already has repo", existingRepo: project.githubRepoUrl };
+    }
+    // Atomically transition to "building" to prevent concurrent claims
+    await ctx.db.patch(args.projectId, { status: PROJECT_STATUS.BUILDING });
+    return { claimed: true };
+  },
+});
+
 export const updateGitHubRepo = mutation({
   args: {
     projectId: v.id("projects"),
@@ -132,6 +154,12 @@ export const updateGitHubRepo = mutation({
     repoFullName: v.string(),
   },
   handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    // Validate status - only update if in building status (or matched for backwards compat)
+    if (project && !["matched", "building"].includes(project.status)) {
+      console.warn(`updateGitHubRepo: ignoring for project in status ${project.status}`);
+      return;
+    }
     await ctx.db.patch(args.projectId, {
       githubRepoUrl: args.repoUrl,
       githubRepoFullName: args.repoFullName,
@@ -149,6 +177,11 @@ export const setRepoFailed = mutation({
     const project = await ctx.db.get(args.projectId);
     if (!project) {
       console.warn(`setRepoFailed: project ${args.projectId} not found (likely deleted)`);
+      return;
+    }
+    // Only allow setting failed from matched/building status
+    if (!["matched", "building"].includes(project.status)) {
+      console.warn(`setRepoFailed: ignoring for project in status ${project.status}`);
       return;
     }
 

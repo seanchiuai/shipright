@@ -113,10 +113,12 @@ export default function ProjectDetailsPage() {
         });
       } catch (e) {
         // Error is persisted in DB by the action (status -> repo_failed).
-        // Only handle GitHub redirect client-side.
-        const message = e instanceof Error ? e.message : "";
+        const message = e instanceof Error ? e.message : "Repository creation failed";
         if (message.includes("401") || message.includes("Bad credentials")) {
           router.push(`/connect-github?returnTo=/project/${projectId}`);
+        } else if (!message.includes("Cannot create repo")) {
+          // Show error to user (but not "Cannot create repo" which means another attempt is running)
+          setError(message);
         }
         cloneInFlight.current = false;
       }
@@ -338,12 +340,12 @@ export default function ProjectDetailsPage() {
                   isActive={isTimerActive}
                   renderContent={(elapsedSeconds) => (
                     <>
-                      {elapsedSeconds > 30 && elapsedSeconds <= 60 && (
+                      {elapsedSeconds > 60 && elapsedSeconds <= 120 && (
                         <p className="text-xs text-amber-600 mt-1">
                           Taking longer than expected ({elapsedSeconds}s)...
                         </p>
                       )}
-                      {elapsedSeconds > 60 && (
+                      {elapsedSeconds > 120 && (
                         <div className="flex flex-col items-center gap-2 mt-2">
                           <p className="text-xs text-amber-600">
                             This is taking too long ({elapsedSeconds}s). Something may have gone wrong.
