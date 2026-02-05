@@ -4,7 +4,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 import { useSyncUser } from "@/hooks/useSyncUser";
@@ -48,12 +48,12 @@ export default function InterviewPage() {
   // Track which AI message IDs we've already seen (for typewriter)
   const seenAiMessages = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
-  // Derived state
   const phase = project?.interviewPhase || "seed";
-  const isComplete = messages?.some((m) => m.isComplete);
-  const lastAiMsg = messages?.filter((m) => m.role === "assistant").at(-1);
-  const exchangeCount = messages?.filter((m) => m.role === "user").length ?? 0;
+  const isComplete = useMemo(() => messages?.some((m) => m.isComplete), [messages]);
+  const lastAiMsg = useMemo(() => messages?.filter((m) => m.role === "assistant").at(-1), [messages]);
   const requirements = project?.requirements as Requirements | undefined;
 
   // Auto-scroll on new messages
@@ -136,7 +136,8 @@ export default function InterviewPage() {
 
   const handleAnswer = useCallback(
     async (answer: string | string[]) => {
-      if (loading || !project?.appIdea || !messages) return;
+      const currentMessages = messagesRef.current;
+      if (loading || !project?.appIdea || !currentMessages) return;
       const answerText = Array.isArray(answer) ? answer.join(", ") : answer;
 
       setLoading(true);
@@ -147,20 +148,21 @@ export default function InterviewPage() {
         await addMessage({ projectId, role: "user", content: answerText });
 
         const history = [
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
+          ...currentMessages.map((m) => ({ role: m.role, content: m.content })),
           { role: "user", content: answerText },
         ];
 
         seenAiMessages.current.clear();
-        messages.filter((m) => m.role === "assistant").forEach((m) => {
+        currentMessages.filter((m) => m.role === "assistant").forEach((m) => {
           seenAiMessages.current.add(m._id);
         });
 
+        const currentExchangeCount = currentMessages.filter((m) => m.role === "user").length;
         const result = await continueConversation({
           projectId,
           appIdea: project.appIdea,
           history,
-          exchangeCount: exchangeCount + 1,
+          exchangeCount: currentExchangeCount + 1,
         });
 
         if (result.isComplete) {
@@ -172,7 +174,7 @@ export default function InterviewPage() {
         setLoading(false);
       }
     },
-    [loading, project?.appIdea, messages, projectId, addMessage, continueConversation, exchangeCount, extractRequirements]
+    [loading, project?.appIdea, projectId, addMessage, continueConversation, extractRequirements]
   );
 
   const handleFinishEarly = useCallback(async () => {
@@ -188,19 +190,20 @@ export default function InterviewPage() {
   }, [loading, projectId, extractRequirements]);
 
   const handleContinueConversation = useCallback(async () => {
-    if (loading || !project?.appIdea || !messages) return;
+    const currentMessages = messagesRef.current;
+    if (loading || !project?.appIdea || !currentMessages) return;
     setLoading(true);
     try {
       await clearIsComplete({ projectId });
       await updateInterviewPhase({ projectId, phase: "conversation" });
 
       seenAiMessages.current.clear();
-      messages.filter((m) => m.role === "assistant").forEach((m) => {
+      currentMessages.filter((m) => m.role === "assistant").forEach((m) => {
         seenAiMessages.current.add(m._id);
       });
 
       const history = [
-        ...messages.map((m) => ({ role: m.role, content: m.content })),
+        ...currentMessages.map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: "[SYSTEM] The user wants to keep going. Ask the next most useful question to refine the app requirements — don't ask what they want to discuss." },
       ];
 
@@ -212,7 +215,7 @@ export default function InterviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [projectId, loading, project?.appIdea, messages, clearIsComplete, updateInterviewPhase, continueConversation]);
+  }, [projectId, loading, project?.appIdea, clearIsComplete, updateInterviewPhase, continueConversation]);
 
   const handleConfirm = useCallback(async () => {
     setLoading(true);

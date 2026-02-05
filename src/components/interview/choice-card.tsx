@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
@@ -14,7 +15,7 @@ interface ChoiceCardProps {
   delay?: number;
 }
 
-export function ChoiceCard({
+export const ChoiceCard = memo(function ChoiceCard({
   label,
   selected,
   onClick,
@@ -94,7 +95,7 @@ export function ChoiceCard({
       </div>
     </motion.button>
   );
-}
+});
 
 interface ChoiceGridProps {
   options: string[];
@@ -103,19 +104,22 @@ interface ChoiceGridProps {
   multiSelect?: boolean;
 }
 
-export function ChoiceGrid({
+export const ChoiceGrid = memo(function ChoiceGrid({
   options,
   selected,
   onChange,
   multiSelect = false,
 }: ChoiceGridProps) {
-  const selectedArray = Array.isArray(selected)
-    ? selected
-    : selected
-      ? [selected]
-      : [];
+  const selectedArray = useMemo(() =>
+    Array.isArray(selected)
+      ? selected
+      : selected
+        ? [selected]
+        : [],
+    [selected]
+  );
 
-  const handleClick = (option: string) => {
+  const createClickHandler = useCallback((option: string) => () => {
     if (multiSelect) {
       const newSelected = selectedArray.includes(option)
         ? selectedArray.filter((s) => s !== option)
@@ -124,7 +128,7 @@ export function ChoiceGrid({
     } else {
       onChange(option);
     }
-  };
+  }, [multiSelect, onChange, selectedArray]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -133,11 +137,11 @@ export function ChoiceGrid({
           key={option}
           label={option}
           selected={selectedArray.includes(option)}
-          onClick={() => handleClick(option)}
+          onClick={createClickHandler(option)}
           multiSelect={multiSelect}
           delay={index * 0.04}
         />
       ))}
     </div>
   );
-}
+});

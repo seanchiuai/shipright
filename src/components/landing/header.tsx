@@ -1,17 +1,26 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const rafId = useRef<number | null>(null);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => {
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+      rafId.current = requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 20);
+      });
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafId.current) cancelAnimationFrame(rafId.current);
+    };
   }, []);
 
   return (

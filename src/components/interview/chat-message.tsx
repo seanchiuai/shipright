@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { AIMessage } from "@/components/ui/ai-message";
 import { TypewriterText } from "./typewriter-text";
@@ -15,7 +16,7 @@ interface ChatMessageProps {
   children?: React.ReactNode;
 }
 
-export function ChatMessage({
+export const ChatMessage = memo(function ChatMessage({
   message,
   isAI = false,
   animate = true,
@@ -58,4 +59,15 @@ export function ChatMessage({
       {content}
     </motion.div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison: exclude onTypewriterComplete from comparison (callback identity changes)
+  return (
+    prevProps.message === nextProps.message &&
+    prevProps.isAI === nextProps.isAI &&
+    prevProps.animate === nextProps.animate &&
+    prevProps.typewriter === nextProps.typewriter &&
+    prevProps.delay === nextProps.delay &&
+    prevProps.userImageUrl === nextProps.userImageUrl &&
+    prevProps.children === nextProps.children
+  );
+});

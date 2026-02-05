@@ -30,6 +30,7 @@ import {
   Code2,
   GitBranch,
 } from "lucide-react";
+import { ElapsedTimer } from "@/components/elapsed-timer";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { PROJECT_STATUS } from "@/lib/constants";
@@ -42,7 +43,10 @@ export default function ProjectDetailsPage() {
 
   const convexUser = useSyncUser();
   const project = useQuery(api.projects.get, { projectId });
-  const templates = useQuery(api.templates.list, {});
+  const matchedTemplate = useQuery(
+    api.templates.get,
+    project?.templateId ? { templateId: project.templateId as Id<"templates"> } : "skip"
+  );
 
   const matchTemplate = useAction(api.matching.matchTemplate);
   const cloneTemplate = useAction(api.github.cloneTemplate);
@@ -58,14 +62,8 @@ export default function ProjectDetailsPage() {
   const [matching, setMatching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cloneInFlight = useRef(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const scaffoldingAttempted = useRef(false);
   const [techChoices, setTechChoices] = useState<Record<string, string>>({});
-
-  const matchedTemplate =
-    project?.templateId && templates
-      ? templates.find((t) => t._id === project.templateId)
-      : null;
 
   useEffect(() => {
     async function runMatching() {
@@ -127,24 +125,10 @@ export default function ProjectDetailsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- cloneTemplate is unstable (new ref each render); cloneInFlight guards re-entry
   }, [project?.status, project?.name, matchedTemplate, convexUser, projectId, router]);
 
-  // Elapsed time indicator for loading states
-  useEffect(() => {
-    const isLoading = project?.status === "matched" ||
-      (project?.status === "building" && !project?.scaffoldingStatus);
+  const isTimerActive = project?.status === "matched" ||
+    (project?.status === "building" && !project?.scaffoldingStatus);
 
-    if (!isLoading) {
-      setElapsedSeconds(0);
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setElapsedSeconds((s) => s + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [project?.status, project?.scaffoldingStatus]);
-
-  // Auto-trigger scaffolding when repo is created (status: "building")
+  // Auto-trigger scaffolding when repo is created
   useEffect(() => {
     async function startScaffolding() {
       if (project?.status !== "building") return;
@@ -350,29 +334,36 @@ export default function ProjectDetailsPage() {
                   {project.status === PROJECT_STATUS.MATCHED &&
                     "Cloning the template and creating your GitHub repository."}
                 </p>
-                {elapsedSeconds > 30 && elapsedSeconds <= 60 && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    Taking longer than expected ({elapsedSeconds}s)...
-                  </p>
-                )}
-                {elapsedSeconds > 60 && (
-                  <div className="flex flex-col items-center gap-2 mt-2">
-                    <p className="text-xs text-amber-600">
-                      This is taking too long ({elapsedSeconds}s). Something may have gone wrong.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={async () => {
-                        await setRepoFailed({ projectId, error: "Timed out waiting for repository creation." });
-                      }}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      Cancel &amp; Retry
-                    </Button>
-                  </div>
-                )}
+                <ElapsedTimer
+                  isActive={isTimerActive}
+                  renderContent={(elapsedSeconds) => (
+                    <>
+                      {elapsedSeconds > 30 && elapsedSeconds <= 60 && (
+                        <p className="text-xs text-amber-600 mt-1">
+                          Taking longer than expected ({elapsedSeconds}s)...
+                        </p>
+                      )}
+                      {elapsedSeconds > 60 && (
+                        <div className="flex flex-col items-center gap-2 mt-2">
+                          <p className="text-xs text-amber-600">
+                            This is taking too long ({elapsedSeconds}s). Something may have gone wrong.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={async () => {
+                              await setRepoFailed({ projectId, error: "Timed out waiting for repository creation." });
+                            }}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            Cancel &amp; Retry
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                />
 
                 {/* Template info once matched */}
                 {project.status === PROJECT_STATUS.MATCHED &&

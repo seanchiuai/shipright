@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 
 interface TypewriterTextProps {
@@ -18,27 +18,44 @@ export function TypewriterText({
   className = "",
   cursor = true,
 }: TypewriterTextProps) {
-  const [displayText, setDisplayText] = useState("");
+  const [charIndex, setCharIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  const displayText = text.slice(0, charIndex);
 
   useEffect(() => {
-    setDisplayText("");
+    setCharIndex(0);
     setIsComplete(false);
     let index = 0;
+    let lastTime = 0;
+    let rafId: number;
+    let cancelled = false;
 
-    const timer = setInterval(() => {
-      if (index < text.length) {
-        setDisplayText(text.slice(0, index + 1));
-        index++;
-      } else {
-        clearInterval(timer);
-        setIsComplete(true);
-        onComplete?.();
+    function animate(timestamp: number) {
+      if (cancelled) return;
+
+      if (timestamp - lastTime >= speed) {
+        lastTime = timestamp;
+        if (index < text.length) {
+          index++;
+          setCharIndex(index);
+        } else {
+          setIsComplete(true);
+          onCompleteRef.current?.();
+          return;
+        }
       }
-    }, speed);
+      rafId = requestAnimationFrame(animate);
+    }
 
-    return () => clearInterval(timer);
-  }, [text, speed, onComplete]);
+    rafId = requestAnimationFrame(animate);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
+  }, [text, speed]);
 
   return (
     <span className={className}>

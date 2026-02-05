@@ -33,36 +33,49 @@ export function HeroSection() {
     let placeholderIndex = 0;
     let charIndex = 0;
     let isDeleting = false;
-    let timeoutId: NodeJS.Timeout;
+    let lastUpdate = 0;
+    let nextDelay = 100;
+    let rafId: number;
+    let cancelled = false;
 
-    function typeEffect() {
+    function typeEffect(timestamp: number) {
+      if (cancelled) return;
+
+      if (timestamp - lastUpdate < nextDelay) {
+        rafId = requestAnimationFrame(typeEffect);
+        return;
+      }
+
+      lastUpdate = timestamp;
       const currentPlaceholder = placeholders[placeholderIndex];
-      let typeSpeed = 100;
 
       if (isDeleting) {
-        setPlaceholder(currentPlaceholder.substring(0, charIndex - 1));
         charIndex--;
-        typeSpeed = 50;
+        setPlaceholder(currentPlaceholder.substring(0, charIndex));
+        nextDelay = 50;
       } else {
-        setPlaceholder(currentPlaceholder.substring(0, charIndex + 1));
         charIndex++;
-        typeSpeed = 100;
+        setPlaceholder(currentPlaceholder.substring(0, charIndex));
+        nextDelay = 100;
       }
 
       if (!isDeleting && charIndex === currentPlaceholder.length) {
-        typeSpeed = 2000;
+        nextDelay = 2000;
         isDeleting = true;
       } else if (isDeleting && charIndex === 0) {
         isDeleting = false;
         placeholderIndex = (placeholderIndex + 1) % placeholders.length;
-        typeSpeed = 500;
+        nextDelay = 500;
       }
 
-      timeoutId = setTimeout(typeEffect, typeSpeed);
+      rafId = requestAnimationFrame(typeEffect);
     }
 
-    typeEffect();
-    return () => clearTimeout(timeoutId);
+    rafId = requestAnimationFrame(typeEffect);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const handleSubmit = async () => {

@@ -2,13 +2,17 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const getMessages = query({
-  args: { projectId: v.id("projects") },
+  args: {
+    projectId: v.id("projects"),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
+    const limit = args.limit ?? 100;
     return await ctx.db
       .query("interviewMessages")
       .withIndex("by_project_timestamp", (q) => q.eq("projectId", args.projectId))
       .order("asc")
-      .collect();
+      .take(limit);
   },
 });
 
