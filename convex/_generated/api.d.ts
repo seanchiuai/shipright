@@ -18,6 +18,7 @@ import type * as lib_constants from "../lib/constants.js";
 import type * as lib_credentials from "../lib/credentials.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_github from "../lib/github.js";
+import type * as lib_json from "../lib/json.js";
 import type * as lib_logger from "../lib/logger.js";
 import type * as lib_retry from "../lib/retry.js";
 import type * as lib_sentry from "../lib/sentry.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   "lib/credentials": typeof lib_credentials;
   "lib/errors": typeof lib_errors;
   "lib/github": typeof lib_github;
+  "lib/json": typeof lib_json;
   "lib/logger": typeof lib_logger;
   "lib/retry": typeof lib_retry;
   "lib/sentry": typeof lib_sentry;
