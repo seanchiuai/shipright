@@ -29,22 +29,7 @@ import {
   getUserMessage,
   wrapError,
 } from "./lib/errors";
-
-// Parse JSON from AI response (may be wrapped in code blocks)
-export function parseJsonResponse(text: string): unknown {
-  let jsonText = text.trim();
-  if (jsonText.includes("```")) {
-    const match = jsonText.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-    if (match) jsonText = match[1].trim();
-  }
-  try {
-    return JSON.parse(jsonText);
-  } catch {
-    const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]);
-    throw new Error("No valid JSON found in AI response");
-  }
-}
+import { parseJsonResponse } from "./lib/json";
 
 // Step 1: Generate PRD markdown from interview requirements
 export const generatePrd = action({

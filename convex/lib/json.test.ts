@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseJsonResponse } from "./ai";
+import { parseJsonResponse } from "./json";
 
 describe("parseJsonResponse", () => {
   it("parses plain JSON", () => {

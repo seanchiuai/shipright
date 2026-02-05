@@ -1,19 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { buildSandboxPrompt, parseJsonResponse } from "./scaffolding";
+import { buildSandboxPrompt } from "./scaffolding";
 
-describe("parseJsonResponse (scaffolding)", () => {
-  it("parses plain JSON", () => {
-    expect(parseJsonResponse('{"a": 1}')).toEqual({ a: 1 });
-  });
-
-  it("parses code-block-wrapped JSON", () => {
-    expect(parseJsonResponse('```json\n{"a": 1}\n```')).toEqual({ a: 1 });
-  });
-
-  it("throws on non-JSON text", () => {
-    expect(() => parseJsonResponse("not json")).toThrow();
-  });
-});
+// Tests for parseJsonResponse moved to convex/lib/json.test.ts
 
 describe("buildSandboxPrompt", () => {
   const baseParams = {
