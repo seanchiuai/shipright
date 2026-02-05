@@ -168,6 +168,19 @@ export const updateGitHubRepo = mutation({
   },
 });
 
+export const markRepoReady = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) return;
+    if (project.status !== "building") {
+      console.warn(`markRepoReady: ignoring for project in status ${project.status}`);
+      return;
+    }
+    await ctx.db.patch(args.projectId, { repoReady: true });
+  },
+});
+
 export const setRepoFailed = mutation({
   args: {
     projectId: v.id("projects"),
@@ -343,6 +356,7 @@ export const recreateRepo = mutation({
     await ctx.db.patch(args.projectId, {
       githubRepoUrl: undefined,
       githubRepoFullName: undefined,
+      repoReady: undefined,
       repoError: undefined,
       repoRetryCount: 0,
       scaffoldingStatus: undefined,

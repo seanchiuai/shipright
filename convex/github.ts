@@ -219,6 +219,10 @@ export const cloneTemplate = action({
         `Initial commit from Shipright template: ${repo}`
       );
 
+      // Mark repo as ready AFTER files are committed (prevents scaffolding race)
+      await ctx.runMutation(api.projects.markRepoReady, { projectId: args.projectId });
+      console.log(`Marked repo as ready (files committed)`);
+
       const durationMs = Date.now() - startedAt;
       console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "cloning_repo", status: "completed", durationMs }));
       await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "completed", durationMs, metadata: { repoFullName } }) });
@@ -351,8 +355,8 @@ async function waitForRef(
       return ref.object.sha;
     } catch (error: unknown) {
       if (i === maxRetries - 1) throw error;
-      // Wait with exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s
-      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, i)));
+      // Exponential backoff capped at 10s
+      await new Promise((r) => setTimeout(r, Math.min(1000 * Math.pow(2, i), 10_000)));
     }
   }
   throw new Error("Failed to get ref after retries");
@@ -482,8 +486,8 @@ async function commitFiles(
         console.log(`[commitFiles] createTree failed after 8 attempts: ${errMsg}`);
         throw error;
       }
-      // Exponential backoff: 3s, 6s, 12s, 24s, 48s, 96s, 192s
-      const delay = 3000 * Math.pow(2, attempt);
+      // Exponential backoff capped at 15s to avoid exceeding 600s action limit
+      const delay = Math.min(3000 * Math.pow(2, attempt), 15_000);
       console.log(`[commitFiles] createTree attempt ${attempt + 1} failed (${errMsg}), retrying in ${delay}ms...`);
       await new Promise((r) => setTimeout(r, delay));
     }
@@ -577,7 +581,8 @@ async function commitFilesInitial(
         console.log(`[commitFilesInitial] createTree failed after 5 attempts: ${errMsg}`);
         throw error;
       }
-      const delay = 2000 * Math.pow(2, attempt);
+      // Cap backoff at 10s to avoid exceeding 600s action limit
+      const delay = Math.min(2000 * Math.pow(2, attempt), 10_000);
       console.log(`[commitFilesInitial] createTree attempt ${attempt + 1} failed (${errMsg}), retrying in ${delay}ms...`);
       await new Promise((r) => setTimeout(r, delay));
     }

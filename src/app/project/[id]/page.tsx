@@ -130,12 +130,12 @@ export default function ProjectDetailsPage() {
   const isTimerActive = project?.status === "matched" ||
     (project?.status === "building" && !project?.scaffoldingStatus);
 
-  // Auto-trigger scaffolding when repo is created
+  // Auto-trigger scaffolding when repo files are committed (repoReady=true)
   useEffect(() => {
     async function startScaffolding() {
       if (project?.status !== "building") return;
       if (scaffoldingAttempted.current) return;
-      if (!project.githubRepoUrl) return;
+      if (!project.repoReady) return;
 
       scaffoldingAttempted.current = true;
       setError(null);
@@ -149,7 +149,7 @@ export default function ProjectDetailsPage() {
       }
     }
     startScaffolding();
-  }, [project?.status, project?.githubRepoUrl, projectId, runScaffolding]);
+  }, [project?.status, project?.repoReady, projectId, runScaffolding]);
 
   async function handleSubmitTechChoices() {
     try {

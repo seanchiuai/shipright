@@ -13,6 +13,122 @@ import {
 import { getVertexProvider } from "./lib/vertex";
 import { parseJsonResponse } from "./lib/json";
 
+// --- Exported helpers for testing ---
+
+export function buildQuestionPrompt(
+  appIdea: string,
+  round: number,
+  previousRounds?: Array<{ questions: unknown[]; answers: unknown }>,
+): string {
+  let prompt = `The user wants to build: "${appIdea}"`;
+
+  if (previousRounds && previousRounds.length > 0) {
+    prompt += "\n\nPrevious interview rounds:\n";
+    for (let i = 0; i < previousRounds.length; i++) {
+      const round = previousRounds[i];
+      prompt += `\nRound ${i + 1}:\n`;
+      prompt += `Questions: ${JSON.stringify(round.questions)}\n`;
+      prompt += `Answers: ${JSON.stringify(round.answers)}\n`;
+    }
+    prompt += `\nThis is round ${round}. Build on previous answers and extract information about areas not yet covered.`;
+  } else {
+    prompt += "\n\nThis is round 1. In the preamble, restate their idea in concrete buildable terms and ask for confirmation.";
+  }
+
+  prompt += "\n\nGenerate the interview questions with a contextual preamble.";
+  return prompt;
+}
+
+export function buildConversationMessages(
+  appIdea: string,
+  history: Array<{ role: string; content: string }>,
+  exchangeCount?: number,
+): { role: "user" | "assistant" | "system"; content: string }[] {
+  if (!appIdea.trim()) {
+    throw new Error("appIdea cannot be empty");
+  }
+
+  // Filter out messages with empty content — Gemini rejects empty parts
+  const validHistory = history.filter((m) => m.content.trim().length > 0);
+
+  if (validHistory.length === 0) {
+    throw new Error("history must contain at least one non-empty message");
+  }
+
+  const messages: { role: "user" | "assistant" | "system"; content: string }[] = [
+    { role: "user" as const, content: `The user wants to build: "${appIdea}"` },
+    ...validHistory.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })),
+  ];
+
+  const count = exchangeCount ?? 0;
+  if (count >= 6) {
+    messages.push({
+      role: "user" as const,
+      content: "[SYSTEM] You've asked enough questions. Wrap it up now and set isComplete: true — unless this app is genuinely complex and you still have critical unknowns.",
+    });
+  }
+
+  return messages;
+}
+
+export function cleanQuestionResult(result: {
+  preamble: string;
+  questions: Array<{
+    id: string;
+    question: string;
+    type: string;
+    options?: string[];
+    required?: boolean;
+  }>;
+}) {
+  if (!result.preamble || !result.questions || result.questions.length === 0) {
+    throw new Error("AI response missing preamble or questions");
+  }
+
+  const cleanQuestions = result.questions.map((q) => {
+    if (!q.id || !q.question || !q.type) {
+      throw new Error(`Question missing required fields: ${JSON.stringify(q)}`);
+    }
+    return {
+      id: q.id,
+      question: q.question,
+      type: q.type,
+      ...(q.options ? { options: q.options } : {}),
+      ...(q.required !== undefined ? { required: q.required } : {}),
+    };
+  });
+
+  return {
+    preamble: result.preamble,
+    questions: cleanQuestions,
+  };
+}
+
+export function buildRequirementsPrompt(
+  appIdea: string,
+  messages: Array<{ role: string; content: string }>,
+): string {
+  if (!appIdea.trim()) {
+    throw new Error("appIdea cannot be empty");
+  }
+
+  let prompt = `App idea: "${appIdea}"`;
+
+  if (messages.length > 0) {
+    prompt += "\n\nInterview transcript:\n";
+    for (const msg of messages) {
+      const label = msg.role === "assistant" ? "Interviewer" : "User";
+      prompt += `${label}: ${msg.content}\n`;
+    }
+  }
+
+  prompt += "\n\nExtract structured requirements from this interview.";
+  return prompt;
+}
+
 export const generateInterviewQuestions = action({
   args: {
     projectId: v.id("projects"),
@@ -29,23 +145,7 @@ export const generateInterviewQuestions = action({
   },
   handler: async (ctx, args) => {
     const vertex = getVertexProvider();
-
-    let prompt = `The user wants to build: "${args.appIdea}"`;
-
-    if (args.previousRounds && args.previousRounds.length > 0) {
-      prompt += "\n\nPrevious interview rounds:\n";
-      for (let i = 0; i < args.previousRounds.length; i++) {
-        const round = args.previousRounds[i];
-        prompt += `\nRound ${i + 1}:\n`;
-        prompt += `Questions: ${JSON.stringify(round.questions)}\n`;
-        prompt += `Answers: ${JSON.stringify(round.answers)}\n`;
-      }
-      prompt += `\nThis is round ${args.round}. Build on previous answers and extract information about areas not yet covered.`;
-    } else {
-      prompt += "\n\nThis is round 1. In the preamble, restate their idea in concrete buildable terms and ask for confirmation.";
-    }
-
-    prompt += "\n\nGenerate the interview questions with a contextual preamble.";
+    const prompt = buildQuestionPrompt(args.appIdea, args.round, args.previousRounds);
 
     const { text } = await generateText({
       model: vertex("gemini-2.5-flash"),
@@ -64,19 +164,7 @@ export const generateInterviewQuestions = action({
       }>;
     };
 
-    // Strip extra fields the AI may add — Convex rejects unknown fields
-    const cleanQuestions = result.questions.map((q) => ({
-      id: q.id,
-      question: q.question,
-      type: q.type,
-      ...(q.options ? { options: q.options } : {}),
-      ...(q.required !== undefined ? { required: q.required } : {}),
-    }));
-
-    return {
-      preamble: result.preamble,
-      questions: cleanQuestions,
-    };
+    return cleanQuestionResult(result);
   },
 });
 
@@ -92,23 +180,7 @@ export const continueConversation = action({
   },
   handler: async (ctx, args) => {
     const vertex = getVertexProvider();
-
-    const messages: { role: "user" | "assistant" | "system"; content: string }[] = [
-      { role: "user" as const, content: `The user wants to build: "${args.appIdea}"` },
-      ...args.history.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-    ];
-
-    // Soft nudge to wrap up after 6+ exchanges
-    const count = args.exchangeCount ?? 0;
-    if (count >= 6) {
-      messages.push({
-        role: "user" as const,
-        content: "[SYSTEM] You've asked enough questions. Wrap it up now and set isComplete: true — unless this app is genuinely complex and you still have critical unknowns.",
-      });
-    }
+    const messages = buildConversationMessages(args.appIdea, args.history, args.exchangeCount);
 
     const { text } = await generateText({
       model: vertex("gemini-2.5-flash"),
@@ -171,6 +243,12 @@ export const continueConversation = action({
       parsed = { content: text.trim(), questionType: null };
     }
 
+    // Guard: don't save empty AI responses (can happen when tool use consumes all steps)
+    if (!parsed.content || parsed.content.trim().length === 0) {
+      console.warn(`[continueConversation] Empty AI response for project ${args.projectId}, not saving to DB`);
+      return { content: "", questionType: null };
+    }
+
     // Persist AI message
     await ctx.runMutation(api.interviews.addMessage, {
       projectId: args.projectId,
@@ -200,22 +278,11 @@ export const extractRequirements = action({
       throw new Error("Project has no app idea");
     }
 
-    // Build transcript from interview messages
     const messages = await ctx.runQuery(api.interviews.getMessages, {
       projectId: args.projectId,
     });
 
-    let prompt = `App idea: "${project.appIdea}"`;
-
-    if (messages.length > 0) {
-      prompt += "\n\nInterview transcript:\n";
-      for (const msg of messages) {
-        const label = msg.role === "assistant" ? "Interviewer" : "User";
-        prompt += `${label}: ${msg.content}\n`;
-      }
-    }
-
-    prompt += "\n\nExtract structured requirements from this interview.";
+    const prompt = buildRequirementsPrompt(project.appIdea, messages);
 
     const { text } = await generateText({
       model: vertex("gemini-2.5-flash"),

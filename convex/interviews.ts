@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const getMessages = query({
@@ -50,6 +50,14 @@ export const clearIsComplete = mutation({
         await ctx.db.patch(msg._id, { isComplete: undefined });
       }
     }
+  },
+});
+
+/** Delete a single message by ID (internal use for data cleanup) */
+export const deleteMessage = internalMutation({
+  args: { messageId: v.id("interviewMessages") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.messageId);
   },
 });
 

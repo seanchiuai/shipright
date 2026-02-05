@@ -44,6 +44,7 @@ export default defineSchema({
     sandboxId: v.optional(v.string()),
     sandboxSessionId: v.optional(v.string()),
     sandboxCommandId: v.optional(v.string()),
+    repoReady: v.optional(v.boolean()),
     repoError: v.optional(v.string()),
     repoRetryCount: v.optional(v.number()),
   }).index("by_user", ["userId"]),
