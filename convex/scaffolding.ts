@@ -59,8 +59,19 @@ async function setupSandboxEnvironment(
   githubToken: string,
   prompt: string,
 ): Promise<void> {
+  const setupStart = Date.now();
+
+  console.log(`[setupSandbox] cloning user repo: ${repoFullName}`);
+  const cloneStart = Date.now();
   await sandbox.git.clone(`https://github.com/${repoFullName}.git`, "project", undefined, undefined, "x-access-token", githubToken);
+  console.log(`[setupSandbox] user repo cloned in ${Date.now() - cloneStart}ms`);
+
+  console.log(`[setupSandbox] cloning cc-template`);
+  const ccStart = Date.now();
   await sandbox.git.clone("https://github.com/seanchiuai/cc-template.git", "cc-template");
+  console.log(`[setupSandbox] cc-template cloned in ${Date.now() - ccStart}ms`);
+
+  console.log(`[setupSandbox] copying template files to project`);
   await sandbox.process.executeCommand("cp -r cc-template/.claude project/");
   await sandbox.process.executeCommand(
     "cp cc-template/template-CLAUDE.md project/ && " +
@@ -71,15 +82,25 @@ async function setupSandboxEnvironment(
     "cp cc-template/docs/development-progress.yaml project/docs/ && " +
     "cp cc-template/prompts/phase-1.md project/prompts/",
   );
+
+  console.log(`[setupSandbox] uploading prompt (${prompt.length} chars)`);
   await sandbox.fs.uploadFile(Buffer.from(prompt, "utf-8"), "prompt.txt");
   await sandbox.process.executeCommand('git config user.name "Shipright" && git config user.email "bot@shipright.dev"', "project");
+
+  console.log(`[setupSandbox] environment setup complete in ${Date.now() - setupStart}ms`);
 }
 
 /** Install Claude Code CLI and launch as background process */
 async function launchClaudeCodeProcess(sandbox: Awaited<ReturnType<Daytona["create"]>>): Promise<void> {
+  console.log(`[launchClaude] installing Claude Code CLI...`);
+  const installStart = Date.now();
   await sandbox.process.executeCommand("npm install -g @anthropic-ai/claude-code", undefined, undefined, SANDBOX_TIMEOUTS.npmInstall);
+  console.log(`[launchClaude] CLI installed in ${Date.now() - installStart}ms`);
+
   const homeResult = await sandbox.process.executeCommand("echo $HOME");
   const homeDir = (homeResult.result || "").trim() || "/home/daytona";
+  console.log(`[launchClaude] home dir: ${homeDir}`);
+
   const launcherScript = `#!/bin/bash
 cd /home/daytona/project
 claude -p "$(cat /home/daytona/prompt.txt)" --model ${CLAUDE_CODE_CONFIG.model} --permission-mode ${CLAUDE_CODE_CONFIG.permissionMode} > /tmp/claude_output.txt 2>&1
@@ -88,6 +109,7 @@ echo $? > /tmp/claude_exit_code
   await sandbox.fs.uploadFile(Buffer.from(launcherScript, "utf-8"), `${homeDir}/run_claude.sh`);
   await sandbox.process.executeCommand("chmod +x ~/run_claude.sh");
   await sandbox.process.executeCommand("nohup ~/run_claude.sh > /dev/null 2>&1 &");
+  console.log(`[launchClaude] Claude Code launched (model=${CLAUDE_CODE_CONFIG.model}, mode=${CLAUDE_CODE_CONFIG.permissionMode})`);
 }
 
 // Step 1: Generate PRD markdown from interview requirements
@@ -102,12 +124,17 @@ export const generatePrd = action({
     const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
     if (!project?.requirements) throw new Error("Project has no requirements");
 
+    const reqJson = JSON.stringify(project.requirements);
+    console.log(formatLogEntry({ action: "generatePrd", projectId: pid, step: "generating_prd", status: "calling_ai", inputLength: reqJson.length }));
+
     const vertex = getVertexProvider();
     const result = await generateText({
       model: vertex("gemini-2.5-flash"),
       system: PRD_GENERATION_PROMPT,
-      prompt: JSON.stringify(project.requirements),
+      prompt: reqJson,
     });
+
+    console.log(formatLogEntry({ action: "generatePrd", projectId: pid, step: "generating_prd", status: "ai_complete", outputLength: result.text.length, usage: JSON.stringify(result.usage) }));
 
     await ctx.runMutation(api.projects.savePrdMarkdown, {
       projectId: args.projectId,
@@ -139,16 +166,21 @@ export const researchTechStack = action({
     if (!template) throw new Error("Template not found");
 
     const vertex = getVertexProvider();
+    const researchInput = JSON.stringify({
+      requirements: project.requirements,
+      templateStack: template.stack,
+      templateCapabilities: template.capabilities,
+      gaps: project.matchGaps || [],
+    });
+    console.log(formatLogEntry({ action: "researchTechStack", projectId: pid, step: "researching_stack", status: "calling_ai", inputLength: researchInput.length, gapCount: (project.matchGaps || []).length }));
+
     const { text } = await generateText({
       model: vertex("gemini-2.5-flash"),
       system: TECH_STACK_RESEARCH_PROMPT,
-      prompt: JSON.stringify({
-        requirements: project.requirements,
-        templateStack: template.stack,
-        templateCapabilities: template.capabilities,
-        gaps: project.matchGaps || [],
-      }),
+      prompt: researchInput,
     });
+
+    console.log(formatLogEntry({ action: "researchTechStack", projectId: pid, step: "researching_stack", status: "ai_complete", outputLength: text.length }));
 
     const techStack = parseJsonResponse(text) as {
       resolved: Array<{ need: string; library: string; package: string; reason: string }>;
@@ -341,20 +373,26 @@ export const executeSandbox = action({
 
     try {
       // Validate project exists and has required data
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "validate_project", status: "started" }));
       const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
       if (!project) throw new NotFoundError("Project", args.projectId);
       if (!project.githubRepoFullName) throw new PipelineError("sandbox_setup", "No GitHub repo linked to project");
       if (!project.prdMarkdown) throw new PipelineError("sandbox_setup", "PRD not generated");
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "validate_project", status: "completed", repo: project.githubRepoFullName, template: project.templateName || "unknown" }));
 
       // Get and validate user credentials
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "validate_credentials", status: "started" }));
       const user = await ctx.runQuery(internal.users.getById, { userId: project.userId });
       if (!user?.githubToken) throw new PipelineError("sandbox_setup", "GitHub not connected");
       const githubToken = decryptToken(user.githubToken);
 
       // Validate credentials are available BEFORE creating sandbox
       validateCredentialsAvailable(githubToken);
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "validate_credentials", status: "completed" }));
 
       // Validate repo access with retry
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "validate_repo_access", status: "started", repo: project.githubRepoFullName }));
+      const repoAccessStart = Date.now();
       const repoParsed = parseRepoFullName(project.githubRepoFullName);
       if (!repoParsed) throw new PipelineError("sandbox_setup", "Invalid repo name format");
       const octokit = new Octokit({ auth: githubToken });
@@ -368,6 +406,7 @@ export const executeSandbox = action({
       if (!repoCheck.accessible) {
         throw new ExternalServiceError("github", repoCheck.message, { repo: project.githubRepoFullName });
       }
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "validate_repo_access", status: "completed", durationMs: Date.now() - repoAccessStart }));
 
       // Build prompt for Claude Code
       const templates = await ctx.runQuery(api.templates.list, {});
@@ -385,6 +424,7 @@ export const executeSandbox = action({
         templateStack: template?.stack || [],
         matchGaps: project.matchGaps || [],
       });
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "build_prompt", status: "completed", promptLength: prompt.length, resolvedIntegrations: techStack.resolved?.length ?? 0 }));
 
       await ctx.runMutation(api.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
@@ -392,6 +432,8 @@ export const executeSandbox = action({
       });
 
       // Create sandbox with retry (NOT ephemeral — persists across actions)
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "create_sandbox", status: "started" }));
+      const sandboxCreateStart = Date.now();
       const sandbox = await withRetry(
         () => daytona.create({
           language: "typescript",
@@ -403,17 +445,27 @@ export const executeSandbox = action({
         { operation: "daytona.create", projectId: pid },
       );
 
-      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "sandbox_created", status: "completed", sandboxId: sandbox.id }));
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "create_sandbox", status: "completed", sandboxId: sandbox.id, durationMs: Date.now() - sandboxCreateStart }));
 
       // Provision all credentials using unified credential manager
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "provision_credentials", status: "started" }));
+      const credStart = Date.now();
       const credentials = buildSandboxCredentials(githubToken);
       await provisionSandboxCredentials(sandbox, credentials);
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "provision_credentials", status: "completed", durationMs: Date.now() - credStart }));
 
       // Setup environment (clone repos, copy files, configure git)
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "setup_environment", status: "started" }));
+      const envStart = Date.now();
       await setupSandboxEnvironment(sandbox, project.githubRepoFullName, githubToken, prompt);
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "setup_environment", status: "completed", durationMs: Date.now() - envStart }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "preparing_sandbox", status: "completed", durationMs: Date.now() - sandboxCreateStart }) });
 
       // Launch Claude Code as background process
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "launch_claude", status: "started" }));
+      const launchStart = Date.now();
       await launchClaudeCodeProcess(sandbox);
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "launch_claude", status: "completed", durationMs: Date.now() - launchStart }));
 
       // Save sandbox ID so pollSandbox can reconnect
       await ctx.runMutation(api.projects.saveSandboxInfo, {
@@ -427,10 +479,13 @@ export const executeSandbox = action({
         projectId: args.projectId,
         scaffoldingStatus: "running_sandbox",
       });
-      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "running_sandbox", status: "started" }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "running_sandbox", status: "started" }) });
+
+      const totalSetupMs = Date.now() - (await Promise.resolve(sandboxCreateStart));
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "running_sandbox", status: "started", totalSetupMs }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "running_sandbox", status: "started", metadata: { totalSetupMs } }) });
 
       // Schedule polling action to check completion
+      console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "schedule_polling", status: "completed", initialDelayMs: POLLING_CONFIG.initialDelayMs }));
       await ctx.scheduler.runAfter(POLLING_CONFIG.initialDelayMs, api.scaffolding.pollSandbox, { projectId: args.projectId });
     } catch (error: unknown) {
       const wrapped = wrapError(error, "sandbox_setup", { projectId: pid });
@@ -455,6 +510,9 @@ export const pollSandbox = action({
   handler: async (ctx, args) => {
     const pid = args.projectId;
     const count = args.pollCount || 0;
+    const pollStart = Date.now();
+    console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "poll_check", status: "started", pollCount: count }));
+
     const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
     if (!project || !project.sandboxId || !project.sandboxSessionId) {
       throw new PipelineError("sandbox_poll", "No sandbox info found", { projectId: pid });
@@ -462,6 +520,7 @@ export const pollSandbox = action({
 
     // Bail if already completed or failed
     if (project.scaffoldingStatus === "scaffolding_complete" || project.scaffoldingStatus === "scaffolding_failed") {
+      console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "poll_check", status: "skipped", reason: project.scaffoldingStatus }));
       return;
     }
 
@@ -486,29 +545,44 @@ export const pollSandbox = action({
       console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "running_sandbox", status: "checking", pollCount: count, exitCode: exitCodeStr }));
 
       if (exitCodeStr === "RUNNING" || exitCodeStr === "") {
-        // Log output every 5 polls for debugging
-        if (count % 5 === 4) {
+        const elapsedMinutes = ((count * POLLING_CONFIG.intervalMs) + POLLING_CONFIG.initialDelayMs) / 60_000;
+        // Log output every 3 polls for better visibility
+        if (count % 3 === 2) {
           try {
-            const output = await sandbox.process.executeCommand('tail -20 /tmp/claude_output.txt 2>/dev/null || echo "(no output yet)"');
-            console.log(`[pollSandbox] Claude output (tail 20): ${(output.result || "").slice(-500)}`);
+            const output = await sandbox.process.executeCommand('tail -30 /tmp/claude_output.txt 2>/dev/null || echo "(no output yet)"');
+            const outputSnippet = (output.result || "").slice(-800);
+            console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "running_sandbox", status: "in_progress", pollCount: count, elapsedMinutes: Math.round(elapsedMinutes * 10) / 10 }));
+            console.log(`[pollSandbox] Claude output (tail 30):\n${outputSnippet}`);
           } catch { /* ignore */ }
+        } else {
+          console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "running_sandbox", status: "still_running", pollCount: count, elapsedMinutes: Math.round(elapsedMinutes * 10) / 10 }));
         }
+        // Also check output file size to confirm Claude is producing output
+        try {
+          const sizeCheck = await sandbox.process.executeCommand('wc -c < /tmp/claude_output.txt 2>/dev/null || echo "0"');
+          const outputBytes = parseInt((sizeCheck.result || "0").trim(), 10);
+          console.log(`[pollSandbox] output file size: ${outputBytes} bytes`);
+        } catch { /* ignore */ }
+
         // Timeout after 40 polls (~20 min)
-        if (count >= 40) {
+        if (count >= POLLING_CONFIG.maxAttempts) {
           try {
             const output = await sandbox.process.executeCommand('tail -50 /tmp/claude_output.txt 2>/dev/null');
-            console.log(`[pollSandbox] TIMEOUT - Claude output: ${(output.result || "").slice(-1000)}`);
+            console.log(`[pollSandbox] TIMEOUT after ${POLLING_CONFIG.maxAttempts} polls (~${POLLING_CONFIG.timeoutMinutes}min) - Claude output:\n${(output.result || "").slice(-1500)}`);
           } catch { /* ignore */ }
           throw new ExternalServiceError("anthropic", "Claude Code timed out after 20 minutes", { pollCount: count });
         }
-        // Re-schedule poll in 30s
-        await ctx.scheduler.runAfter(30000, api.scaffolding.pollSandbox, { projectId: args.projectId, pollCount: count + 1 });
+        // Re-schedule poll
+        await ctx.scheduler.runAfter(POLLING_CONFIG.intervalMs, api.scaffolding.pollSandbox, { projectId: args.projectId, pollCount: count + 1 });
         return;
       }
 
       const exitCode = parseInt(exitCodeStr, 10);
+      console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "claude_finished", status: exitCode === 0 ? "success" : "failed", exitCode, pollCount: count }));
+
       if (exitCode !== 0) {
-        const output = await sandbox.process.executeCommand('tail -30 /tmp/claude_output.txt 2>/dev/null');
+        const output = await sandbox.process.executeCommand('tail -50 /tmp/claude_output.txt 2>/dev/null');
+        console.log(`[pollSandbox] Claude Code failed output (tail 50):\n${(output.result || "").slice(-1500)}`);
         throw new ExternalServiceError("anthropic", `Claude Code failed (exit ${exitCode}): ${(output.result || "").slice(0, 500)}`, { exitCode });
       }
 
@@ -541,7 +615,15 @@ export const pollSandbox = action({
       console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "pushing_files", status: "started" }));
       await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "pushing_files", status: "started" }) });
 
+      // List what Claude Code produced before pushing
+      try {
+        const diffStat = await sandbox.process.executeCommand('cd project && git add . && git diff --cached --stat 2>/dev/null | tail -20');
+        console.log(`[pollSandbox] git diff --stat:\n${(diffStat.result || "").slice(-1000)}`);
+      } catch { /* ignore */ }
+
       // Git commit and push with retry for transient failures
+      console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "git_push", status: "started" }));
+      const pushStart = Date.now();
       const pushResult = await withRetry(
         async () => {
           const result = await sandbox!.process.executeCommand(
@@ -549,6 +631,7 @@ export const pollSandbox = action({
             undefined, undefined, SANDBOX_TIMEOUTS.gitPush,
           );
           if (result.exitCode !== 0) {
+            console.log(`[pollSandbox] git push exitCode=${result.exitCode} output: ${(result.result || "").slice(-500)}`);
             throw new Error(`Git push failed: ${result.result?.slice(0, 500)}`);
           }
           return result;
@@ -556,13 +639,16 @@ export const pollSandbox = action({
         { ...GITHUB_RETRY_CONFIG, maxAttempts: 3 },
         { operation: "git_push", repo: project.githubRepoFullName },
       );
+      const pushDurationMs = Date.now() - pushStart;
+      console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "git_push", status: "completed", durationMs: pushDurationMs }));
+      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "pushing_files", status: "completed", durationMs: pushDurationMs }) });
 
       // Success!
       await ctx.runMutation(api.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "scaffolding_complete",
       });
-      console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "scaffolding_complete", status: "completed" }));
+      console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "scaffolding_complete", status: "completed", totalPollDurationMs: Date.now() - pollStart }));
       await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "scaffolding_complete", status: "completed" }) });
 
     } catch (error: unknown) {
@@ -585,7 +671,15 @@ export const pollSandbox = action({
         const current = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
         const done = current?.scaffoldingStatus === "scaffolding_complete" || current?.scaffoldingStatus === "scaffolding_failed";
         if (done) {
-          try { await daytona.delete(sandbox); } catch { /* best-effort */ }
+          console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "cleanup_sandbox", status: "started", sandboxId: project.sandboxId! }));
+          try {
+            await daytona.delete(sandbox);
+            console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "cleanup_sandbox", status: "completed" }));
+          } catch (cleanupErr) {
+            console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "cleanup_sandbox", status: "failed", error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr) }));
+          }
+        } else {
+          console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "cleanup_sandbox", status: "skipped", reason: `status=${current?.scaffoldingStatus}` }));
         }
       }
     }

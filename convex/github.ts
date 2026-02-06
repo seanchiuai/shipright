@@ -9,9 +9,9 @@ import { formatLogEntry } from "./lib/logger";
 import { buildEventArgs } from "./pipelineEvents";
 import { reportToSentry } from "./lib/sentry";
 import { AuthenticationError, ExternalServiceError, ShiprightError, getUserMessage } from "./lib/errors";
-import { fetchRepoFiles, commitFiles } from "./lib/git-operations";
+import { fetchRepoFiles, commitFiles } from "./lib/git_operations";
 
-export { isBinaryFile } from "./lib/git-operations";
+export { isBinaryFile } from "./lib/git_operations";
 
 export const exchangeGitHubCode = action({
   args: { code: v.string() },
@@ -157,8 +157,10 @@ export const cloneTemplate = action({
       const { owner, repo, ref, subpath } = parseTemplateUrl(
         args.templateSourceUrl
       );
+      console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "fetch_template", status: "started", templateOwner: owner, templateRepo: repo, ref: ref || "(default)", subpath: subpath || "(root)" }));
 
       let files: Array<{ path: string; content: string; isBinary: boolean }>;
+      const fetchStart = Date.now();
       try {
         files = await fetchRepoFiles(octokit, owner, repo, subpath, ref);
       } catch (error: unknown) {
@@ -167,6 +169,7 @@ export const cloneTemplate = action({
         }
         throw error;
       }
+      console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "fetch_template", status: "completed", fileCount: files.length, durationMs: Date.now() - fetchStart }));
 
       if (files.length === 0) {
         throw new ExternalServiceError("github", "Template repository is empty", { owner, repo, subpath });
@@ -187,6 +190,8 @@ export const cloneTemplate = action({
       // Without an initial commit, GitHub's Git Database API (createBlob, createTree)
       // rejects all calls with "Git Repository is empty".
       let newRepo;
+      console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "create_repo", status: "started", repoName: args.newRepoName }));
+      const createRepoStart = Date.now();
       try {
         const result = await octokit.rest.repos.createForAuthenticatedUser({
           name: args.newRepoName,
@@ -194,17 +199,19 @@ export const cloneTemplate = action({
           auto_init: true,
         });
         newRepo = result.data;
-        console.log(`Created repo with initial commit: ${newRepo.full_name}`);
+        console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "create_repo", status: "completed", repoFullName: newRepo.full_name, durationMs: Date.now() - createRepoStart }));
       } catch (error: unknown) {
         if ((error as { status?: number }).status === 422) {
           const suffix = Date.now().toString(36).slice(-4);
+          const fallbackName = `${args.newRepoName}-${suffix}`;
+          console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "create_repo", status: "name_conflict", fallbackName }));
           const result = await octokit.rest.repos.createForAuthenticatedUser({
-            name: `${args.newRepoName}-${suffix}`,
+            name: fallbackName,
             private: true,
             auto_init: true,
           });
           newRepo = result.data;
-          console.log(`Created repo with suffix: ${newRepo.full_name}`);
+          console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "create_repo", status: "completed", repoFullName: newRepo.full_name, durationMs: Date.now() - createRepoStart }));
         } else {
           throw error;
         }
@@ -217,9 +224,10 @@ export const cloneTemplate = action({
         repoUrl: newRepo.html_url,
         repoFullName,
       });
-      console.log(`Saved repo URL to project immediately`);
+      console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "save_repo_url", status: "completed", repoFullName }));
 
-      console.log(`Starting commit of ${files.length} files to ${newRepo.full_name}`);
+      console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "commit_files", status: "started", fileCount: files.length, targetRepo: repoFullName }));
+      const commitStart = Date.now();
       await commitFiles(
         octokit,
         newRepo.owner.login,
@@ -227,10 +235,11 @@ export const cloneTemplate = action({
         files,
         `Initial commit from Shipright template: ${repo}`
       );
+      console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "commit_files", status: "completed", fileCount: files.length, durationMs: Date.now() - commitStart }));
 
       // Mark repo as ready AFTER files are committed (prevents scaffolding race)
       await ctx.runMutation(api.projects.markRepoReady, { projectId: args.projectId });
-      console.log(`Marked repo as ready (files committed)`);
+      console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "mark_repo_ready", status: "completed" }));
 
       const durationMs = Date.now() - startedAt;
       console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "cloning_repo", status: "completed", durationMs }));

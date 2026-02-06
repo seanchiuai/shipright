@@ -6,7 +6,7 @@ import {
   createBlobWithRetry,
   createBlobsBatched,
   commitFiles,
-} from "./git-operations";
+} from "./git_operations";
 
 // Retry logic intentionally handles rejections asynchronously (after backoff delays),
 // which triggers Node's unhandled rejection tracker before the catch block runs.

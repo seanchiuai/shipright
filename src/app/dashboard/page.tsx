@@ -150,7 +150,7 @@ export default function DashboardPage() {
         >
           <div className="relative group">
             {/* Glow effect */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 rounded-2xl opacity-100 blur-lg transition-opacity duration-300" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 rounded-2xl opacity-100 blur-lg transition-opacity duration-300 pointer-events-none" />
 
             <div className="relative bg-card/90 backdrop-blur-sm border border-primary/30 rounded-2xl p-5 flex items-end gap-4 shadow-[0_4px_30px_rgba(240,140,58,0.12)] transition-all group-focus-within:border-primary group-focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.15)]">
               <textarea

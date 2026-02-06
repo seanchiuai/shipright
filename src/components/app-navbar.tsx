@@ -42,7 +42,7 @@ export function AppNavbar({
         </button>
 
         {title && (
-          <span className="hidden sm:block text-sm text-muted-foreground truncate max-w-[200px]">
+          <span className="hidden sm:block text-sm text-muted-foreground truncate max-w-[200px]" title={title}>
             {title}
           </span>
         )}

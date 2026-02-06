@@ -34,11 +34,15 @@ export async function fetchRepoFiles(
   path: string = "",
   ref?: string
 ): Promise<FileEntry[]> {
+  const fetchStart = Date.now();
+  console.log(`[fetchRepoFiles] owner=${owner} repo=${repo} path="${path}" ref=${ref || "(default)"}`);
+
   // Resolve the ref to use — default to repo's default branch
   let resolvedRef = ref;
   if (!resolvedRef) {
     const { data: repoData } = await octokit.rest.repos.get({ owner, repo });
     resolvedRef = repoData.default_branch;
+    console.log(`[fetchRepoFiles] resolved default branch: ${resolvedRef}`);
   }
 
   // Single API call to get the entire file tree
@@ -48,6 +52,7 @@ export async function fetchRepoFiles(
     tree_sha: resolvedRef,
     recursive: "true",
   });
+  console.log(`[fetchRepoFiles] tree has ${tree.tree.length} total entries (truncated=${tree.truncated})`);
 
   // Filter to blobs (files) only, apply subpath filter
   const prefix = path ? path + "/" : "";
@@ -58,13 +63,17 @@ export async function fetchRepoFiles(
       item.path &&
       (!prefix || item.path.startsWith(prefix))
   );
+  console.log(`[fetchRepoFiles] ${blobs.length} blobs match filter (prefix="${prefix}")`);
 
   // Download all blob contents in parallel batches
   const files: FileEntry[] = [];
   const batchSize = 20;
+  const totalBatches = Math.ceil(blobs.length / batchSize);
 
   for (let i = 0; i < blobs.length; i += batchSize) {
+    const batchNum = Math.floor(i / batchSize) + 1;
     const batch = blobs.slice(i, i + batchSize);
+    const batchStart = Date.now();
     const results = await Promise.all(
       batch.map(async (blob) => {
         const { data } = await octokit.rest.git.getBlob({
@@ -83,8 +92,11 @@ export async function fetchRepoFiles(
       })
     );
     files.push(...results);
+    console.log(`[fetchRepoFiles] batch ${batchNum}/${totalBatches} fetched ${batch.length} blobs in ${Date.now() - batchStart}ms`);
   }
 
+  const binaryCount = files.filter(f => f.isBinary).length;
+  console.log(`[fetchRepoFiles] done: ${files.length} files (${files.length - binaryCount} text, ${binaryCount} binary) in ${Date.now() - fetchStart}ms`);
   return files;
 }
 
@@ -96,6 +108,7 @@ export async function waitForRef(
   refName: string,
   maxRetries = 8
 ): Promise<string> {
+  console.log(`[waitForRef] waiting for ${owner}/${repo} ref=${refName} (max ${maxRetries} retries)`);
   // Initial delay to let GitHub's git backend initialize
   await new Promise((r) => setTimeout(r, 2000));
 
@@ -106,11 +119,15 @@ export async function waitForRef(
         repo,
         ref: refName,
       });
+      console.log(`[waitForRef] resolved on attempt ${i + 1}: sha=${ref.object.sha.slice(0, 8)}`);
       return ref.object.sha;
     } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.log(`[waitForRef] attempt ${i + 1}/${maxRetries} failed: ${errMsg.slice(0, 100)}`);
       if (i === maxRetries - 1) throw error;
-      // Exponential backoff capped at 10s
-      await new Promise((r) => setTimeout(r, Math.min(1000 * Math.pow(2, i), 10_000)));
+      const delay = Math.min(1000 * Math.pow(2, i), 10_000);
+      console.log(`[waitForRef] retrying in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
     }
   }
   throw new Error("Failed to get ref after retries");
@@ -136,11 +153,13 @@ export async function createBlobWithRetry(
         content,
         encoding: "base64",
       });
+      if (attempt > 0) console.log(`[createBlob] ${file.path} succeeded on attempt ${attempt + 1}`);
       return { path: file.path, sha: blob.sha };
     } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.log(`[createBlob] ${file.path} attempt ${attempt + 1}/${maxRetries} failed: ${errMsg.slice(0, 100)}`);
       if (attempt === maxRetries - 1) throw error;
       // Longer backoff for "Git Repository is empty" errors
-      const errMsg = error instanceof Error ? error.message : String(error);
       const delay = errMsg.includes("Git Repository is empty")
         ? Math.min(3000 * Math.pow(2, attempt), 15_000)
         : Math.min(1000 * Math.pow(2, attempt), 10_000);
@@ -159,13 +178,18 @@ export async function createBlobsBatched(
   batchSize = 10
 ): Promise<BlobResult[]> {
   const results: BlobResult[] = [];
+  const totalBatches = Math.ceil(files.length / batchSize);
+  console.log(`[createBlobsBatched] creating ${files.length} blobs in ${totalBatches} batches (size=${batchSize})`);
 
   for (let i = 0; i < files.length; i += batchSize) {
+    const batchNum = Math.floor(i / batchSize) + 1;
     const batch = files.slice(i, i + batchSize);
+    const batchStart = Date.now();
     const batchResults = await Promise.all(
       batch.map((file) => createBlobWithRetry(octokit, owner, repo, file))
     );
     results.push(...batchResults);
+    console.log(`[createBlobsBatched] batch ${batchNum}/${totalBatches} done (${batch.length} blobs) in ${Date.now() - batchStart}ms`);
     // Small delay between batches to avoid rate limiting
     if (i + batchSize < files.length) {
       await new Promise((r) => setTimeout(r, 500));
@@ -182,9 +206,11 @@ export async function commitFiles(
   files: FileEntry[],
   message: string
 ) {
+  const commitStart = Date.now();
+  console.log(`[commitFiles] starting commit of ${files.length} files to ${owner}/${repo}`);
   console.log(`[commitFiles] Waiting for main branch ref...`);
   const parentSha = await waitForRef(octokit, owner, repo, "heads/main");
-  console.log(`[commitFiles] Got parent SHA: ${parentSha}`);
+  console.log(`[commitFiles] Got parent SHA: ${parentSha} (${Date.now() - commitStart}ms elapsed)`);
 
   // Resolve commit SHA to tree SHA — createTree requires a tree SHA for base_tree
   console.log(`[commitFiles] Getting parent commit...`);
@@ -287,12 +313,12 @@ export async function commitFiles(
   });
   console.log(`[commitFiles] Commit created: ${commit.sha}`);
 
-  console.log(`[commitFiles] Updating ref...`);
+  console.log(`[commitFiles] Updating ref to ${commit.sha.slice(0, 8)}...`);
   await octokit.rest.git.updateRef({
     owner,
     repo,
     ref: "heads/main",
     sha: commit.sha,
   });
-  console.log(`[commitFiles] Done!`);
+  console.log(`[commitFiles] Done! Total commit duration: ${Date.now() - commitStart}ms`);
 }

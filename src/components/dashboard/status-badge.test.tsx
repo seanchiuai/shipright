@@ -62,4 +62,14 @@ describe("StatusBadge", () => {
     render(<StatusBadge status="unknown_xyz" />);
     expect(screen.getByText("In Progress")).toBeInTheDocument();
   });
+
+  it("renders 'Failed' when scaffoldingStatus is scaffolding_failed", () => {
+    render(<StatusBadge status="scaffolding" scaffoldingStatus="scaffolding_failed" />);
+    expect(screen.getByText("Failed")).toBeInTheDocument();
+  });
+
+  it("renders 'Scaffolding' when scaffoldingStatus is not failed", () => {
+    render(<StatusBadge status="scaffolding" scaffoldingStatus="running_sandbox" />);
+    expect(screen.getByText("Scaffolding")).toBeInTheDocument();
+  });
 });

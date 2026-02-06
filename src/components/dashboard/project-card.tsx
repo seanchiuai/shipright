@@ -31,6 +31,8 @@ export function ProjectCard({
     _id: Id<"projects">;
     name: string;
     status: string;
+    scaffoldingStatus?: string;
+    appIdea?: string;
     githubRepoUrl?: string;
     templateName?: string;
     _creationTime: number;
@@ -54,7 +56,7 @@ export function ProjectCard({
             <Folder className="w-6 h-6 text-primary" />
           </div>
           <div className="flex items-center gap-2">
-            <StatusBadge status={project.status} />
+            <StatusBadge status={project.status} scaffoldingStatus={project.scaffoldingStatus} />
             <DropdownMenu>
               <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100">
@@ -78,9 +80,15 @@ export function ProjectCard({
           </div>
         </div>
 
-        <h3 className="font-serif text-lg font-medium text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+        <h3 className="font-serif text-lg font-medium text-foreground mb-1 line-clamp-2 group-hover:text-primary transition-colors">
           {project.name}
         </h3>
+
+        {project.appIdea && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+            {project.appIdea}
+          </p>
+        )}
 
         <div className={`flex items-center gap-2 text-sm text-muted-foreground ${project.templateName ? "mb-1" : "mb-4"}`}>
           <Clock className="w-4 h-4" />
@@ -108,7 +116,10 @@ export function ProjectCard({
             </a>
           ) : (
             <span className="text-sm text-muted-foreground">
-              Continue building
+              {project.status === "interview" ? "Continue interview" :
+               project.scaffoldingStatus === "scaffolding_failed" || project.status === "repo_failed" ? "View details" :
+               project.status === "scaffolding" || project.status === "building" ? "In progress..." :
+               "View project"}
             </span>
           )}
           <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />

@@ -1,6 +1,6 @@
 import { PROJECT_STATUS } from "@/lib/constants";
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, scaffoldingStatus }: { status: string; scaffoldingStatus?: string }) {
   const statusConfig: Record<
     string,
     { label: string; color: string; bg: string; glow: string }
@@ -49,7 +49,8 @@ export function StatusBadge({ status }: { status: string }) {
     },
   };
 
-  const config = statusConfig[status] || statusConfig[PROJECT_STATUS.INTERVIEW];
+  const effectiveStatus = scaffoldingStatus === "scaffolding_failed" ? PROJECT_STATUS.REPO_FAILED : status;
+  const config = statusConfig[effectiveStatus] || statusConfig[PROJECT_STATUS.INTERVIEW];
 
   return (
     <span

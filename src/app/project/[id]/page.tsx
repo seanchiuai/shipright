@@ -35,6 +35,24 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { PROJECT_STATUS } from "@/lib/constants";
 
+function sanitizeErrorMessage(raw: string): string {
+  if (!raw) return "Something went wrong. Please try again.";
+  const lower = raw.toLowerCase();
+  if (lower.includes("debug:") || lower.includes("nohup") || lower.includes("launcher script"))
+    return "The build process encountered an issue. Please try again.";
+  if (lower.includes("oauth") || lower.includes("credentials") || lower.includes("authentication") || lower.includes("401") || lower.includes("bad credentials"))
+    return "Authentication expired. Please reconnect your GitHub account.";
+  if (lower.includes("timeout") || lower.includes("timed out"))
+    return "The operation timed out. Please try again.";
+  if (lower.includes("rate limit") || lower.includes("429"))
+    return "Rate limited by GitHub. Please wait a moment and retry.";
+  if (lower.includes("sandbox") || lower.includes("daytona"))
+    return "The build environment encountered an issue. Please retry.";
+  if (raw.length > 200 || raw.includes("stack") || raw.includes("at "))
+    return "An unexpected error occurred. Please try again.";
+  return raw;
+}
+
 export default function ProjectDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -277,8 +295,8 @@ export default function ProjectDetailsPage() {
           &larr; Back to Dashboard
         </Button>
 
-        {/* Transient error display */}
-        {error && (
+        {/* Transient error display (hidden when persistent error is shown) */}
+        {error && project.status !== PROJECT_STATUS.REPO_FAILED && !isScaffoldingFailed && (
           <Card className="mb-6 border-destructive">
             <CardContent className="pt-6 flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
@@ -297,7 +315,7 @@ export default function ProjectDetailsPage() {
               <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-destructive text-sm">
-                  {project.repoError || "Repository creation failed."}
+                  {sanitizeErrorMessage(project.repoError || "Repository creation failed.")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Attempt {project.repoRetryCount ?? 1} of 3
@@ -504,7 +522,7 @@ export default function ProjectDetailsPage() {
               <CardContent className="pt-6 flex items-center gap-3">
                 <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
                 <p className="text-destructive flex-1 text-sm">
-                  {errMsg || "Scaffolding failed. Please try again."}
+                  {sanitizeErrorMessage(errMsg || "Scaffolding failed. Please try again.")}
                 </p>
                 <div className="flex gap-2">
                   {(isRepoDeleted || isRepoRenamed) && (
