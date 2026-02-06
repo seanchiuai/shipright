@@ -50,6 +50,9 @@
 
 :root {
   --radius: 0.625rem;
+  --font-sans: "Avenir Next", "Segoe UI", "Inter", sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
 
   /* Warm editorial palette with amber accents */
   --background: #faf8f5;
@@ -112,6 +115,14 @@
 
   .font-mono {
     font-family: var(--font-mono), 'SF Mono', monospace;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 

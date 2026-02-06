@@ -7,6 +7,7 @@ import Image from "next/image";
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const [overDark, setOverDark] = useState(false);
   const rafId = useRef<number | null>(null);
 
   useEffect(() => {
@@ -14,6 +15,11 @@ export function Header() {
       if (rafId.current) cancelAnimationFrame(rafId.current);
       rafId.current = requestAnimationFrame(() => {
         setScrolled(window.scrollY > 20);
+        const darkSection = document.getElementById("how-it-works");
+        if (darkSection) {
+          const rect = darkSection.getBoundingClientRect();
+          setOverDark(rect.top < 80 && rect.bottom > 80);
+        }
       });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -24,49 +30,47 @@ export function Header() {
   }, []);
 
   return (
-    <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-background/90 backdrop-blur-md border-b border-border"
-          : "bg-transparent"
-      }`}
-    >
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-50 flex justify-center px-4 pt-3 pointer-events-none">
+      <div
+        className={`pointer-events-auto flex items-center justify-between transition-all duration-500 ease-in-out ${
+          scrolled
+            ? overDark
+              ? "max-w-2xl px-6 h-14 bg-[#0a0d16]/80 backdrop-blur-xl border border-white/[0.08] shadow-lg shadow-black/20 rounded-full"
+              : "max-w-2xl px-6 h-14 bg-background/85 backdrop-blur-xl border border-border shadow-lg rounded-full"
+            : "max-w-3xl px-6 h-14 bg-transparent rounded-2xl"
+        }`}
+        style={{ width: "100%" }}
+      >
         <a
           href="#"
-          className="flex items-center gap-2.5 font-semibold text-lg tracking-tight"
+          className={`flex items-center gap-2 font-semibold tracking-tight transition-all duration-500 ${
+            overDark ? "text-white" : ""
+          }`}
         >
           <Image
             src="/logo.png"
             alt="ShipRight"
             width={32}
             height={24}
-            className="w-8 h-auto"
+            className={`transition-all duration-500 w-8 h-auto ${
+              overDark ? "brightness-200" : ""
+            }`}
           />
-          ShipRight
+          <span className="transition-all duration-500 text-lg">
+            ShipRight
+          </span>
         </a>
-
-        <nav className="hidden md:flex items-center gap-8">
-          {[
-            ["How it works", "#how-it-works"],
-            ["Features", "#features"],
-            ["Pricing", "#pricing"],
-            ["FAQ", "#faq"],
-          ].map(([label, href]) => (
-            <a
-              key={href}
-              href={href}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
 
         <SignInButton mode="modal">
           <Button
             variant="default"
-            className="rounded-full px-5 text-sm font-medium h-9"
+            className={`rounded-full font-medium transition-all duration-500 ${
+              scrolled ? "px-5 text-sm h-9" : "px-5 text-sm h-9"
+            } ${
+              overDark
+                ? "bg-white text-[#0a0d16] hover:bg-white/90"
+                : ""
+            }`}
           >
             Get started
           </Button>

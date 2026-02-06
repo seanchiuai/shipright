@@ -92,7 +92,7 @@ export function ValueProp() {
               <h3 className="text-lg font-semibold mb-2 relative z-10">
                 {benefit.title}
               </h3>
-              <p className="text-[0.9375rem] text-muted-foreground relative z-10">
+              <p className="text-base text-muted-foreground relative z-10">
                 {benefit.description}
               </p>
             </motion.div>

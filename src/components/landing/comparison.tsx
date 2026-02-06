@@ -32,7 +32,7 @@ const rows = [
 
 export function Comparison() {
   return (
-    <section className="py-24 md:py-32">
+    <section id="compare" className="py-24 md:py-32">
       <div className="max-w-6xl mx-auto px-6">
         <div className="max-w-3xl mx-auto text-center mb-16">
           <p className="text-sm font-medium tracking-widest uppercase text-muted-foreground mb-3">

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { validateRepoAccess, parseRepoFullName } from "./github";
 
 describe("parseRepoFullName", () => {
@@ -24,6 +24,18 @@ describe("parseRepoFullName", () => {
 });
 
 describe("validateRepoAccess", () => {
+  it("calls repos.get with owner and repo", async () => {
+    const get = vi.fn(async () => ({ status: 200, data: {} }));
+    const mockOctokit = {
+      rest: {
+        repos: { get },
+      },
+    };
+
+    await validateRepoAccess(mockOctokit as never, "owner-x", "repo-y");
+    await expect(get).toHaveBeenCalledWith({ owner: "owner-x", repo: "repo-y" });
+  });
+
   it("returns accessible:true for 200 response", async () => {
     const mockOctokit = {
       rest: {
@@ -154,6 +166,29 @@ describe("validateRepoAccess", () => {
       accessible: false,
       reason: "unknown",
       message: "Unable to access repository: ECONNRESET",
+    });
+  });
+
+  it("returns unknown for non-Error thrown values", async () => {
+    const mockOctokit = {
+      rest: {
+        repos: {
+          get: async () => {
+            throw { status: 502 };
+          },
+        },
+      },
+    };
+
+    const result = await validateRepoAccess(
+      mockOctokit as never,
+      "owner",
+      "repo"
+    );
+    expect(result).toEqual({
+      accessible: false,
+      reason: "unknown",
+      message: "Unable to access repository: Unknown error",
     });
   });
 });

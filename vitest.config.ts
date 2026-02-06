@@ -15,5 +15,8 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.{ts,tsx}", "convex/**/*.test.ts", "lib/**/*.test.ts"],
     exclude: ["node_modules", ".next"],
+    passWithNoTests: false,
+    bail: 1,
+    dangerouslyIgnoreUnhandledErrors: false,
   },
 });

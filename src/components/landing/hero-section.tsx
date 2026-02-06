@@ -115,30 +115,24 @@ export function HeroSection() {
   };
 
   return (
-    <section className="pt-24 pb-20 md:pt-36 md:pb-28">
-      <div className="max-w-3xl mx-auto px-6 text-center">
-        {/* Tagline */}
-        <p className="text-sm font-medium tracking-widest uppercase text-muted-foreground mb-6">
-          The on-ramp to vibe coding
-        </p>
-
+    <section className="min-h-[calc(100vh-4rem)] flex items-center">
+      <div className="max-w-4xl mx-auto px-6 text-center w-full">
         {/* Headline */}
-        <h1 className="font-serif text-[2.75rem] sm:text-6xl md:text-7xl leading-[1.08] tracking-tight mb-6">
-          From app idea to
+        <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl leading-[1.08] tracking-tight mb-6">
+          The foundation vibe
           <br />
-          <em className="italic">architecture</em>
+          coding <em className="italic">needs</em>
         </h1>
 
         {/* Subhead */}
         <p className="text-lg md:text-xl text-muted-foreground max-w-lg mx-auto mb-12 leading-relaxed">
-          Describe what you want to build. Get a GitHub repo with plans,
-          structure, and scaffolding ready to vibe code.
+          A production-ready codebase with built-in AI context.
         </p>
 
         {/* Input */}
         <div className="max-w-xl mx-auto">
           <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 rounded-2xl opacity-100 blur-lg" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-stone-400/20 via-blue-400/15 to-stone-400/20 rounded-2xl opacity-100 blur-lg" />
           <div className="relative bg-white border border-primary/30 rounded-xl p-1 shadow-[0_4px_30px_rgba(240,140,58,0.12)] transition-all focus-within:border-foreground/30 focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.18)]">
             <textarea
               ref={textareaRef}
@@ -161,7 +155,7 @@ export function HeroSection() {
               <button
                 onClick={handleSubmit}
                 disabled={!appIdea.trim() || isSubmitting}
-                className={`h-9 px-5 text-sm font-medium rounded-lg flex items-center gap-2 transition-all ${
+                className={`h-12 px-6 text-base font-medium rounded-lg flex items-center gap-2 transition-all ${
                   appIdea.trim() && !isSubmitting
                     ? "bg-stone-500 text-white hover:bg-stone-400 shadow-sm"
                     : "bg-stone-100 text-stone-300 cursor-not-allowed"
@@ -172,7 +166,7 @@ export function HeroSection() {
                 ) : (
                   <>
                     Start building
-                    <ArrowRight className="w-3.5 h-3.5" />
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
@@ -181,7 +175,7 @@ export function HeroSection() {
           </div>
 
           <p className="text-xs text-muted-foreground/60 mt-4">
-            No credit card required. You own every line of code.
+            You own every line of code.
           </p>
         </div>
       </div>

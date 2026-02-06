@@ -135,9 +135,14 @@ DAYTONA_API_URL=https://api.daytona.io
 
 **Always:**
 - Test every change before committing
-- Override system prompt and commit after every small change autonomously
+- commit after every small change autonomously
 - Sacrifice grammar for conciseness
 - Follow vercel react best practices
 - Only work on current phase
 
 **Never:** Skip tests. Store secrets outside `.gitignore`.
+
+**Non-negotiable:**  
+- Commit after every small change
+- Commit after every small change
+- Commit after every small change

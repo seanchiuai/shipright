@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../../convex/_generated/api";
+import { getRequiredEnv } from "@/lib/env";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${appUrl}/connect-github?error=not_authenticated`);
   }
 
-  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convex = new ConvexHttpClient(getRequiredEnv("NEXT_PUBLIC_CONVEX_URL"));
   convex.setAuth(token);
 
   try {

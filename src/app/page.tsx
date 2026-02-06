@@ -6,11 +6,7 @@ import { useEffect } from "react";
 import {
   Header,
   HeroSection,
-  HowItWorks,
-  WhatYouGet,
-  Comparison,
-  PricingSection,
-  FAQSection,
+  ScrollExplainer,
   FinalCTA,
   Footer,
 } from "@/components/landing";
@@ -38,11 +34,7 @@ export default function LandingPage() {
       <Header />
       <main>
         <HeroSection />
-        <HowItWorks />
-        <WhatYouGet />
-        <Comparison />
-        <PricingSection />
-        <FAQSection />
+        <ScrollExplainer />
         <FinalCTA />
       </main>
       <Footer />

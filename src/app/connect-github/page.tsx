@@ -3,7 +3,7 @@
 import { useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,7 +24,7 @@ import {
   Unlink,
 } from "lucide-react";
 
-export default function ConnectGitHubPage() {
+function ConnectGitHubContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user: clerkUser, isLoaded } = useUser();
@@ -194,5 +194,19 @@ export default function ConnectGitHubPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ConnectGitHubPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
+        </div>
+      }
+    >
+      <ConnectGitHubContent />
+    </Suspense>
   );
 }

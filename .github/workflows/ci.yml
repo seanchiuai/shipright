@@ -19,11 +19,5 @@ jobs:
 
       - run: npm ci
 
-      - name: Type check
-        run: npm run type-check
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Unit tests
-        run: npm test
+      - name: Production checks
+        run: npm run production-check

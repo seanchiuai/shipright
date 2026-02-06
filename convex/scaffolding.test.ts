@@ -70,4 +70,17 @@ describe("buildSandboxPrompt", () => {
     const prompt = buildSandboxPrompt(baseParams);
     expect(prompt).toContain("Payment processing");
   });
+
+  it("uses 'None' fallback when match gaps are empty", () => {
+    const prompt = buildSandboxPrompt({
+      ...baseParams,
+      matchGaps: [],
+    });
+    expect(prompt).toContain("Template gaps: None");
+  });
+
+  it("keeps guardrail that placeholders must be filled", () => {
+    const prompt = buildSandboxPrompt(baseParams);
+    expect(prompt).toContain("Do NOT leave any {{PLACEHOLDER}} unfilled");
+  });
 });
