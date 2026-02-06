@@ -188,6 +188,7 @@ export const submitTechChoices = action({
     choices: v.any(), // Record<string, string> - need -> chosen library
   },
   handler: async (ctx, args) => {
+    console.log(formatLogEntry({ action: "submitTechChoices", projectId: args.projectId, step: "tech_choices", status: "submitted" }));
     await ctx.runMutation(api.projects.submitTechChoices, {
       projectId: args.projectId,
       techStackChoices: args.choices,
@@ -199,6 +200,9 @@ export const submitTechChoices = action({
 export const runScaffoldingPipeline = action({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
+    const pid = args.projectId;
+    console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "pipeline", status: "started" }));
+
     const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
     if (!project) throw new Error("Project not found");
 
@@ -211,32 +215,41 @@ export const runScaffoldingPipeline = action({
     try {
       // Step 1: Generate PRD (skip if already done)
       if (!project.prdMarkdown) {
+        console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "generating_prd", status: "running" }));
         await ctx.runMutation(api.projects.updateScaffoldingStatus, {
           projectId: args.projectId,
           scaffoldingStatus: "generating_prd",
         });
         await ctx.runAction(api.scaffolding.generatePrd, { projectId: args.projectId });
+      } else {
+        console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "generating_prd", status: "skipped" }));
       }
 
       // Step 2: Research tech stack (skip if already done)
       if (!project.techStackResearch) {
+        console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "researching_stack", status: "running" }));
         await ctx.runMutation(api.projects.updateScaffoldingStatus, {
           projectId: args.projectId,
           scaffoldingStatus: "researching_stack",
         });
         await ctx.runAction(api.scaffolding.researchTechStack, { projectId: args.projectId });
+      } else {
+        console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "researching_stack", status: "skipped" }));
       }
 
       // Check if we need user choices
       const updated = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
       if (updated?.scaffoldingStatus === "awaiting_tech_choices") {
+        console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "pipeline", status: "awaiting_choices" }));
         return; // UI will call resumeAfterChoices when user picks
       }
 
       // No choices needed — schedule sandbox as independent action (avoids Convex action timeout)
+      console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "pipeline", status: "scheduling_sandbox" }));
       await ctx.scheduler.runAfter(0, api.scaffolding.executeSandbox, { projectId: args.projectId });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Unknown scaffolding error";
+      console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "pipeline", status: "failed", error: message }));
       await reportToSentry({ message: `Scaffolding pipeline failed: ${message}`, context: { projectId: args.projectId, step: "runScaffoldingPipeline" } });
       await ctx.runMutation(api.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
@@ -252,6 +265,7 @@ export const runScaffoldingPipeline = action({
 export const resumeAfterChoices = action({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
+    console.log(formatLogEntry({ action: "resumeAfterChoices", projectId: args.projectId, step: "pipeline", status: "scheduling_sandbox" }));
     // Schedule sandbox as independent action (avoids Convex action timeout)
     await ctx.scheduler.runAfter(0, api.scaffolding.executeSandbox, { projectId: args.projectId });
   },

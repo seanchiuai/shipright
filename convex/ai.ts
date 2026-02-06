@@ -12,6 +12,7 @@ import {
 } from "../prompts";
 import { getVertexProvider } from "./lib/vertex";
 import { parseJsonResponse } from "./lib/json";
+import { formatLogEntry } from "./lib/logger";
 
 // --- Exported helpers for testing ---
 
@@ -144,6 +145,7 @@ export const generateInterviewQuestions = action({
     ),
   },
   handler: async (ctx, args) => {
+    console.log(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "started", round: args.round }));
     const vertex = getVertexProvider();
     const prompt = buildQuestionPrompt(args.appIdea, args.round, args.previousRounds);
 
@@ -164,7 +166,9 @@ export const generateInterviewQuestions = action({
       }>;
     };
 
-    return cleanQuestionResult(result);
+    const cleaned = cleanQuestionResult(result);
+    console.log(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "completed", questionCount: cleaned.questions.length }));
+    return cleaned;
   },
 });
 
@@ -179,6 +183,7 @@ export const continueConversation = action({
     exchangeCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "started", exchangeCount: args.exchangeCount ?? 0 }));
     const vertex = getVertexProvider();
     const messages = buildConversationMessages(args.appIdea, args.history, args.exchangeCount);
 
@@ -249,6 +254,8 @@ export const continueConversation = action({
       return { content: "", questionType: null };
     }
 
+    console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "completed", isComplete: !!parsed.isComplete }));
+
     // Persist AI message
     await ctx.runMutation(api.interviews.addMessage, {
       projectId: args.projectId,
@@ -268,6 +275,7 @@ export const extractRequirements = action({
     projectId: v.id("projects"),
   },
   handler: async (ctx, args) => {
+    console.log(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "started" }));
     const vertex = getVertexProvider();
 
     const project = await ctx.runQuery(api.projects.get, {
@@ -297,6 +305,7 @@ export const extractRequirements = action({
       requirements,
     });
 
+    console.log(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "completed" }));
     return { requirements };
   },
 });

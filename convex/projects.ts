@@ -46,6 +46,7 @@ export const updateStatus = mutation({
   },
   handler: async (ctx, args) => {
     await getOwnedProject(ctx, args.projectId);
+    console.log(`[projects.updateStatus] project=${args.projectId} status=${args.status}`);
     await ctx.db.patch(args.projectId, { status: args.status });
   },
 });
@@ -129,20 +130,25 @@ export const resetInterview = mutation({
 export const claimForRepoCreation = mutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
+    console.log(`[projects.claimForRepoCreation] project=${args.projectId} attempting`);
     const project = await ctx.db.get(args.projectId);
     if (!project) {
+      console.log(`[projects.claimForRepoCreation] project=${args.projectId} result=not_found`);
       return { claimed: false, reason: "Project not found" };
     }
     // Only allow claiming if status is "matched"
     if (project.status !== PROJECT_STATUS.MATCHED) {
+      console.log(`[projects.claimForRepoCreation] project=${args.projectId} result=wrong_status status=${project.status}`);
       return { claimed: false, reason: `Wrong status: ${project.status}` };
     }
     // If already has a repo, no need to create
     if (project.githubRepoUrl) {
+      console.log(`[projects.claimForRepoCreation] project=${args.projectId} result=already_has_repo`);
       return { claimed: false, reason: "Already has repo", existingRepo: project.githubRepoUrl };
     }
     // Atomically transition to "building" to prevent concurrent claims
     await ctx.db.patch(args.projectId, { status: PROJECT_STATUS.BUILDING });
+    console.log(`[projects.claimForRepoCreation] project=${args.projectId} result=claimed`);
     return { claimed: true };
   },
 });
@@ -199,6 +205,7 @@ export const setRepoFailed = mutation({
     }
 
     const currentRetries = project.repoRetryCount ?? 0;
+    console.log(`[projects.setRepoFailed] project=${args.projectId} error="${args.error}" retryCount=${currentRetries + 1}`);
     await ctx.db.patch(args.projectId, {
       status: "repo_failed",
       repoError: args.error,
@@ -316,6 +323,7 @@ export const updateScaffoldingStatus = mutation({
     scaffoldingError: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    console.log(`[projects.updateScaffoldingStatus] project=${args.projectId} scaffoldingStatus=${args.scaffoldingStatus}`);
     const patch: Record<string, unknown> = { scaffoldingStatus: args.scaffoldingStatus };
     if (args.scaffoldingError !== undefined) {
       patch.scaffoldingError = args.scaffoldingError;
