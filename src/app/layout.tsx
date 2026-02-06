@@ -37,6 +37,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         <ClerkProvider>
           <ConvexClientProvider>{children}</ConvexClientProvider>

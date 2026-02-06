@@ -43,9 +43,19 @@ describe("StatusBadge", () => {
     expect(screen.getByText("Building")).toBeInTheDocument();
   });
 
+  it("renders 'Scaffolding' for scaffolding status", () => {
+    render(<StatusBadge status="scaffolding" />);
+    expect(screen.getByText("Scaffolding")).toBeInTheDocument();
+  });
+
   it("renders 'Complete' for complete status", () => {
     render(<StatusBadge status="complete" />);
     expect(screen.getByText("Complete")).toBeInTheDocument();
+  });
+
+  it("renders 'Failed' for repo_failed status", () => {
+    render(<StatusBadge status="repo_failed" />);
+    expect(screen.getByText("Failed")).toBeInTheDocument();
   });
 
   it("falls back to 'In Progress' for unknown status", () => {

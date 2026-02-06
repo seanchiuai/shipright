@@ -29,11 +29,23 @@ export function StatusBadge({ status }: { status: string }) {
       bg: "bg-amber-50",
       glow: "shadow-[0_0_12px_rgba(240,140,58,0.2)]",
     },
+    [PROJECT_STATUS.SCAFFOLDING]: {
+      label: "Scaffolding",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+      glow: "shadow-[0_0_12px_rgba(99,102,241,0.2)]",
+    },
     [PROJECT_STATUS.COMPLETE]: {
       label: "Complete",
       color: "text-green-600",
       bg: "bg-green-50",
       glow: "shadow-[0_0_12px_rgba(34,197,94,0.2)]",
+    },
+    [PROJECT_STATUS.REPO_FAILED]: {
+      label: "Failed",
+      color: "text-red-600",
+      bg: "bg-red-50",
+      glow: "shadow-[0_0_12px_rgba(239,68,68,0.2)]",
     },
   };
 

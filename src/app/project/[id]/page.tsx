@@ -328,12 +328,12 @@ export default function ProjectDetailsPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
                 <h3 className="text-lg font-medium mb-2">
                   {project.status === PROJECT_STATUS.MATCHING && "Finding the best template..."}
-                  {project.status === PROJECT_STATUS.MATCHED && "Creating your repository..."}
+                  {(project.status === PROJECT_STATUS.MATCHED || project.status === PROJECT_STATUS.BUILDING) && "Creating your repository..."}
                 </h3>
                 <p className="text-muted-foreground text-center max-w-md mb-6">
                   {project.status === PROJECT_STATUS.MATCHING &&
                     "Analyzing your requirements to find the perfect starting point."}
-                  {project.status === PROJECT_STATUS.MATCHED &&
+                  {(project.status === PROJECT_STATUS.MATCHED || project.status === PROJECT_STATUS.BUILDING) &&
                     "Cloning the template and creating your GitHub repository."}
                 </p>
                 <ElapsedTimer
@@ -368,7 +368,7 @@ export default function ProjectDetailsPage() {
                 />
 
                 {/* Template info once matched */}
-                {project.status === PROJECT_STATUS.MATCHED &&
+                {(project.status === PROJECT_STATUS.MATCHED || project.status === PROJECT_STATUS.BUILDING) &&
                   matchedTemplate && (
                     <div className="w-full max-w-md space-y-4">
                       <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50">
