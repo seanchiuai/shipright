@@ -141,9 +141,35 @@ export function decryptToken(encryptedToken: string): string {
 openssl rand -hex 32
 ```
 
+## Git Operations Module
+
+The `convex/lib/git_operations.ts` module provides tested, production-ready Git operations used by `cloneTemplate` and the scaffolding pipeline. Always import from here rather than reimplementing.
+
+```typescript
+import {
+  fetchRepoFiles,
+  isBinaryFile,
+  waitForRef,
+  createBlobsBatched,
+  createBlobWithRetry,
+  commitFiles,
+} from "./lib/git_operations";
+```
+
+| Function | Purpose |
+|----------|---------|
+| `fetchRepoFiles(octokit, owner, repo, path, ref)` | Fetch all files via tree API, batch blob downloads |
+| `isBinaryFile(filename, size)` | Detect binary by extension/size (>1MB) |
+| `waitForRef(octokit, owner, repo, refName, maxRetries)` | Poll ref with exponential backoff |
+| `createBlobsBatched(octokit, owner, repo, files, batchSize)` | Create blobs in batches (default 10) |
+| `createBlobWithRetry(octokit, owner, repo, file, maxRetries)` | Single blob with retry |
+| `commitFiles(octokit, owner, repo, files, message)` | Full commit: blobs → tree → commit → update ref |
+
+Tests: `convex/lib/git_operations.test.ts` (40+ tests covering edge cases, retries, binary detection).
+
 ## Template Cloning
 
-Fetches all files from a template repo and commits to a new private repo.
+Fetches all files from a template repo and commits to a new private repo. Uses `git_operations.ts` helpers.
 
 ```typescript
 // convex/github.ts

@@ -18,11 +18,41 @@ convex/lib/
 ├── credentials.ts       — Unified credential manager for sandbox provisioning
 ├── retry.ts             — Exponential backoff for external APIs
 ├── errors.ts            — Structured error types with user messages
+├── git_operations.ts    — Tested Git operations (fetchRepoFiles, commitFiles, 40+ tests)
 ├── github.ts            — GitHub API helpers (validateRepoAccess, parseRepoFullName)
 ├── vertex.ts            — Shared Vertex AI provider config
 ├── json.ts              — JSON parsing (handles markdown code blocks)
 └── logger.ts            — Structured log formatting for pipeline actions
 ```
+
+## Configuration Constants
+
+```typescript
+// convex/scaffolding.ts
+
+/** Polling configuration for sandbox completion checks */
+export const POLLING_CONFIG = {
+  initialDelayMs: 60_000,      // 60s before first poll
+  intervalMs: 30_000,           // 30s between polls
+  maxAttempts: 40,              // Max 40 polls = ~20 min timeout
+  timeoutMinutes: 20,
+} as const;
+
+/** Timeout configuration for sandbox operations (seconds) */
+export const SANDBOX_TIMEOUTS = {
+  createSandbox: 120,   // 2 min to create sandbox
+  npmInstall: 90,       // 90s for npm install (Claude Code CLI)
+  gitPush: 60,          // 60s for git push
+} as const;
+
+/** Claude Code model configuration (not exported) */
+const CLAUDE_CODE_CONFIG = {
+  model: "claude-sonnet-4-20250514",
+  permissionMode: "bypassPermissions",
+} as const;
+```
+
+Note: `pollSandbox` is invoked via `ctx.scheduler.runAfter()` from `executeSandbox`. It runs independently with its own 10-minute time budget, separate from the orchestrator action.
 
 ## Step 1: PRD Generation
 

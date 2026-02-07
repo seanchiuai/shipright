@@ -48,6 +48,7 @@ These are non-negotiable constraints for any new UI work.
 
 ### Color
 
+- **Exception:** The landing page uses a dark theme (`#06080d` background, blue/amber accents via `data-theme="dark"`). All other pages use the warm editorial palette below.
 - Background is always `#faf8f5` (warm off-white) or `white` for elevated cards. Never `gray-50`, `slate-50`, or pure `#f5f5f5`.
 - Text is `stone-900` for headings, `stone-700` for body, `stone-500` for secondary/muted. Never `gray-*` or `zinc-*`.
 - The only accent color is amber (`#d97706` family). Use it for progress indicators, active states, and CTAs that need emphasis — sparingly.
@@ -126,27 +127,44 @@ After interview completes, everything is automatic until scaffolding is done.
 
 ## Page Layouts
 
-### Landing Page
+### Landing Page (Dark Theme)
+
+The landing page uses a dark theme (`#06080d` background, blue/amber accents) — intentionally diverging from the warm editorial palette used in dashboard/interview pages. This creates a cinematic first impression.
+
+**Components:** Header, HeroSection, ScrollExplainer (animated), FinalCTA, Footer
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
+│  [Logo] Shipright                        [Sign in]   [Dashboard]   │
+├────────────────────────────────────────────────────────────────────┤
 │                                                                    │
-│                         [Logo] Shipright                           │
+│           Turn your app idea into a production-ready               │
+│                    codebase with AI                                 │
 │                                                                    │
-│              Describe your app. Get a production-ready             │
-│                         codebase.                                  │
+│         [Try Shipright Free →]   [See How It Works]                │
 │                                                                    │
-│                    [Sign in with Google]                           │
+│  ═══════════════════════════════════════════════════════════════    │
 │                                                                    │
-│              ─────────────────────────────────────                 │
+│  ScrollExplainer (3 animated chapters, scroll-triggered):          │
 │                                                                    │
-│              How it works:                                         │
-│              1. Describe → Tell us your app idea                   │
-│              2. Match → We find the best template                  │
-│              3. Build → Get a GitHub repo ready to go              │
+│  Chapter 1: "Describe your app"                                    │
+│  → Animated chat conversation with typing indicators               │
 │                                                                    │
+│  Chapter 2: "We match templates"                                   │
+│  → Template matching animation with counting percentages           │
+│                                                                    │
+│  Chapter 3: "Files are scaffolded"                                 │
+│  → File tree with sequential scaffolding effect                    │
+│                                                                    │
+│  ═══════════════════════════════════════════════════════════════    │
+│                                                                    │
+│         FinalCTA: "Ready to build?" + [Get Started →]              │
+│                                                                    │
+│  ───────────────────── Footer ─────────────────────────────────    │
 └────────────────────────────────────────────────────────────────────┘
 ```
+
+**Removed sections** (consolidated into ScrollExplainer): comparison, social-proof, demo, building-in-public, faq, pricing, value-prop, how-it-works, what-you-get.
 
 ### Dashboard
 
@@ -368,28 +386,29 @@ Summary card appears inline in the chat after AI extracts requirements. Tiered l
 App
 ├── ClerkProvider + ConvexProvider
 └── Router
-    ├── / → LandingPage
-    │   └── SignInButton (Clerk)
-    ├── /dashboard → DashboardPage (protected)
+    ├── / → LandingPage (dark theme)
     │   ├── Header
+    │   ├── HeroSection
+    │   ├── ScrollExplainer (animated chapters)
+    │   ├── FinalCTA
+    │   └── Footer
+    ├── /dashboard → DashboardPage (protected)
+    │   ├── AppNavbar
     │   ├── ProjectGrid
     │   │   └── ProjectCard (repeat)
     │   └── NewProjectButton
     ├── /interview/:projectId → InterviewPage (protected)
-    │   ├── Header
-    │   ├── ProgressBar
-    │   ├── Step1AppIdea | Step2Questions | Step3Summary
-    │   └── NavigationButtons
-    ├── /building/:projectId → BuildingPage (protected)
-    │   ├── Header
-    │   ├── ProgressSteps
-    │   └── ProgressBar
-    ├── /success/:projectId → SuccessPage (protected)
-    │   ├── Header
-    │   ├── ProjectSummary
-    │   └── ActionButtons
+    │   ├── AppNavbar
+    │   ├── JourneyProgress
+    │   ├── ChatMessage / ChoiceGrid / MagicTextarea
+    │   └── InterviewInputArea
+    ├── /project/:projectId → ProjectDetailsPage (protected)
+    │   ├── AppNavbar
+    │   ├── MatchingProgress / BuildingProgress / ScaffoldingSteps
+    │   ├── TechChoicesUI
+    │   └── SuccessCard (repo URL, GitHub link)
     └── /connect-github → GitHubConnectPage (protected)
-        ├── Header
+        ├── AppNavbar
         └── ConnectButton
 ```
 
@@ -454,14 +473,15 @@ Using shadcn/ui components with Tailwind. See ui-components skill for patterns.
 
 ---
 
-## Incomplete / TBD
+## Incomplete / TBD (Deferred Post-MVP)
 
 - [x] Step 2 interview UX - chat-based with ChatMessage, ChoiceGrid, MagicTextarea
+- [x] Landing page dark theme redesign with animated scroll explainer
 - [ ] Edit modals for Step 3 summary
 - [ ] Email notification design (when build completes)
 - [ ] Settings page (disconnect GitHub, delete account)
 
 ---
 
-**Document Version:** 3.0 (added design identity, principles, rules)
-**Updated:** 2026-01-29
+**Document Version:** 3.1 (updated landing page for dark theme + scroll explainer, component hierarchy)
+**Updated:** 2026-02-07

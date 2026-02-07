@@ -100,4 +100,6 @@ Output:
 
 ## Reference Files
 
-- [reference.md](reference.md) - Generation templates, examples, Convex action patterns
+- [reference.md](reference.md) - Generation templates, examples, Convex action patterns, configuration constants
+- `convex/lib/git_operations.ts` — Tested Git operations (file fetching, blob creation, commit)
+- `convex/lib/credentials.ts` — Sandbox credential provisioning

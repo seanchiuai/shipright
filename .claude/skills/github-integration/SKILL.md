@@ -98,9 +98,23 @@ Single commit with all scaffolding files after Claude Code fills templates.
 | Rate limited (403) | Wait for reset, show user wait time |
 | Template unavailable | Re-run matching with different template |
 
+## Git Operations Module
+
+Template cloning and scaffolding commits use `convex/lib/git_operations.ts` — a tested module (40+ tests) with:
+
+- `fetchRepoFiles()` — Fetch all files via Git tree API with batch blob downloads
+- `isBinaryFile()` — Binary detection by extension and size
+- `createBlobsBatched()` — Create blobs in batches to avoid API overwhelming
+- `commitFiles()` — Full commit: blobs → tree → commit → update ref
+- `waitForRef()` — Poll for ref with exponential backoff
+- `createBlobWithRetry()` — Single blob creation with retry logic
+
+Always import from this module rather than reimplementing Git operations.
+
 ## Reference Files
 
 - [reference.md](reference.md) - Complete OAuth flow, API examples, encryption patterns
+- `convex/lib/git_operations.ts` — Tested Git operations (40+ unit tests)
 
 ## External Documentation
 
