@@ -1,150 +1,321 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef, useState, useEffect } from "react";
+import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import { Folder, FileText, Check, Sparkles } from "lucide-react";
 
-/* ─── Visual mockups ─────────────────────────────────────── */
+/* ─── Animation config ───────────────────────────────────── */
 
-function ChatBubbleMockup() {
+const ease = [0.25, 0.1, 0.25, 1] as const;
+
+/* ─── Typing indicator ───────────────────────────────────── */
+
+function TypingDots() {
   return (
-    <div className="flex flex-col w-full bg-[#080b14] rounded-2xl p-7 gap-3.5 border border-white/[0.06] shadow-2xl">
-      <div className="flex items-center gap-2 mb-1">
-        <div className="w-2 h-2 rounded-full bg-[#ff5f57]" />
-        <div className="w-2 h-2 rounded-full bg-[#febc2e]" />
-        <div className="w-2 h-2 rounded-full bg-[#28c840]" />
-        <span className="text-[11px] text-white/20 ml-2 font-mono tracking-wide">interview</span>
+    <div className="flex gap-3 items-start">
+      <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 ring-1 ring-primary/20">
+        <Sparkles className="w-3.5 h-3.5 text-primary" />
       </div>
-      <div className="flex gap-3 items-start">
-        <div className="w-7 h-7 rounded-full bg-blue-500/15 flex items-center justify-center flex-shrink-0 ring-1 ring-blue-400/20">
-          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-        </div>
-        <div className="bg-white/[0.06] rounded-2xl rounded-tl-md px-4 py-2.5 text-[13px] text-white/70 leading-relaxed">
-          What kind of app are you building?
-        </div>
-      </div>
-      <div className="flex gap-3 items-start justify-end">
-        <div className="bg-blue-500/10 border border-blue-400/15 rounded-2xl rounded-tr-md px-4 py-2.5 text-[13px] text-white/90 leading-relaxed">
-          A marketplace for freelance designers
-        </div>
-      </div>
-      <div className="flex gap-3 items-start">
-        <div className="w-7 h-7 rounded-full bg-blue-500/15 flex items-center justify-center flex-shrink-0 ring-1 ring-blue-400/20">
-          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-        </div>
-        <div className="bg-white/[0.06] rounded-2xl rounded-tl-md px-4 py-2.5 text-[13px] text-white/70 leading-relaxed">
-          Do you need payment processing? What about Stripe?
-        </div>
-      </div>
-      <div className="flex gap-3 items-start justify-end">
-        <div className="bg-blue-500/10 border border-blue-400/15 rounded-2xl rounded-tr-md px-4 py-2.5 text-[13px] text-white/90 leading-relaxed">
-          Yes — subscriptions + one-time payments
-        </div>
-      </div>
-      <div className="flex gap-3 items-start">
-        <div className="w-7 h-7 rounded-full bg-blue-500/15 flex items-center justify-center flex-shrink-0 ring-1 ring-blue-400/20">
-          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-        </div>
-        <div className="bg-white/[0.06] rounded-2xl rounded-tl-md px-4 py-2 inline-flex">
-          <div className="flex gap-1 items-center">
-            <div className="w-1 h-1 rounded-full bg-blue-400/60 animate-pulse" />
-            <div className="w-1 h-1 rounded-full bg-blue-400/60 animate-pulse [animation-delay:200ms]" />
-            <div className="w-1 h-1 rounded-full bg-blue-400/60 animate-pulse [animation-delay:400ms]" />
-          </div>
+      <div className="bg-foreground/[0.06] rounded-2xl rounded-tl-md px-4 py-2 inline-flex">
+        <div className="flex gap-1 items-center">
+          <div className="w-1 h-1 rounded-full bg-primary/60 animate-pulse" />
+          <div className="w-1 h-1 rounded-full bg-primary/60 animate-pulse [animation-delay:200ms]" />
+          <div className="w-1 h-1 rounded-full bg-primary/60 animate-pulse [animation-delay:400ms]" />
         </div>
       </div>
     </div>
   );
 }
 
-function TemplateCardsMockup() {
-  const templates = [
-    { name: "Next.js + Convex SaaS", match: 94, selected: true },
-    { name: "React + Supabase", match: 71, selected: false },
-    { name: "Next.js + Prisma", match: 58, selected: false },
-    { name: "Remix + Drizzle", match: 42, selected: false },
-  ];
+/* ─── Chat mockup — simulates a real conversation ────────── */
+
+const chatMessages = [
+  { role: "ai" as const, text: "What kind of app are you building?" },
+  { role: "user" as const, text: "A marketplace for freelance designers" },
+  { role: "ai" as const, text: "Do you need payment processing? What about Stripe?" },
+  { role: "user" as const, text: "Yes — subscriptions + one-time payments" },
+];
+
+function ChatBubbleMockup() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-10%" });
+  const [visible, setVisible] = useState(0);
+  const [typing, setTyping] = useState(false);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (!inView || started.current) return;
+    started.current = true;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let idx = 0;
+
+    const showNext = () => {
+      if (idx >= chatMessages.length) {
+        timers.push(setTimeout(() => setTyping(true), 300));
+        return;
+      }
+      if (chatMessages[idx].role === "ai") {
+        setTyping(true);
+        timers.push(setTimeout(() => {
+          setTyping(false);
+          idx++;
+          setVisible(idx);
+          timers.push(setTimeout(showNext, 400));
+        }, 700));
+      } else {
+        idx++;
+        setVisible(idx);
+        timers.push(setTimeout(showNext, 500));
+      }
+    };
+
+    timers.push(setTimeout(showNext, 400));
+    return () => timers.forEach(clearTimeout);
+  }, [inView]);
+
   return (
-    <div className="flex flex-col w-full bg-[#080b14] rounded-2xl p-7 gap-3 border border-white/[0.06] shadow-2xl">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[11px] text-white/20 uppercase tracking-[0.15em] font-mono">
+    <div ref={ref} className="flex flex-col w-full bg-card rounded-2xl p-7 gap-3.5 border border-border shadow-2xl overflow-hidden min-h-[280px]">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-2 h-2 rounded-full bg-[#ff5f57]" />
+        <div className="w-2 h-2 rounded-full bg-[#febc2e]" />
+        <div className="w-2 h-2 rounded-full bg-[#28c840]" />
+        <span className="text-[11px] text-foreground/20 ml-2 font-mono tracking-wide">interview</span>
+      </div>
+
+      {chatMessages.slice(0, visible).map((msg, i) => (
+        <motion.div
+          key={i}
+          className={`flex gap-3 items-start ${msg.role === "user" ? "justify-end" : ""}`}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease }}
+        >
+          {msg.role === "ai" && (
+            <div className="w-7 h-7 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0 ring-1 ring-primary/20">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+            </div>
+          )}
+          <div
+            className={
+              msg.role === "ai"
+                ? "bg-foreground/[0.06] rounded-2xl rounded-tl-md px-4 py-2.5 text-[13px] text-foreground/70 leading-relaxed"
+                : "bg-primary/10 border border-primary/15 rounded-2xl rounded-tr-md px-4 py-2.5 text-[13px] text-foreground/90 leading-relaxed"
+            }
+          >
+            {msg.text}
+          </div>
+        </motion.div>
+      ))}
+
+      {typing && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+        >
+          <TypingDots />
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Template matching mockup — scans & matches ─────────── */
+
+const templateData = [
+  { name: "Next.js + Convex SaaS", match: 94, selected: true },
+  { name: "React + Supabase", match: 71, selected: false },
+  { name: "Next.js + Prisma", match: 58, selected: false },
+  { name: "Remix + Drizzle", match: 42, selected: false },
+];
+
+function TemplateCardsMockup() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-10%" });
+  const [counts, setCounts] = useState([0, 0, 0, 0]);
+  const [showCheck, setShowCheck] = useState(false);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (!inView || started.current) return;
+    started.current = true;
+
+    const targets = templateData.map((t) => t.match);
+    const duration = 900;
+
+    const timer = setTimeout(() => {
+      const startTime = performance.now();
+      const tick = () => {
+        const elapsed = performance.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCounts(targets.map((t) => Math.round(t * eased)));
+        if (progress < 1) {
+          requestAnimationFrame(tick);
+        } else {
+          setShowCheck(true);
+        }
+      };
+      requestAnimationFrame(tick);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [inView]);
+
+  return (
+    <div ref={ref} className="flex flex-col w-full bg-card rounded-2xl p-7 gap-3 border border-border shadow-2xl">
+      <motion.div
+        className="flex items-center justify-between mb-1"
+        initial={{ opacity: 0 }}
+        animate={inView ? { opacity: 1 } : {}}
+        transition={{ duration: 0.4 }}
+      >
+        <span className="text-[11px] text-foreground/20 uppercase tracking-[0.15em] font-mono">
           Template matching
         </span>
-        <span className="text-[11px] text-blue-400/60 font-mono">4 found</span>
-      </div>
-      {templates.map((t) => (
-        <div
+        <span className="text-[11px] text-primary/60 font-mono">4 found</span>
+      </motion.div>
+      {templateData.map((t, i) => (
+        <motion.div
           key={t.name}
-          className={`flex items-center justify-between rounded-xl px-4 py-3.5 transition-all ${
-            t.selected
+          className={`flex items-center justify-between rounded-xl px-4 py-3.5 ${
+            t.selected && showCheck
               ? "bg-emerald-500/[0.08] border border-emerald-400/25 shadow-[0_0_24px_-6px_rgba(16,185,129,0.15)]"
-              : "bg-white/[0.02] border border-white/[0.05]"
+              : "bg-foreground/[0.02] border border-border"
           }`}
+          initial={{ opacity: 0, x: 24 }}
+          animate={inView ? { opacity: 1, x: 0 } : {}}
+          transition={{ delay: 0.15 + i * 0.12, duration: 0.5, ease }}
         >
           <div className="flex items-center gap-2.5">
-            {t.selected && <Check className="w-4 h-4 text-emerald-400" />}
-            <span className={`font-mono text-[13px] ${t.selected ? "text-emerald-300" : "text-white/30"}`}>
+            {t.selected && showCheck && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              >
+                <Check className="w-4 h-4 text-emerald-400" />
+              </motion.div>
+            )}
+            <span
+              className={`font-mono text-[13px] transition-colors duration-300 ${
+                t.selected && showCheck ? "text-emerald-300" : "text-foreground/30"
+              }`}
+            >
               {t.name}
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-14 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+            <div className="w-14 h-1 rounded-full bg-foreground/[0.06] overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${t.selected ? "bg-emerald-400" : "bg-white/10"}`}
-                style={{ width: `${t.match}%` }}
+                className={`h-full rounded-full ${
+                  t.selected && showCheck ? "bg-emerald-400" : "bg-foreground/10"
+                }`}
+                style={{ width: `${counts[i]}%` }}
               />
             </div>
-            <span className={`text-[11px] font-mono tabular-nums ${t.selected ? "text-emerald-400" : "text-white/20"}`}>
-              {t.match}%
+            <span
+              className={`text-[11px] font-mono tabular-nums w-7 text-right transition-colors duration-300 ${
+                t.selected && showCheck ? "text-emerald-400" : "text-foreground/20"
+              }`}
+            >
+              {counts[i]}%
             </span>
           </div>
-        </div>
+        </motion.div>
       ))}
     </div>
   );
 }
 
+/* ─── File tree mockup — files appear as if scaffolded ──── */
+
+const fileData = [
+  { name: "CLAUDE.md", type: "file" as const, glow: true, label: "AI context" },
+  { name: "TASKS.md", type: "file" as const, glow: true, label: "Backlog" },
+  { name: "PRD.md", type: "file" as const, glow: true, label: "Requirements" },
+  { name: ".claude/", type: "folder" as const, glow: true },
+  { name: "skills/", type: "folder" as const, glow: false },
+  { name: "src/", type: "folder" as const, glow: false },
+  { name: "package.json", type: "file" as const, glow: false },
+  { name: "tsconfig.json", type: "file" as const, glow: false },
+];
+
 function FileTreeMockup() {
-  const files = [
-    { name: "CLAUDE.md", type: "file" as const, glow: true, label: "AI context" },
-    { name: "TASKS.md", type: "file" as const, glow: true, label: "Backlog" },
-    { name: "PRD.md", type: "file" as const, glow: true, label: "Requirements" },
-    { name: ".claude/", type: "folder" as const, glow: true },
-    { name: "skills/", type: "folder" as const, glow: false },
-    { name: "src/", type: "folder" as const, glow: false },
-    { name: "package.json", type: "file" as const, glow: false },
-    { name: "tsconfig.json", type: "file" as const, glow: false },
-  ];
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-10%" });
+  const [visibleFiles, setVisibleFiles] = useState(0);
+  const started = useRef(false);
+
+  useEffect(() => {
+    if (!inView || started.current) return;
+    started.current = true;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    fileData.forEach((_, i) => {
+      timers.push(
+        setTimeout(() => setVisibleFiles(i + 1), 300 + i * 120)
+      );
+    });
+    return () => timers.forEach(clearTimeout);
+  }, [inView]);
+
   return (
-    <div className="flex flex-col w-full bg-[#080b14] rounded-2xl p-7 font-mono border border-white/[0.06] shadow-2xl">
+    <div ref={ref} className="flex flex-col w-full bg-card rounded-2xl p-7 font-mono border border-border shadow-2xl">
       <div className="flex items-center gap-2 mb-5">
         <div className="w-2 h-2 rounded-full bg-[#ff5f57]" />
         <div className="w-2 h-2 rounded-full bg-[#febc2e]" />
         <div className="w-2 h-2 rounded-full bg-[#28c840]" />
-        <span className="text-[11px] text-white/20 ml-2 tracking-wide">~/my-saas-app</span>
+        <span className="text-[11px] text-foreground/20 ml-2 tracking-wide">~/my-saas-app</span>
       </div>
       <div className="space-y-px">
-        <div className="flex items-center gap-2 text-white/40 py-1 text-[13px]">
+        {/* Root folder */}
+        <motion.div
+          className="flex items-center gap-2 text-foreground/40 py-1 text-[13px]"
+          initial={{ opacity: 0, x: -12 }}
+          animate={inView ? { opacity: 1, x: 0 } : {}}
+          transition={{ delay: 0.1, duration: 0.4, ease }}
+        >
           <Folder className="w-4 h-4" />
           <span>my-saas-app/</span>
-        </div>
+        </motion.div>
+        {/* File entries — appear one by one */}
         <div className="ml-5 space-y-px">
-          {files.map((f) => (
-            <div
+          {fileData.slice(0, visibleFiles).map((f) => (
+            <motion.div
               key={f.name}
               className={`flex items-center gap-2 py-1 text-[13px] ${
-                f.glow ? "text-emerald-400" : "text-white/20"
+                f.glow ? "text-emerald-400" : "text-foreground/20"
               }`}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, ease }}
             >
-              {f.type === "folder" ? <Folder className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+              {f.type === "folder" ? (
+                <Folder className="w-4 h-4" />
+              ) : (
+                <FileText className="w-4 h-4" />
+              )}
               <span>{f.name}</span>
               {"label" in f && f.label && (
-                <span className="text-[10px] px-1.5 py-px rounded-md bg-emerald-500/10 text-emerald-400/80 border border-emerald-400/15">
+                <motion.span
+                  className="text-[10px] px-1.5 py-px rounded-md bg-emerald-500/10 text-emerald-400/80 border border-emerald-400/15"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.15, duration: 0.25, ease }}
+                >
                   {f.label}
-                </span>
+                </motion.span>
               )}
-            </div>
+            </motion.div>
           ))}
+          {/* Blinking cursor at the end */}
+          {visibleFiles > 0 && visibleFiles < fileData.length && (
+            <div className="flex items-center gap-2 py-1 text-[13px] text-foreground/20">
+              <div className="w-1.5 h-3.5 bg-emerald-400/60 animate-pulse rounded-sm" />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -192,7 +363,6 @@ function ScrollStep({
     offset: ["start end", "end start"],
   });
 
-  // All hooks called unconditionally — use isLast to pick keyframes
   const textOpacity = useTransform(
     scrollYProgress,
     isLast ? [0, 0.3, 0.5, 1] : [0, 0.3, 0.5, 0.7, 1],
@@ -215,21 +385,21 @@ function ScrollStep({
   );
 
   return (
-    <div ref={ref} className="h-screen flex items-center relative">
+    <div ref={ref} className="h-[75vh] flex items-center relative">
       <div className="w-full max-w-7xl mx-auto px-6 lg:px-12">
-        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+        <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-14">
           {/* Text side */}
           <motion.div
             className="w-full lg:w-[42%] relative z-10"
             style={{ opacity: textOpacity, y: textY }}
           >
-            <span className="font-mono text-sm text-blue-400/70 mb-4 block tracking-wider">
+            <span className="font-mono text-sm text-primary/70 mb-2 block tracking-wider">
               0{index + 1}
             </span>
-            <h3 className="font-serif text-3xl md:text-4xl lg:text-[2.75rem] tracking-tight text-white mb-5 leading-[1.1]">
+            <h3 className="font-serif text-3xl md:text-4xl lg:text-[2.75rem] tracking-tight text-foreground mb-3 leading-[1.1]">
               {step.title}
             </h3>
-            <p className="text-base md:text-lg text-white/40 leading-relaxed max-w-md">
+            <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-md">
               {step.description}
             </p>
           </motion.div>
@@ -250,35 +420,21 @@ function ScrollStep({
 /* ─── Main component ─────────────────────────────────────── */
 
 export function ScrollExplainer() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start end", "start start"],
-  });
-
-  // Gradient transition opacity — fades in as section approaches
-  const gradientOpacity = useTransform(scrollYProgress, [0, 0.6, 1], [0, 0.5, 1]);
-
   return (
-    <section id="how-it-works" ref={sectionRef} className="relative">
-      {/* Smooth atmosphere transition */}
-      <motion.div
-        className="h-[70vh] relative overflow-hidden"
-        style={{ opacity: gradientOpacity }}
-      >
-        <div className="absolute inset-0" style={{
-          background: "linear-gradient(to bottom, transparent 0%, #0a0d16 100%)",
-        }} />
-      </motion.div>
+    <section id="how-it-works" className="relative">
+      {/* Seamless dark canvas */}
+      <div className="relative bg-background overflow-hidden">
+        {/* Ambient glow */}
+        <div
+          className="absolute top-1/4 right-0 w-[800px] h-[800px] pointer-events-none"
+          style={{ background: "radial-gradient(circle at center, rgba(59,130,246,0.03) 0%, transparent 70%)" }}
+        />
+        <div
+          className="absolute bottom-1/3 left-0 w-[600px] h-[600px] pointer-events-none"
+          style={{ background: "radial-gradient(circle at center, rgba(99,102,241,0.03) 0%, transparent 70%)" }}
+        />
 
-      {/* Deep space canvas */}
-      <div className="relative bg-[#0a0d16] overflow-hidden">
-        {/* Ambient glow — large soft orb */}
-        <div className="absolute top-1/4 right-0 w-[800px] h-[800px] rounded-full bg-blue-500/[0.03] blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-1/3 left-0 w-[600px] h-[600px] rounded-full bg-indigo-500/[0.03] blur-[100px] pointer-events-none" />
-
-        {/* Static star field */}
+        {/* Star field */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           {[
             { pos: "top-[8%] left-[12%]", o: 0.2 },  { pos: "top-[15%] left-[78%]", o: 0.3 },
@@ -293,35 +449,30 @@ export function ScrollExplainer() {
           ].map((star, i) => (
             <div
               key={i}
-              className={`absolute w-px h-px bg-white rounded-full ${star.pos}`}
+              className={`absolute w-px h-px bg-foreground rounded-full ${star.pos}`}
               style={{ opacity: star.o }}
             />
           ))}
         </div>
 
         {/* Section heading */}
-        <div className="relative z-10 flex items-center justify-center h-[80vh]">
+        <div className="relative z-10 flex items-center justify-center h-[40vh]">
           <div className="text-center px-6">
-            <p className="text-[13px] font-mono tracking-[0.2em] uppercase text-blue-400/50 mb-5">
+            <p className="text-[13px] font-mono tracking-[0.2em] uppercase text-primary/50 mb-3">
               How it works
             </p>
-            <h2 className="font-serif text-4xl md:text-5xl lg:text-[3.5rem] leading-[1.08] tracking-tight text-white max-w-2xl mx-auto">
+            <h2 className="font-serif text-4xl md:text-5xl lg:text-[3.5rem] leading-[1.08] tracking-tight text-foreground max-w-2xl mx-auto">
               From idea to AI-ready repo
             </h2>
           </div>
         </div>
 
-        {/* Scroll steps — each step is 100vh, text + visual animate per-element */}
+        {/* Scroll steps */}
         <div className="relative z-10">
           {steps.map((_, index) => (
             <ScrollStep key={index} index={index} total={steps.length} />
           ))}
         </div>
-
-        {/* Bottom fade into next section */}
-        <div className="h-32" style={{
-          background: "linear-gradient(to bottom, transparent, #1c1917)",
-        }} />
       </div>
     </section>
   );

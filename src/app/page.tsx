@@ -30,7 +30,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground" data-theme="dark">
       <Header />
       <main>
         <HeroSection />

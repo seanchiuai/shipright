@@ -54,7 +54,7 @@
   --font-serif: "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
 
-  /* Warm editorial palette with amber accents */
+  /* Warm editorial palette — app default */
   --background: #faf8f5;
   --foreground: #1c1917;
   --card: #ffffff;
@@ -79,7 +79,7 @@
   --amber-light: #fbbf24;
   --amber-dark: #b45309;
 
-  /* Chart colors - warm palette */
+  /* Chart colors — warm palette */
   --chart-1: #1c1917;
   --chart-2: #d97706;
   --chart-3: #059669;
@@ -93,6 +93,40 @@
   --sidebar-accent-foreground: #1c1917;
   --sidebar-border: #e2ddd5;
   --sidebar-ring: #1c1917;
+}
+
+/* Dark theme — scoped for landing page */
+[data-theme="dark"] {
+  --background: #06080d;
+  --foreground: #e8eaed;
+  --card: #080b14;
+  --card-foreground: #e8eaed;
+  --popover: #0c1018;
+  --popover-foreground: #e8eaed;
+  --primary: #3b82f6;
+  --primary-foreground: #ffffff;
+  --secondary: #111827;
+  --secondary-foreground: #e8eaed;
+  --muted: #111827;
+  --muted-foreground: rgba(255, 255, 255, 0.4);
+  --accent: #1e293b;
+  --accent-foreground: #e8eaed;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.06);
+  --ring: #3b82f6;
+
+  /* Blue accent family */
+  --amber: #3b82f6;
+  --amber-light: #60a5fa;
+  --amber-dark: #2563eb;
+
+  /* Chart colors */
+  --chart-1: #3b82f6;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #8b5cf6;
+  --chart-5: #ef4444;
 }
 
 @layer base {

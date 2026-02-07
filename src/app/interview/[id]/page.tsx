@@ -238,14 +238,14 @@ export default function InterviewPage() {
   // Loading state
   if (!isLoaded || convexUser === undefined || project === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "hsl(40, 22%, 97%)" }}>
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <motion.div
           className="flex flex-col items-center gap-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <div className="w-6 h-6 border-2 border-stone-300 border-t-stone-700 rounded-full animate-spin" />
-          <span className="text-[13px] text-stone-400">Loading your project...</span>
+          <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-foreground/70 rounded-full animate-spin" />
+          <span className="text-[13px] text-muted-foreground">Loading your project...</span>
         </motion.div>
       </div>
     );
@@ -259,7 +259,7 @@ export default function InterviewPage() {
   if (!project) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-[14px] text-stone-400">Project not found</p>
+        <p className="text-[14px] text-muted-foreground">Project not found</p>
       </div>
     );
   }
@@ -333,7 +333,7 @@ export default function InterviewPage() {
                             }}
                             multiSelect={msg.questionType === "multiselect"}
                           />
-                          <p className="pt-1.5 text-[11px] text-stone-400 italic">
+                          <p className="pt-1.5 text-[11px] text-muted-foreground italic">
                             Answer in text box below if none apply
                           </p>
                           {msg.questionType === "multiselect" && multiselectValue.length > 0 && (
@@ -346,7 +346,7 @@ export default function InterviewPage() {
                               <button
                                 onClick={() => handleAnswer(multiselectValue)}
                                 disabled={multiselectValue.length === 0}
-                                className="inline-flex items-center gap-1.5 h-8 px-4 bg-stone-800 text-white text-[13px] font-medium rounded-xl hover:bg-stone-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="inline-flex items-center gap-1.5 h-8 px-4 bg-primary text-primary-foreground text-[13px] font-medium rounded-xl hover:bg-primary/80 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                               >
                                 Continue
                               </button>

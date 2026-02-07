@@ -174,8 +174,8 @@ export default function DashboardPage() {
                 disabled={creating || !appIdea.trim()}
                 className={`w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all flex-shrink-0 ${
                   appIdea.trim() && !creating
-                    ? "bg-stone-500 text-white hover:bg-stone-400 hover:scale-105 shadow-sm"
-                    : "bg-stone-100 text-stone-300 cursor-not-allowed"
+                    ? "bg-primary text-primary-foreground hover:bg-primary/80 hover:scale-105 shadow-sm"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
                 }`}
               >
                 {creating ? (

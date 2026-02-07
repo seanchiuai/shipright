@@ -481,7 +481,7 @@ export default function ProjectDetailsPage() {
                     onValueChange={(value) => setTechChoices((prev) => ({ ...prev, [choice.need]: value }))}
                   >
                     {choice.options.map((option) => (
-                      <div key={option.library} className="flex items-start gap-3 p-3 rounded-xl border border-stone-200 hover:border-stone-300 transition-colors">
+                      <div key={option.library} className="flex items-start gap-3 p-3 rounded-xl border border-border hover:border-primary/30 transition-colors">
                         <RadioGroupItem value={option.library} id={`${choice.need}-${option.library}`} className="mt-0.5" />
                         <Label htmlFor={`${choice.need}-${option.library}`} className="cursor-pointer flex-1">
                           <span className="font-medium text-sm">{option.library}</span>

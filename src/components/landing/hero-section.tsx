@@ -115,66 +115,92 @@ export function HeroSection() {
   };
 
   return (
-    <section className="min-h-[calc(100vh-4rem)] flex items-center">
-      <div className="max-w-4xl mx-auto px-6 text-center w-full">
+    <section className="min-h-[80vh] flex items-center relative overflow-hidden pt-20 pb-12">
+      {/* Atmospheric background */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Central beacon glow */}
+        <div
+          className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px]"
+          style={{ background: "radial-gradient(ellipse at center, rgba(59,130,246,0.07) 0%, transparent 70%)" }}
+        />
+        {/* Secondary ambient */}
+        <div
+          className="absolute bottom-0 left-1/4 w-[400px] h-[400px]"
+          style={{ background: "radial-gradient(circle at center, rgba(99,102,241,0.04) 0%, transparent 70%)" }}
+        />
+        {/* Grid overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+            backgroundSize: "60px 60px",
+          }}
+        />
+      </div>
+
+      <div className="max-w-4xl mx-auto px-6 text-center w-full relative z-10">
         {/* Headline */}
-        <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl leading-[1.08] tracking-tight mb-6">
+        <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl leading-[1.08] tracking-tight mb-4 text-foreground">
           The foundation vibe
           <br />
-          coding <em className="italic">needs</em>
+          coding <em className="italic text-primary">needs</em>
         </h1>
 
         {/* Subhead */}
-        <p className="text-lg md:text-xl text-muted-foreground max-w-lg mx-auto mb-12 leading-relaxed">
+        <p className="text-lg md:text-xl text-muted-foreground max-w-lg mx-auto mb-8 leading-relaxed">
           A production-ready codebase with built-in AI context.
         </p>
 
         {/* Input */}
         <div className="max-w-xl mx-auto">
           <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-stone-400/20 via-blue-400/15 to-stone-400/20 rounded-2xl opacity-100 blur-lg" />
-          <div className="relative bg-white border border-primary/30 rounded-xl p-1 shadow-[0_4px_30px_rgba(240,140,58,0.12)] transition-all focus-within:border-foreground/30 focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.18)]">
-            <textarea
-              ref={textareaRef}
-              value={appIdea}
-              onChange={(e) => setAppIdea(e.target.value)}
-              placeholder={placeholder}
-              disabled={isSubmitting}
-              rows={3}
-              className="w-full px-4 pt-4 pb-2 text-base resize-none bg-transparent border-none outline-none placeholder:text-muted-foreground/50 disabled:opacity-50"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                  handleSubmit();
-                }
-              }}
+            {/* Glow ring */}
+            <div
+              className="absolute -inset-4 rounded-3xl opacity-60 group-focus-within:opacity-100 transition-opacity duration-500"
+              style={{ background: "radial-gradient(ellipse at center, rgba(59,130,246,0.15) 0%, rgba(99,102,241,0.08) 40%, transparent 70%)" }}
             />
-            <div className="flex items-center justify-between px-3 pb-3">
-              <span className="text-xs text-muted-foreground/60">
-                {appIdea.trim() ? "Cmd + Enter to submit" : ""}
-              </span>
-              <button
-                onClick={handleSubmit}
-                disabled={!appIdea.trim() || isSubmitting}
-                className={`h-12 px-6 text-base font-medium rounded-lg flex items-center gap-2 transition-all ${
-                  appIdea.trim() && !isSubmitting
-                    ? "bg-stone-500 text-white hover:bg-stone-400 shadow-sm"
-                    : "bg-stone-100 text-stone-300 cursor-not-allowed"
-                }`}
-              >
-                {isSubmitting ? (
-                  <div className="w-4 h-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
-                ) : (
-                  <>
-                    Start building
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+            <div className="relative bg-foreground/[0.04] border border-border rounded-xl p-1 shadow-[0_4px_30px_rgba(59,130,246,0.08)] transition-all focus-within:border-primary/30 focus-within:shadow-[0_4px_40px_rgba(59,130,246,0.15)]">
+              <textarea
+                ref={textareaRef}
+                value={appIdea}
+                onChange={(e) => setAppIdea(e.target.value)}
+                placeholder={placeholder}
+                disabled={isSubmitting}
+                rows={3}
+                className="w-full px-4 pt-4 pb-2 text-base resize-none bg-transparent border-none outline-none text-foreground placeholder:text-foreground/25 disabled:opacity-50"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    handleSubmit();
+                  }
+                }}
+              />
+              <div className="flex items-center justify-between px-3 pb-3">
+                <span className="text-xs text-foreground/20">
+                  {appIdea.trim() ? "Cmd + Enter to submit" : ""}
+                </span>
+                <button
+                  onClick={handleSubmit}
+                  disabled={!appIdea.trim() || isSubmitting}
+                  className={`h-12 px-6 text-base font-medium rounded-lg flex items-center gap-2 transition-all ${
+                    appIdea.trim() && !isSubmitting
+                      ? "bg-primary text-primary-foreground hover:bg-primary/80 shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+                      : "bg-foreground/[0.04] text-foreground/20 cursor-not-allowed"
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      Start building
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-          </div>
 
-          <p className="text-xs text-muted-foreground/60 mt-4">
+          <p className="text-xs text-foreground/20 mt-4">
             You own every line of code.
           </p>
         </div>
