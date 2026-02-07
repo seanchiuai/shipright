@@ -4,7 +4,7 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { Octokit } from "octokit";
-import { encryptToken, decryptToken } from "../lib/encryption";
+import { encryptToken, decryptToken, TokenDecryptionError } from "../lib/encryption";
 import { formatLogEntry } from "./lib/logger";
 import { buildEventArgs } from "./pipelineEvents";
 import { reportToSentry } from "./lib/sentry";
@@ -73,6 +73,10 @@ export const validateToken = action({
       console.log(`[github.validateToken] result=valid username=${data.login}`);
       return { valid: true, username: data.login };
     } catch (error: unknown) {
+      if (error instanceof TokenDecryptionError) {
+        console.log(`[github.validateToken] result=token_corrupted`);
+        return { valid: false, reason: "expired" };
+      }
       const status = (error as { status?: number }).status;
       if (status === 401) {
         console.log(`[github.validateToken] result=expired`);

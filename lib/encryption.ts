@@ -14,15 +14,30 @@ export function encryptToken(token: string): string {
   return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
 }
 
+export class TokenDecryptionError extends Error {
+  constructor() {
+    super("GitHub connection expired or invalid. Please reconnect your GitHub account.");
+    this.name = "TokenDecryptionError";
+  }
+}
+
 export function decryptToken(encryptedToken: string): string {
-  const key = Buffer.from(process.env.ENCRYPTION_KEY!, "hex");
-  const [ivHex, authTagHex, encrypted] = encryptedToken.split(":");
+  try {
+    const key = Buffer.from(process.env.ENCRYPTION_KEY!, "hex");
+    const [ivHex, authTagHex, encrypted] = encryptedToken.split(":");
 
-  const decipher = createDecipheriv(ALGORITHM, key, Buffer.from(ivHex, "hex"));
-  decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
+    if (!ivHex || !authTagHex || !encrypted) {
+      throw new Error("malformed token");
+    }
 
-  let decrypted = decipher.update(encrypted, "hex", "utf8");
-  decrypted += decipher.final("utf8");
+    const decipher = createDecipheriv(ALGORITHM, key, Buffer.from(ivHex, "hex"));
+    decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
 
-  return decrypted;
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+
+    return decrypted;
+  } catch {
+    throw new TokenDecryptionError();
+  }
 }

@@ -40,8 +40,8 @@ function sanitizeErrorMessage(raw: string): string {
   const lower = raw.toLowerCase();
   if (lower.includes("debug:") || lower.includes("nohup") || lower.includes("launcher script"))
     return "The build process encountered an issue. Please try again.";
-  if (lower.includes("oauth") || lower.includes("credentials") || lower.includes("authentication") || lower.includes("401") || lower.includes("bad credentials"))
-    return "Authentication expired. Please reconnect your GitHub account.";
+  if (lower.includes("oauth") || lower.includes("credentials") || lower.includes("authentication") || lower.includes("401") || lower.includes("bad credentials") || lower.includes("reconnect"))
+    return "Your GitHub connection expired. Please reconnect your GitHub account.";
   if (lower.includes("timeout") || lower.includes("timed out"))
     return "The operation timed out. Please try again.";
   if (lower.includes("rate limit") || lower.includes("429"))
@@ -103,10 +103,10 @@ export default function ProjectDetailsPage() {
   // Auto-clone when status is "matched"
   useEffect(() => {
     async function runClone() {
-      if (project?.status !== "matched") {
-        cloneInFlight.current = false;
-        return;
-      }
+      // Don't reset cloneInFlight when status changes — the status transition
+      // from "matched" → "building" is caused by OUR mutation, and resetting
+      // the guard here caused a race condition (second action dispatched).
+      if (project?.status !== "matched") return;
       if (cloneInFlight.current) return;
       if (!matchedTemplate || !convexUser) return;
 
@@ -132,7 +132,7 @@ export default function ProjectDetailsPage() {
       } catch (e) {
         // Error is persisted in DB by the action (status -> repo_failed).
         const message = e instanceof Error ? e.message : "Repository creation failed";
-        if (message.includes("401") || message.includes("Bad credentials")) {
+        if (message.includes("401") || message.includes("Bad credentials") || message.includes("reconnect your GitHub")) {
           router.push(`/connect-github?returnTo=/project/${projectId}`);
         } else if (!message.includes("Cannot create repo")) {
           // Show error to user (but not "Cannot create repo" which means another attempt is running)

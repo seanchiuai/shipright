@@ -289,7 +289,11 @@ export async function commitFiles(
       console.log(`[commitFiles] Tree created successfully: ${tree.sha}`);
       break;
     } catch (error: unknown) {
+      const errObj = error as { status?: number; response?: { data?: unknown } };
       const errMsg = error instanceof Error ? error.message : String(error);
+
+      console.log(`[commitFiles] createTree attempt ${attempt + 1} failed: httpStatus=${errObj.status} ${errMsg.slice(0, 150)}`);
+
       if (attempt === 7) {
         console.log(`[commitFiles] createTree failed after 8 attempts: ${errMsg}`);
         throw error;
