@@ -8,6 +8,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 import { useSyncUser } from "@/hooks/useSyncUser";
+import { toast } from "sonner";
 import { AppNavbar } from "@/components/app-navbar";
 import {
   ChatMessage,
@@ -44,6 +45,17 @@ export default function InterviewPage() {
   const [loading, setLoading] = useState(false);
   const [isTypewriterDone, setIsTypewriterDone] = useState(true);
   const [multiselectValue, setMultiselectValue] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
+
+  const showError = useCallback((e: unknown, fallback = "Something went wrong. Please try again.") => {
+    const msg = e instanceof Error ? e.message : fallback;
+    // Convex wraps errors — extract user-facing message
+    const clean = msg.replace(/^Uncaught Error:\s*/i, "").replace(/^Error:\s*/i, "");
+    setError(clean);
+    toast.error(clean);
+    console.error(e);
+  }, []);
 
   // Track which AI message IDs we've already seen (for typewriter)
   const seenAiMessages = useRef<Set<string>>(new Set());
@@ -90,6 +102,7 @@ export default function InterviewPage() {
       autoTriggered.current = true;
       (async () => {
         setLoading(true);
+        setError(null);
         try {
           await addMessage({ projectId, role: "user", content: project.appIdea! });
           if (phase === "seed") {
@@ -102,7 +115,7 @@ export default function InterviewPage() {
             history: [{ role: "user", content: project.appIdea! }],
           });
         } catch (e) {
-          console.error(e);
+          showError(e, "Failed to start conversation. Please refresh and try again.");
           autoTriggered.current = false;
         } finally {
           setLoading(false);
@@ -113,10 +126,12 @@ export default function InterviewPage() {
   }, [phase, project?.appIdea, messages?.length]);
 
   const handleSubmitIdea = useCallback(async () => {
-    if (!currentInput.trim() || loading) return;
+    if (!currentInput.trim() || loading || submittingRef.current) return;
     const idea = currentInput.trim();
+    submittingRef.current = true;
     setLoading(true);
     setCurrentInput("");
+    setError(null);
 
     try {
       await addMessage({ projectId, role: "user", content: idea });
@@ -128,21 +143,24 @@ export default function InterviewPage() {
         history: [{ role: "user", content: idea }],
       });
     } catch (e) {
-      console.error(e);
+      showError(e, "Failed to send your idea. Please try again.");
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
-  }, [currentInput, loading, projectId, addMessage, updateAppIdea, continueConversation]);
+  }, [currentInput, loading, projectId, addMessage, updateAppIdea, continueConversation, showError]);
 
   const handleAnswer = useCallback(
     async (answer: string | string[]) => {
       const currentMessages = messagesRef.current;
-      if (loading || !project?.appIdea || !currentMessages) return;
+      if (loading || submittingRef.current || !project?.appIdea || !currentMessages) return;
       const answerText = Array.isArray(answer) ? answer.join(", ") : answer;
 
+      submittingRef.current = true;
       setLoading(true);
       setCurrentInput("");
       setMultiselectValue([]);
+      setError(null);
 
       try {
         await addMessage({ projectId, role: "user", content: answerText });
@@ -166,33 +184,40 @@ export default function InterviewPage() {
         });
 
         if (result.isComplete) {
-          await extractRequirements({ projectId });
+          try {
+            await extractRequirements({ projectId });
+          } catch (extractErr) {
+            showError(extractErr, "Failed to extract requirements. You can finish early to retry.");
+          }
         }
       } catch (e) {
-        console.error(e);
+        showError(e, "Failed to process your answer. Please try again.");
       } finally {
         setLoading(false);
+        submittingRef.current = false;
       }
     },
-    [loading, project?.appIdea, projectId, addMessage, continueConversation, extractRequirements]
+    [loading, project?.appIdea, projectId, addMessage, continueConversation, extractRequirements, showError]
   );
 
   const handleFinishEarly = useCallback(async () => {
     if (loading) return;
     setLoading(true);
+    setError(null);
     try {
       await extractRequirements({ projectId });
     } catch (e) {
-      console.error(e);
+      showError(e, "Failed to extract requirements. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [loading, projectId, extractRequirements]);
+  }, [loading, projectId, extractRequirements, showError]);
 
   const handleContinueConversation = useCallback(async () => {
     const currentMessages = messagesRef.current;
     if (loading || !project?.appIdea || !currentMessages) return;
     setLoading(true);
+    setError(null);
     try {
       await clearIsComplete({ projectId });
       await updateInterviewPhase({ projectId, phase: "conversation" });
@@ -212,13 +237,16 @@ export default function InterviewPage() {
         appIdea: project.appIdea,
         history,
       });
+    } catch (e) {
+      showError(e, "Failed to continue conversation. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [projectId, loading, project?.appIdea, clearIsComplete, updateInterviewPhase, continueConversation]);
+  }, [projectId, loading, project?.appIdea, clearIsComplete, updateInterviewPhase, continueConversation, showError]);
 
   const handleConfirm = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       await updateStatus({ projectId, status: "matching" });
       if (!convexUser?.githubToken) {
@@ -226,14 +254,20 @@ export default function InterviewPage() {
       } else {
         router.push(`/project/${projectId}`);
       }
+    } catch (e) {
+      showError(e, "Failed to confirm requirements. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [projectId, updateStatus, router, convexUser?.githubToken]);
+  }, [projectId, updateStatus, router, convexUser?.githubToken, showError]);
 
   const handleUpdateRequirements = useCallback(async (updated: Requirements) => {
-    await updateRequirements({ projectId, requirements: updated });
-  }, [projectId, updateRequirements]);
+    try {
+      await updateRequirements({ projectId, requirements: updated });
+    } catch (e) {
+      showError(e, "Failed to save changes. Please try again.");
+    }
+  }, [projectId, updateRequirements, showError]);
 
   // Loading state
   if (!isLoaded || convexUser === undefined || project === undefined) {
@@ -358,6 +392,23 @@ export default function InterviewPage() {
                 );
               })}
             </AnimatePresence>
+
+            {/* Error banner with retry */}
+            {error && !loading && (
+              <motion.div
+                className="mx-auto max-w-md my-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-[13px] text-red-400 flex items-center gap-3"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <span className="flex-1">{error}</span>
+                <button
+                  onClick={() => setError(null)}
+                  className="shrink-0 text-[12px] font-medium text-red-300 hover:text-red-200 transition-colors underline underline-offset-2"
+                >
+                  Dismiss
+                </button>
+              </motion.div>
+            )}
 
             {/* Loading indicator */}
             {loading && <LoadingDots />}

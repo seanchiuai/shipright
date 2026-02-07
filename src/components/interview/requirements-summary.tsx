@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
 import { Requirements } from "@/lib/types";
+import { toast } from "sonner";
 
 export function RequirementsSummary({
   requirements,
@@ -29,50 +30,78 @@ export function RequirementsSummary({
   };
 
   const saveEdit = async (field: string) => {
-    const updated = { ...requirements };
-    if (field === "appName") updated.appName = editValue;
-    await onUpdateRequirements(updated);
-    setEditingField(null);
+    try {
+      const updated = { ...requirements };
+      if (field === "appName") updated.appName = editValue;
+      await onUpdateRequirements(updated);
+      setEditingField(null);
+    } catch {
+      toast.error("Failed to save changes");
+    }
   };
 
   const saveUserEdit = async (index: number, type: string, coreNeed: string) => {
-    const updated = { ...requirements, secondaryUsers: [...requirements.secondaryUsers] };
-    updated.secondaryUsers[index] = { type, coreNeed };
-    await onUpdateRequirements(updated);
-    setEditingField(null);
+    try {
+      const updated = { ...requirements, secondaryUsers: [...requirements.secondaryUsers] };
+      updated.secondaryUsers[index] = { type, coreNeed };
+      await onUpdateRequirements(updated);
+      setEditingField(null);
+    } catch {
+      toast.error("Failed to save user role");
+    }
   };
 
   const addSecondaryUser = async () => {
-    const updated = {
-      ...requirements,
-      secondaryUsers: [...requirements.secondaryUsers, { type: "New User", coreNeed: "" }],
-    };
-    await onUpdateRequirements(updated);
+    try {
+      const updated = {
+        ...requirements,
+        secondaryUsers: [...requirements.secondaryUsers, { type: "New User", coreNeed: "" }],
+      };
+      await onUpdateRequirements(updated);
+    } catch {
+      toast.error("Failed to add user role");
+    }
   };
 
   const removeSecondaryUser = async (index: number) => {
-    const updated = { ...requirements, secondaryUsers: requirements.secondaryUsers.filter((_, i) => i !== index) };
-    await onUpdateRequirements(updated);
+    try {
+      const updated = { ...requirements, secondaryUsers: requirements.secondaryUsers.filter((_, i) => i !== index) };
+      await onUpdateRequirements(updated);
+    } catch {
+      toast.error("Failed to remove user role");
+    }
   };
 
   const saveFeatureEdit = async (index: number, value: string) => {
-    const updated = { ...requirements, keyFeatures: [...requirements.keyFeatures] };
-    updated.keyFeatures[index] = value;
-    await onUpdateRequirements(updated);
-    setEditingField(null);
+    try {
+      const updated = { ...requirements, keyFeatures: [...requirements.keyFeatures] };
+      updated.keyFeatures[index] = value;
+      await onUpdateRequirements(updated);
+      setEditingField(null);
+    } catch {
+      toast.error("Failed to save feature");
+    }
   };
 
   const addFeature = async () => {
-    const updated = {
-      ...requirements,
-      keyFeatures: [...requirements.keyFeatures, "New feature"],
-    };
-    await onUpdateRequirements(updated);
+    try {
+      const updated = {
+        ...requirements,
+        keyFeatures: [...requirements.keyFeatures, "New feature"],
+      };
+      await onUpdateRequirements(updated);
+    } catch {
+      toast.error("Failed to add feature");
+    }
   };
 
   const removeFeature = async (index: number) => {
-    const updated = { ...requirements, keyFeatures: requirements.keyFeatures.filter((_, i) => i !== index) };
-    await onUpdateRequirements(updated);
+    try {
+      const updated = { ...requirements, keyFeatures: requirements.keyFeatures.filter((_, i) => i !== index) };
+      await onUpdateRequirements(updated);
+    } catch {
+      toast.error("Failed to remove feature");
+    }
   };
 
   return (

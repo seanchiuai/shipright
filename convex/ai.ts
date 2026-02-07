@@ -146,25 +146,38 @@ export const generateInterviewQuestions = action({
   },
   handler: async (ctx, args) => {
     console.log(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "started", round: args.round }));
-    const vertex = getVertexProvider();
     const prompt = buildQuestionPrompt(args.appIdea, args.round, args.previousRounds);
 
-    const { text } = await generateText({
-      model: vertex("gemini-2.5-flash"),
-      system: QUESTION_SYSTEM_PROMPT,
-      prompt,
-    });
+    let text: string;
+    try {
+      const vertex = getVertexProvider();
+      const result = await generateText({
+        model: vertex("gemini-2.5-flash"),
+        system: QUESTION_SYSTEM_PROMPT,
+        prompt,
+      });
+      text = result.text;
+    } catch (e) {
+      console.error(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "failed", error: String(e) }));
+      throw new Error("AI service temporarily unavailable. Please try again in a moment.");
+    }
 
-    const result = parseJsonResponse(text) as {
-      preamble: string;
-      questions: Array<{
-        id: string;
-        question: string;
-        type: string;
-        options?: string[];
-        required?: boolean;
-      }>;
-    };
+    let result;
+    try {
+      result = parseJsonResponse(text) as {
+        preamble: string;
+        questions: Array<{
+          id: string;
+          question: string;
+          type: string;
+          options?: string[];
+          required?: boolean;
+        }>;
+      };
+    } catch (e) {
+      console.error(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "parse_failed", error: String(e) }));
+      throw new Error("Failed to process AI response. Please try again.");
+    }
 
     const cleaned = cleanQuestionResult(result);
     console.log(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "completed", questionCount: cleaned.questions.length }));
@@ -184,56 +197,67 @@ export const continueConversation = action({
   },
   handler: async (ctx, args) => {
     console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "started", exchangeCount: args.exchangeCount ?? 0 }));
-    const vertex = getVertexProvider();
     const messages = buildConversationMessages(args.appIdea, args.history, args.exchangeCount);
 
-    const { text } = await generateText({
-      model: vertex("gemini-2.5-flash"),
-      system: CONVERSATION_SYSTEM_PROMPT,
-      messages,
-      tools: {
-        searchWeb: {
-          description:
-            "Search the web for current info about a specific service, API, integration, or technical best practice. Only use when a user mentions a specific service by name or you need to verify technical feasibility.",
-          inputSchema: z.object({
-            query: z
-              .string()
-              .describe(
-                "Concise search query about the service or integration"
-              ),
-          }),
-          execute: async ({ query }: { query: string }) => {
-            const apiKey = process.env.TAVILY_API_KEY;
-            if (!apiKey) return "Web search not configured.";
-            const res = await fetch("https://api.tavily.com/search", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                api_key: apiKey,
-                query,
-                max_results: 3,
-                search_depth: "basic",
-                include_answer: "basic",
-              }),
-            });
-            if (!res.ok) return "Search failed.";
-            const data = await res.json();
-            let result = "";
-            if (data.answer) result += `Summary: ${data.answer}\n\n`;
-            if (data.results) {
-              result += data.results
-                .map(
-                  (r: { title: string; content: string }) =>
-                    `${r.title}: ${r.content}`
-                )
-                .join("\n\n");
-            }
-            return result || "No results found.";
+    let text: string;
+    try {
+      const vertex = getVertexProvider();
+      const result = await generateText({
+        model: vertex("gemini-2.5-flash"),
+        system: CONVERSATION_SYSTEM_PROMPT,
+        messages,
+        tools: {
+          searchWeb: {
+            description:
+              "Search the web for current info about a specific service, API, integration, or technical best practice. Only use when a user mentions a specific service by name or you need to verify technical feasibility.",
+            inputSchema: z.object({
+              query: z
+                .string()
+                .describe(
+                  "Concise search query about the service or integration"
+                ),
+            }),
+            execute: async ({ query }: { query: string }) => {
+              const apiKey = process.env.TAVILY_API_KEY;
+              if (!apiKey) return "Web search not configured.";
+              try {
+                const res = await fetch("https://api.tavily.com/search", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    api_key: apiKey,
+                    query,
+                    max_results: 3,
+                    search_depth: "basic",
+                    include_answer: "basic",
+                  }),
+                });
+                if (!res.ok) return "Search failed.";
+                const data = await res.json();
+                let searchResult = "";
+                if (data.answer) searchResult += `Summary: ${data.answer}\n\n`;
+                if (data.results) {
+                  searchResult += data.results
+                    .map(
+                      (r: { title: string; content: string }) =>
+                        `${r.title}: ${r.content}`
+                    )
+                    .join("\n\n");
+                }
+                return searchResult || "No results found.";
+              } catch {
+                return "Search temporarily unavailable.";
+              }
+            },
           },
         },
-      },
-      stopWhen: stepCountIs(2),
-    });
+        stopWhen: stepCountIs(2),
+      });
+      text = result.text;
+    } catch (e) {
+      console.error(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "failed", error: String(e) }));
+      throw new Error("AI service temporarily unavailable. Please try again in a moment.");
+    }
 
     let parsed: {
       content: string;
@@ -276,29 +300,46 @@ export const extractRequirements = action({
   },
   handler: async (ctx, args) => {
     console.log(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "started" }));
-    const vertex = getVertexProvider();
 
     const project = await ctx.runQuery(internal.projects.getById, {
       projectId: args.projectId,
     });
 
     if (!project?.appIdea) {
-      throw new Error("Project has no app idea");
+      throw new Error("Project has no app idea — please describe your app first.");
     }
 
     const messages = await ctx.runQuery(internal.interviews.getMessagesInternal, {
       projectId: args.projectId,
     });
 
+    if (!messages || messages.length === 0) {
+      throw new Error("No interview messages found. Please answer at least one question first.");
+    }
+
     const prompt = buildRequirementsPrompt(project.appIdea, messages);
 
-    const { text } = await generateText({
-      model: vertex("gemini-2.5-flash"),
-      system: REQUIREMENTS_SYSTEM_PROMPT,
-      prompt,
-    });
+    let text: string;
+    try {
+      const vertex = getVertexProvider();
+      const result = await generateText({
+        model: vertex("gemini-2.5-flash"),
+        system: REQUIREMENTS_SYSTEM_PROMPT,
+        prompt,
+      });
+      text = result.text;
+    } catch (e) {
+      console.error(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "failed", error: String(e) }));
+      throw new Error("AI service temporarily unavailable. Please try again in a moment.");
+    }
 
-    const requirements = parseJsonResponse(text);
+    let requirements;
+    try {
+      requirements = parseJsonResponse(text);
+    } catch (e) {
+      console.error(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "parse_failed", error: String(e), rawText: text.slice(0, 500) }));
+      throw new Error("Failed to process AI response. Please try again.");
+    }
 
     await ctx.runMutation(api.projects.updateRequirements, {
       projectId: args.projectId,

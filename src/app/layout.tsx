@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexClientProvider } from "./ConvexClientProvider";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "ShipRight — From App Idea to GitHub Repo in 10 Minutes",
@@ -23,6 +24,17 @@ export default function RootLayout({
         <ClerkProvider>
           <ConvexClientProvider>{children}</ConvexClientProvider>
         </ClerkProvider>
+        <Toaster
+          theme="dark"
+          position="bottom-center"
+          toastOptions={{
+            style: {
+              background: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border))",
+              color: "hsl(var(--foreground))",
+            },
+          }}
+        />
       </body>
     </html>
   );
