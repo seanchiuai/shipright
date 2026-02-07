@@ -2,7 +2,7 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { Octokit } from "octokit";
 import { encryptToken, decryptToken } from "../lib/encryption";
 import { formatLogEntry } from "./lib/logger";
@@ -116,7 +116,7 @@ export const cloneTemplate = action({
     const startedAt = Date.now();
     const pid = args.projectId;
     console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "cloning_repo", status: "started" }));
-    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "started" }) });
+    await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "started" }) });
 
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new AuthenticationError("Not authenticated");
@@ -125,7 +125,7 @@ export const cloneTemplate = action({
     if (!user?.githubToken) throw new AuthenticationError("GitHub not connected", { hasUser: !!user });
 
     // Atomically claim the project for repo creation (prevents race conditions)
-    const claim = await ctx.runMutation(api.projects.claimForRepoCreation, { projectId: args.projectId }) as {
+    const claim = await ctx.runMutation(internal.projects.claimForRepoCreation, { projectId: args.projectId }) as {
       claimed: boolean;
       reason?: string;
       existingRepo?: string;
@@ -133,7 +133,7 @@ export const cloneTemplate = action({
     if (!claim.claimed) {
       if (claim.existingRepo) {
         // Project already has a repo - return it
-        const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId }) as {
+        const project = await ctx.runQuery(internal.projects.getById, { projectId: args.projectId }) as {
           githubRepoUrl?: string;
           githubRepoFullName?: string;
         } | null;
@@ -219,7 +219,7 @@ export const cloneTemplate = action({
 
       // Save repo URL immediately so we don't create duplicates on retry
       const repoFullName = newRepo.full_name;
-      await ctx.runMutation(api.projects.updateGitHubRepo, {
+      await ctx.runMutation(internal.projects.updateGitHubRepo, {
         projectId: args.projectId,
         repoUrl: newRepo.html_url,
         repoFullName,
@@ -238,12 +238,12 @@ export const cloneTemplate = action({
       console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "commit_files", status: "completed", fileCount: files.length, durationMs: Date.now() - commitStart }));
 
       // Mark repo as ready AFTER files are committed (prevents scaffolding race)
-      await ctx.runMutation(api.projects.markRepoReady, { projectId: args.projectId });
+      await ctx.runMutation(internal.projects.markRepoReady, { projectId: args.projectId });
       console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "mark_repo_ready", status: "completed" }));
 
       const durationMs = Date.now() - startedAt;
       console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "cloning_repo", status: "completed", durationMs }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "completed", durationMs, metadata: { repoFullName } }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "completed", durationMs, metadata: { repoFullName } }) });
 
       return { repoUrl: newRepo.html_url, repoFullName };
     } catch (error: unknown) {
@@ -262,7 +262,7 @@ export const cloneTemplate = action({
 
       const durationMs = Date.now() - startedAt;
       console.log(formatLogEntry({ action: "cloneTemplate", projectId: pid, step: "cloning_repo", status: "failed", durationMs, error: userMessage }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "failed", durationMs, error: userMessage }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "cloning_repo", status: "failed", durationMs, error: userMessage }) });
       await reportToSentry({ message: `Clone template failed: ${userMessage}`, context: { projectId: pid, step: "cloneTemplate" } });
 
       await ctx.runMutation(api.projects.setRepoFailed, {

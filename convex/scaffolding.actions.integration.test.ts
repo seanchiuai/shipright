@@ -1,14 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMock = {
-  pipelineEvents: { log: "pipelineEvents.log" },
   projects: {
-    get: "projects.get",
-    saveSandboxInfo: "projects.saveSandboxInfo",
-    saveTechStackResearch: "projects.saveTechStackResearch",
-    savePrdMarkdown: "projects.savePrdMarkdown",
-    submitTechChoices: "projects.submitTechChoices",
-    updateScaffoldingStatus: "projects.updateScaffoldingStatus",
     updateStatus: "projects.updateStatus",
   },
   templates: { list: "templates.list" },
@@ -21,6 +14,15 @@ const apiMock = {
 };
 
 const internalMock = {
+  pipelineEvents: { log: "internal.pipelineEvents.log" },
+  projects: {
+    getById: "internal.projects.getById",
+    saveSandboxInfo: "internal.projects.saveSandboxInfo",
+    saveTechStackResearch: "internal.projects.saveTechStackResearch",
+    savePrdMarkdown: "internal.projects.savePrdMarkdown",
+    submitTechChoices: "internal.projects.submitTechChoices",
+    updateScaffoldingStatus: "internal.projects.updateScaffoldingStatus",
+  },
   users: { getById: "internal.users.getById" },
 };
 
@@ -40,6 +42,8 @@ const daytonaDeleteMock = vi.fn(async () => undefined);
 vi.mock("./_generated/server", () => ({
   action: (config: { handler: unknown }) => ({ handler: config.handler }),
   mutation: (config: { handler: unknown }) => ({ handler: config.handler }),
+  internalMutation: (config: { handler: unknown }) => ({ handler: config.handler }),
+  internalQuery: (config: { handler: unknown }) => ({ handler: config.handler }),
   query: (config: { handler: unknown }) => ({ handler: config.handler }),
 }));
 
@@ -171,7 +175,7 @@ describe("scaffolding actions integration", () => {
     ).rejects.toThrow("generate failed");
 
     expect(runMutation).toHaveBeenCalledWith(
-      apiMock.projects.updateScaffoldingStatus,
+      internalMock.projects.updateScaffoldingStatus,
       expect.objectContaining({
         projectId: "p1",
         scaffoldingStatus: "scaffolding_failed",
@@ -186,7 +190,7 @@ describe("scaffolding actions integration", () => {
     const { runQuery, runMutation, scheduler } = makeCtx();
     runQuery.mockImplementation(async (...args: unknown[]) => {
       const fn = args[0] as string;
-      if (fn === apiMock.projects.get) {
+      if (fn === internalMock.projects.getById) {
         return {
           _id: "p1",
           userId: "u1",
@@ -212,11 +216,11 @@ describe("scaffolding actions integration", () => {
 
     expect(validateCredentialsAvailableMock).toHaveBeenCalledWith("gh_token");
     expect(runMutation).toHaveBeenCalledWith(
-      apiMock.projects.saveSandboxInfo,
+      internalMock.projects.saveSandboxInfo,
       expect.objectContaining({ projectId: "p1", sandboxId: "sb_123" }),
     );
     expect(runMutation).toHaveBeenCalledWith(
-      apiMock.projects.updateScaffoldingStatus,
+      internalMock.projects.updateScaffoldingStatus,
       expect.objectContaining({ projectId: "p1", scaffoldingStatus: "running_sandbox" }),
     );
     expect(scheduler.runAfter).toHaveBeenCalledWith(
@@ -231,7 +235,7 @@ describe("scaffolding actions integration", () => {
     const { runQuery, runMutation, scheduler } = makeCtx();
     runQuery.mockImplementation(async (...args: unknown[]) => {
       const fn = args[0] as string;
-      if (fn === apiMock.projects.get) {
+      if (fn === internalMock.projects.getById) {
         return {
           _id: "p1",
           userId: "u1",
@@ -256,7 +260,7 @@ describe("scaffolding actions integration", () => {
     );
 
     expect(runMutation).toHaveBeenCalledWith(
-      apiMock.projects.updateScaffoldingStatus,
+      internalMock.projects.updateScaffoldingStatus,
       expect.objectContaining({ scaffoldingStatus: "scaffolding_failed" }),
     );
   });
@@ -305,7 +309,7 @@ describe("scaffolding actions integration", () => {
     let projectGetCalls = 0;
     runQuery.mockImplementation(async (...args: unknown[]) => {
       const fn = args[0] as string;
-      if (fn === apiMock.projects.get) {
+      if (fn === internalMock.projects.getById) {
         projectGetCalls += 1;
         if (projectGetCalls === 1) {
           return {
@@ -330,7 +334,7 @@ describe("scaffolding actions integration", () => {
     );
 
     expect(runMutation).toHaveBeenCalledWith(
-      apiMock.projects.updateScaffoldingStatus,
+      internalMock.projects.updateScaffoldingStatus,
       expect.objectContaining({ projectId: "p1", scaffoldingStatus: "scaffolding_complete" }),
     );
     expect(daytonaDeleteMock).toHaveBeenCalledOnce();

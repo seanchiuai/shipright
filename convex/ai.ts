@@ -4,7 +4,7 @@ import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { generateText, stepCountIs } from "ai";
 import { z } from "zod";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import {
   QUESTION_SYSTEM_PROMPT,
   REQUIREMENTS_SYSTEM_PROMPT,
@@ -257,7 +257,7 @@ export const continueConversation = action({
     console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "completed", isComplete: !!parsed.isComplete }));
 
     // Persist AI message
-    await ctx.runMutation(api.interviews.addMessage, {
+    await ctx.runMutation(internal.interviews.addMessageInternal, {
       projectId: args.projectId,
       role: "assistant",
       content: parsed.content,
@@ -278,7 +278,7 @@ export const extractRequirements = action({
     console.log(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "started" }));
     const vertex = getVertexProvider();
 
-    const project = await ctx.runQuery(api.projects.get, {
+    const project = await ctx.runQuery(internal.projects.getById, {
       projectId: args.projectId,
     });
 
@@ -286,7 +286,7 @@ export const extractRequirements = action({
       throw new Error("Project has no app idea");
     }
 
-    const messages = await ctx.runQuery(api.interviews.getMessages, {
+    const messages = await ctx.runQuery(internal.interviews.getMessagesInternal, {
       projectId: args.projectId,
     });
 

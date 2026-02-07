@@ -42,11 +42,17 @@ function getSentryIngestUrl(dsn: string): string | null {
   }
 }
 
+let sentryDsnWarned = false;
+
 export async function reportToSentry(params: {
   message: string;
   context?: Record<string, unknown>;
 }): Promise<void> {
   const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN || "";
+  if (!dsn && !sentryDsnWarned) {
+    console.warn("[sentry] NEXT_PUBLIC_SENTRY_DSN not configured — error reporting disabled");
+    sentryDsnWarned = true;
+  }
   const envelope = buildSentryEnvelope({ ...params, dsn });
   if (!envelope) return;
 

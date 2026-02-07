@@ -1,6 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { getAuthenticatedUser, getOwnedProject } from "./lib/auth";
 
 // Pure helper for building event args (testable without ctx)
 export function buildEventArgs(params: {
@@ -22,8 +23,8 @@ export function buildEventArgs(params: {
   };
 }
 
-// Mutation: insert a pipeline event
-export const log = mutation({
+// Internal: insert a pipeline event (only called from server actions)
+export const log = internalMutation({
   args: {
     projectId: v.id("projects"),
     step: v.string(),
@@ -38,10 +39,11 @@ export const log = mutation({
   },
 });
 
-// Query: events for a specific project
+// Query: events for a specific project (requires ownership)
 export const listByProject = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
+    await getOwnedProject(ctx, args.projectId);
     return await ctx.db
       .query("pipelineEvents")
       .withIndex("by_project_timestamp", (q) => q.eq("projectId", args.projectId))
@@ -50,10 +52,11 @@ export const listByProject = query({
   },
 });
 
-// Query: recent events across all projects (admin)
+// Query: recent events across all projects (requires authentication)
 export const listRecent = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
+    await getAuthenticatedUser(ctx);
     const limit = args.limit ?? 100;
     return await ctx.db
       .query("pipelineEvents")

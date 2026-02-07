@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { PROJECT_STATUS } from "./lib/constants";
 import { getAuthenticatedUser, getOwnedProject } from "./lib/auth";
@@ -18,6 +18,15 @@ export const list = query({
 });
 
 export const get = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const { project } = await getOwnedProject(ctx, args.projectId);
+    return project;
+  },
+});
+
+// Internal: pipeline actions use this (scheduled functions have no auth context)
+export const getById = internalQuery({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.projectId);
@@ -127,7 +136,7 @@ export const resetInterview = mutation({
 });
 
 /** Atomically claim a project for repo creation. Prevents race conditions. */
-export const claimForRepoCreation = mutation({
+export const claimForRepoCreation = internalMutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     console.log(`[projects.claimForRepoCreation] project=${args.projectId} attempting`);
@@ -153,7 +162,7 @@ export const claimForRepoCreation = mutation({
   },
 });
 
-export const updateGitHubRepo = mutation({
+export const updateGitHubRepo = internalMutation({
   args: {
     projectId: v.id("projects"),
     repoUrl: v.string(),
@@ -174,7 +183,7 @@ export const updateGitHubRepo = mutation({
   },
 });
 
-export const markRepoReady = mutation({
+export const markRepoReady = internalMutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
@@ -193,11 +202,13 @@ export const setRepoFailed = mutation({
     error: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedUser(ctx);
     const project = await ctx.db.get(args.projectId);
     if (!project) {
       console.warn(`setRepoFailed: project ${args.projectId} not found (likely deleted)`);
       return;
     }
+    if (project.userId !== user._id) throw new Error("Access denied");
     // Only allow setting failed from matched/building status
     if (!["matched", "building"].includes(project.status)) {
       console.warn(`setRepoFailed: ignoring for project in status ${project.status}`);
@@ -274,7 +285,7 @@ export const remove = mutation({
   },
 });
 
-export const savePrdMarkdown = mutation({
+export const savePrdMarkdown = internalMutation({
   args: {
     projectId: v.id("projects"),
     prdMarkdown: v.string(),
@@ -284,7 +295,7 @@ export const savePrdMarkdown = mutation({
   },
 });
 
-export const saveTechStackResearch = mutation({
+export const saveTechStackResearch = internalMutation({
   args: {
     projectId: v.id("projects"),
     techStackResearch: v.any(),
@@ -294,7 +305,7 @@ export const saveTechStackResearch = mutation({
   },
 });
 
-export const submitTechChoices = mutation({
+export const submitTechChoices = internalMutation({
   args: {
     projectId: v.id("projects"),
     techStackChoices: v.any(),
@@ -307,7 +318,7 @@ export const submitTechChoices = mutation({
   },
 });
 
-export const updateScaffoldingStatus = mutation({
+export const updateScaffoldingStatus = internalMutation({
   args: {
     projectId: v.id("projects"),
     scaffoldingStatus: v.union(
@@ -335,7 +346,7 @@ export const updateScaffoldingStatus = mutation({
   },
 });
 
-export const saveSandboxInfo = mutation({
+export const saveSandboxInfo = internalMutation({
   args: {
     projectId: v.id("projects"),
     sandboxId: v.string(),
@@ -374,7 +385,7 @@ export const recreateRepo = mutation({
   },
 });
 
-export const setMatchedTemplate = mutation({
+export const setMatchedTemplate = internalMutation({
   args: {
     projectId: v.id("projects"),
     templateId: v.string(),

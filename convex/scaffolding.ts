@@ -119,9 +119,9 @@ export const generatePrd = action({
     const startedAt = Date.now();
     const pid = args.projectId;
     console.log(formatLogEntry({ action: "generatePrd", projectId: pid, step: "generating_prd", status: "started" }));
-    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "generating_prd", status: "started" }) });
+    await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "generating_prd", status: "started" }) });
 
-    const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+    const project = await ctx.runQuery(internal.projects.getById, { projectId: args.projectId });
     if (!project?.requirements) throw new Error("Project has no requirements");
 
     const reqJson = JSON.stringify(project.requirements);
@@ -136,14 +136,14 @@ export const generatePrd = action({
 
     console.log(formatLogEntry({ action: "generatePrd", projectId: pid, step: "generating_prd", status: "ai_complete", outputLength: result.text.length, usage: JSON.stringify(result.usage) }));
 
-    await ctx.runMutation(api.projects.savePrdMarkdown, {
+    await ctx.runMutation(internal.projects.savePrdMarkdown, {
       projectId: args.projectId,
       prdMarkdown: result.text,
     });
 
     const durationMs = Date.now() - startedAt;
     console.log(formatLogEntry({ action: "generatePrd", projectId: pid, step: "generating_prd", status: "completed", durationMs }));
-    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "generating_prd", status: "completed", durationMs }) });
+    await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "generating_prd", status: "completed", durationMs }) });
 
     return { prdMarkdown: result.text };
   },
@@ -156,9 +156,9 @@ export const researchTechStack = action({
     const startedAt = Date.now();
     const pid = args.projectId;
     console.log(formatLogEntry({ action: "researchTechStack", projectId: pid, step: "researching_stack", status: "started" }));
-    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "researching_stack", status: "started" }) });
+    await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "researching_stack", status: "started" }) });
 
-    const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+    const project = await ctx.runQuery(internal.projects.getById, { projectId: args.projectId });
     if (!project?.templateId) throw new Error("Project has no template");
 
     const templates = await ctx.runQuery(api.templates.list, {});
@@ -187,23 +187,23 @@ export const researchTechStack = action({
       choices: Array<{ need: string; options: Array<{ library: string; package: string; reason: string }> }>;
     };
 
-    await ctx.runMutation(api.projects.saveTechStackResearch, {
+    await ctx.runMutation(internal.projects.saveTechStackResearch, {
       projectId: args.projectId,
       techStackResearch: techStack,
     });
 
     const durationMs = Date.now() - startedAt;
     console.log(formatLogEntry({ action: "researchTechStack", projectId: pid, step: "researching_stack", status: "completed", durationMs }));
-    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "researching_stack", status: "completed", durationMs, metadata: { resolvedCount: techStack.resolved?.length ?? 0, choicesCount: techStack.choices?.length ?? 0 } }) });
+    await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "researching_stack", status: "completed", durationMs, metadata: { resolvedCount: techStack.resolved?.length ?? 0, choicesCount: techStack.choices?.length ?? 0 } }) });
 
     // If choices exist, pause for user input
     if (techStack.choices?.length > 0) {
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "awaiting_tech_choices",
       });
     } else {
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "preparing_sandbox",
       });
@@ -221,7 +221,7 @@ export const submitTechChoices = action({
   },
   handler: async (ctx, args) => {
     console.log(formatLogEntry({ action: "submitTechChoices", projectId: args.projectId, step: "tech_choices", status: "submitted" }));
-    await ctx.runMutation(api.projects.submitTechChoices, {
+    await ctx.runMutation(internal.projects.submitTechChoices, {
       projectId: args.projectId,
       techStackChoices: args.choices,
     });
@@ -235,7 +235,7 @@ export const runScaffoldingPipeline = action({
     const pid = args.projectId;
     console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "pipeline", status: "started" }));
 
-    const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+    const project = await ctx.runQuery(internal.projects.getById, { projectId: args.projectId });
     if (!project) throw new Error("Project not found");
 
     // Update project status to scaffolding
@@ -248,7 +248,7 @@ export const runScaffoldingPipeline = action({
       // Step 1: Generate PRD (skip if already done)
       if (!project.prdMarkdown) {
         console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "generating_prd", status: "running" }));
-        await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+        await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
           projectId: args.projectId,
           scaffoldingStatus: "generating_prd",
         });
@@ -260,7 +260,7 @@ export const runScaffoldingPipeline = action({
       // Step 2: Research tech stack (skip if already done)
       if (!project.techStackResearch) {
         console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "researching_stack", status: "running" }));
-        await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+        await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
           projectId: args.projectId,
           scaffoldingStatus: "researching_stack",
         });
@@ -270,7 +270,7 @@ export const runScaffoldingPipeline = action({
       }
 
       // Check if we need user choices
-      const updated = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+      const updated = await ctx.runQuery(internal.projects.getById, { projectId: args.projectId });
       if (updated?.scaffoldingStatus === "awaiting_tech_choices") {
         console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "pipeline", status: "awaiting_choices" }));
         return; // UI will call resumeAfterChoices when user picks
@@ -283,7 +283,7 @@ export const runScaffoldingPipeline = action({
       const message = error instanceof Error ? error.message : "Unknown scaffolding error";
       console.log(formatLogEntry({ action: "runScaffoldingPipeline", projectId: pid, step: "pipeline", status: "failed", error: message }));
       await reportToSentry({ message: `Scaffolding pipeline failed: ${message}`, context: { projectId: args.projectId, step: "runScaffoldingPipeline" } });
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "scaffolding_failed",
         scaffoldingError: message,
@@ -364,7 +364,7 @@ export const executeSandbox = action({
   handler: async (ctx, args) => {
     const pid = args.projectId;
     console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "preparing_sandbox", status: "started" }));
-    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "preparing_sandbox", status: "started" }) });
+    await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "preparing_sandbox", status: "started" }) });
 
     const daytona = new Daytona({
       apiKey: process.env.DAYTONA_API_KEY,
@@ -374,7 +374,7 @@ export const executeSandbox = action({
     try {
       // Validate project exists and has required data
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "validate_project", status: "started" }));
-      const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+      const project = await ctx.runQuery(internal.projects.getById, { projectId: args.projectId });
       if (!project) throw new NotFoundError("Project", args.projectId);
       if (!project.githubRepoFullName) throw new PipelineError("sandbox_setup", "No GitHub repo linked to project");
       if (!project.prdMarkdown) throw new PipelineError("sandbox_setup", "PRD not generated");
@@ -426,7 +426,7 @@ export const executeSandbox = action({
       });
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "build_prompt", status: "completed", promptLength: prompt.length, resolvedIntegrations: techStack.resolved?.length ?? 0 }));
 
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "preparing_sandbox",
       });
@@ -459,7 +459,7 @@ export const executeSandbox = action({
       const envStart = Date.now();
       await setupSandboxEnvironment(sandbox, project.githubRepoFullName, githubToken, prompt);
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "setup_environment", status: "completed", durationMs: Date.now() - envStart }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "preparing_sandbox", status: "completed", durationMs: Date.now() - sandboxCreateStart }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "preparing_sandbox", status: "completed", durationMs: Date.now() - sandboxCreateStart }) });
 
       // Launch Claude Code as background process
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "launch_claude", status: "started" }));
@@ -468,21 +468,21 @@ export const executeSandbox = action({
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "launch_claude", status: "completed", durationMs: Date.now() - launchStart }));
 
       // Save sandbox ID so pollSandbox can reconnect
-      await ctx.runMutation(api.projects.saveSandboxInfo, {
+      await ctx.runMutation(internal.projects.saveSandboxInfo, {
         projectId: args.projectId,
         sandboxId: sandbox.id,
         sandboxSessionId: "nohup",
         sandboxCommandId: "nohup",
       });
 
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "running_sandbox",
       });
 
       const totalSetupMs = Date.now() - (await Promise.resolve(sandboxCreateStart));
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "running_sandbox", status: "started", totalSetupMs }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "running_sandbox", status: "started", metadata: { totalSetupMs } }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "running_sandbox", status: "started", metadata: { totalSetupMs } }) });
 
       // Schedule polling action to check completion
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "schedule_polling", status: "completed", initialDelayMs: POLLING_CONFIG.initialDelayMs }));
@@ -492,10 +492,10 @@ export const executeSandbox = action({
       const userMessage = getUserMessage(wrapped);
 
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "scaffolding_failed", status: "failed", error: wrapped.message }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "scaffolding_failed", status: "failed", error: wrapped.message }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "scaffolding_failed", status: "failed", error: wrapped.message }) });
       await reportToSentry({ message: wrapped.message, context: { projectId: pid, step: "sandbox_setup" } });
 
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "scaffolding_failed",
         scaffoldingError: userMessage,
@@ -513,7 +513,7 @@ export const pollSandbox = action({
     const pollStart = Date.now();
     console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "poll_check", status: "started", pollCount: count }));
 
-    const project = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+    const project = await ctx.runQuery(internal.projects.getById, { projectId: args.projectId });
     if (!project || !project.sandboxId || !project.sandboxSessionId) {
       throw new PipelineError("sandbox_poll", "No sandbox info found", { projectId: pid });
     }
@@ -588,7 +588,7 @@ export const pollSandbox = action({
 
       // Claude Code completed successfully — commit and push
       console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "running_sandbox", status: "completed" }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "running_sandbox", status: "completed" }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "running_sandbox", status: "completed" }) });
 
       // Get user's GitHub token for push validation
       const user = await ctx.runQuery(internal.users.getById, { userId: project.userId });
@@ -608,12 +608,12 @@ export const pollSandbox = action({
         throw new ExternalServiceError("github", `Repo unavailable before push: ${prePushCheck.message}`, { repo: project.githubRepoFullName });
       }
 
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "pushing_files",
       });
       console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "pushing_files", status: "started" }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "pushing_files", status: "started" }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "pushing_files", status: "started" }) });
 
       // List what Claude Code produced before pushing
       try {
@@ -641,25 +641,25 @@ export const pollSandbox = action({
       );
       const pushDurationMs = Date.now() - pushStart;
       console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "git_push", status: "completed", durationMs: pushDurationMs }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "pushing_files", status: "completed", durationMs: pushDurationMs }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "pushing_files", status: "completed", durationMs: pushDurationMs }) });
 
       // Success!
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "scaffolding_complete",
       });
       console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "scaffolding_complete", status: "completed", totalPollDurationMs: Date.now() - pollStart }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "scaffolding_complete", status: "completed" }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "scaffolding_complete", status: "completed" }) });
 
     } catch (error: unknown) {
       const wrapped = wrapError(error, "sandbox_poll", { projectId: pid, pollCount: count });
       const userMessage = getUserMessage(wrapped);
 
       console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "scaffolding_failed", status: "failed", error: wrapped.message }));
-      await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "scaffolding_failed", status: "failed", error: wrapped.message }) });
+      await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "scaffolding_failed", status: "failed", error: wrapped.message }) });
       await reportToSentry({ message: wrapped.message, context: { projectId: pid, step: "sandbox_poll", pollCount: count } });
 
-      await ctx.runMutation(api.projects.updateScaffoldingStatus, {
+      await ctx.runMutation(internal.projects.updateScaffoldingStatus, {
         projectId: args.projectId,
         scaffoldingStatus: "scaffolding_failed",
         scaffoldingError: userMessage,
@@ -668,7 +668,7 @@ export const pollSandbox = action({
       // Cleanup sandbox on completion (success or failure)
       // Re-check current status to avoid deleting sandbox while still polling
       if (sandbox) {
-        const current = await ctx.runQuery(api.projects.get, { projectId: args.projectId });
+        const current = await ctx.runQuery(internal.projects.getById, { projectId: args.projectId });
         const done = current?.scaffoldingStatus === "scaffolding_complete" || current?.scaffoldingStatus === "scaffolding_failed";
         if (done) {
           console.log(formatLogEntry({ action: "pollSandbox", projectId: pid, step: "cleanup_sandbox", status: "started", sandboxId: project.sandboxId! }));

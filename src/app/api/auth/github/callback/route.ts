@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../../convex/_generated/api";
@@ -14,6 +15,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${appUrl}/connect-github?error=no_code`);
   }
 
+  // Verify CSRF nonce from state matches cookie
+  const cookieStore = await cookies();
+  const expectedNonce = cookieStore.get("github_oauth_nonce")?.value;
+
   let returnTo = "/dashboard";
   if (state) {
     try {
@@ -23,9 +28,16 @@ export async function GET(request: Request) {
       if (parsed.returnTo?.startsWith("/")) {
         returnTo = parsed.returnTo;
       }
+      // CSRF check: nonce in state must match cookie
+      if (!expectedNonce || parsed.nonce !== expectedNonce) {
+        return NextResponse.redirect(`${appUrl}/connect-github?error=csrf_failed`);
+      }
     } catch {
-      // malformed state, use default
+      return NextResponse.redirect(`${appUrl}/connect-github?error=invalid_state`);
     }
+  } else {
+    // No state at all — reject
+    return NextResponse.redirect(`${appUrl}/connect-github?error=missing_state`);
   }
 
   const { getToken } = await auth();
@@ -44,5 +56,8 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${appUrl}/connect-github?error=exchange_failed`);
   }
 
-  return NextResponse.redirect(`${appUrl}${returnTo}`);
+  // Clear the nonce cookie
+  const response = NextResponse.redirect(`${appUrl}${returnTo}`);
+  response.cookies.delete("github_oauth_nonce");
+  return response;
 }

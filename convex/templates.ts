@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthenticatedUser } from "./lib/auth";
 
 // Import template data from JSON (bundled at build time)
 import templatesData from "../data/templates.json";
@@ -89,6 +90,7 @@ export const getBySlug = query({
 export const sync = mutation({
   args: {},
   handler: async (ctx) => {
+    await getAuthenticatedUser(ctx);
     const stats = { added: 0, updated: 0, unchanged: 0, errors: [] as string[] };
 
     for (const template of templatesData.templates) {

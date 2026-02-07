@@ -1,17 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMock = {
-  pipelineEvents: { log: "pipelineEvents.log" },
   users: {
     current: "users.current",
     saveGitHubToken: "users.saveGitHubToken",
   },
   projects: {
-    claimForRepoCreation: "projects.claimForRepoCreation",
-    get: "projects.get",
-    markRepoReady: "projects.markRepoReady",
     setRepoFailed: "projects.setRepoFailed",
-    updateGitHubRepo: "projects.updateGitHubRepo",
+  },
+};
+
+const internalMock = {
+  pipelineEvents: { log: "internal.pipelineEvents.log" },
+  projects: {
+    claimForRepoCreation: "internal.projects.claimForRepoCreation",
+    getById: "internal.projects.getById",
+    markRepoReady: "internal.projects.markRepoReady",
+    updateGitHubRepo: "internal.projects.updateGitHubRepo",
   },
 };
 
@@ -27,10 +32,12 @@ const octokitCreateRepoMock = vi.fn();
 vi.mock("./_generated/server", () => ({
   action: (config: { handler: unknown }) => ({ handler: config.handler }),
   mutation: (config: { handler: unknown }) => ({ handler: config.handler }),
+  internalMutation: (config: { handler: unknown }) => ({ handler: config.handler }),
+  internalQuery: (config: { handler: unknown }) => ({ handler: config.handler }),
   query: (config: { handler: unknown }) => ({ handler: config.handler }),
 }));
 
-vi.mock("./_generated/api", () => ({ api: apiMock }));
+vi.mock("./_generated/api", () => ({ api: apiMock, internal: internalMock }));
 
 vi.mock("convex/values", () => ({
   v: {
@@ -120,7 +127,7 @@ describe("github actions integration", () => {
     });
     ctx.runMutation.mockImplementation(async (...args: unknown[]) => {
       const fn = args[0] as string;
-      if (fn === apiMock.projects.claimForRepoCreation) return { claimed: true };
+      if (fn === internalMock.projects.claimForRepoCreation) return { claimed: true };
       return undefined;
     });
 

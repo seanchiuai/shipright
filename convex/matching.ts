@@ -2,7 +2,7 @@
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { TemplateCapabilities } from "./templates";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -306,9 +306,9 @@ export const matchTemplate = action({
     const startedAt = Date.now();
     const pid = args.projectId;
     console.log(formatLogEntry({ action: "matchTemplate", projectId: pid, step: "matching", status: "started" }));
-    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "matching", status: "started" }) });
+    await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "matching", status: "started" }) });
 
-    const project = await ctx.runQuery(api.projects.get, {
+    const project = await ctx.runQuery(internal.projects.getById, {
       projectId: args.projectId,
     });
 
@@ -380,7 +380,7 @@ export const matchTemplate = action({
       }
     }
 
-    await ctx.runMutation(api.projects.setMatchedTemplate, {
+    await ctx.runMutation(internal.projects.setMatchedTemplate, {
       projectId: args.projectId,
       templateId: bestMatch!.template._id,
       templateName: bestMatch!.template.name,
@@ -390,7 +390,7 @@ export const matchTemplate = action({
 
     const durationMs = Date.now() - startedAt;
     console.log(formatLogEntry({ action: "matchTemplate", projectId: pid, step: "matching", status: "completed", durationMs }));
-    await ctx.runMutation(api.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "matching", status: "completed", durationMs, metadata: { templateName: bestMatch!.template.name, score: bestMatch!.score, gapCount: bestMatch!.gaps.length } }) });
+    await ctx.runMutation(internal.pipelineEvents.log, { ...buildEventArgs({ projectId: pid, step: "matching", status: "completed", durationMs, metadata: { templateName: bestMatch!.template.name, score: bestMatch!.score, gapCount: bestMatch!.gaps.length } }) });
 
     return bestMatch!;
   },

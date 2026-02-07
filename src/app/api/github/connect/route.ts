@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -15,7 +16,9 @@ export async function GET(request: Request) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || url.origin;
   const redirectUri = `${appUrl}/api/auth/github/callback`;
 
-  const state = Buffer.from(JSON.stringify({ returnTo })).toString("base64url");
+  // CSRF protection: include a cryptographic nonce in the state
+  const nonce = randomUUID();
+  const state = Buffer.from(JSON.stringify({ returnTo, nonce })).toString("base64url");
 
   const authUrl = new URL("https://github.com/login/oauth/authorize");
   authUrl.searchParams.set("client_id", clientId);
@@ -23,5 +26,14 @@ export async function GET(request: Request) {
   authUrl.searchParams.set("scope", "repo user:email");
   authUrl.searchParams.set("state", state);
 
-  return NextResponse.redirect(authUrl.toString());
+  const response = NextResponse.redirect(authUrl.toString());
+  // Store nonce in HttpOnly cookie for verification in callback
+  response.cookies.set("github_oauth_nonce", nonce, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/api/auth/github/callback",
+    maxAge: 600, // 10 minutes
+  });
+  return response;
 }
