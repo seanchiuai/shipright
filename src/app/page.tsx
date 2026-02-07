@@ -4,6 +4,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
+  AuroraBackground,
   Header,
   HeroSection,
   ScrollExplainer,
@@ -31,6 +32,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground" data-theme="dark">
+      <AuroraBackground />
       <Header />
       <main>
         <HeroSection />
