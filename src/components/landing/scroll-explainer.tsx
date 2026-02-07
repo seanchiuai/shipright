@@ -160,9 +160,11 @@ function TemplateCardsMockup() {
 
   useEffect(() => {
     if (!inView) {
-      setCounts([0, 0, 0, 0]);
-      setShowCheck(false);
-      return;
+      const resetId = requestAnimationFrame(() => {
+        setCounts([0, 0, 0, 0]);
+        setShowCheck(false);
+      });
+      return () => cancelAnimationFrame(resetId);
     }
 
     const targets = templateData.map((t) => t.match);
@@ -277,8 +279,10 @@ function FileTreeMockup() {
 
   useEffect(() => {
     if (!inView) {
-      setVisibleFiles(0);
-      return;
+      const resetId = requestAnimationFrame(() => {
+        setVisibleFiles(0);
+      });
+      return () => cancelAnimationFrame(resetId);
     }
 
     const timers: ReturnType<typeof setTimeout>[] = [];
