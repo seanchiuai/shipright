@@ -31,28 +31,36 @@ function TypingDots() {
 
 const chatMessages = [
   { role: "ai" as const, text: "What kind of app are you building?" },
-  { role: "user" as const, text: "A marketplace for freelance designers" },
-  { role: "ai" as const, text: "Do you need payment processing? What about Stripe?" },
-  { role: "user" as const, text: "Yes — subscriptions + one-time payments" },
+  { role: "user" as const, text: "An AI chatbot that helps students study" },
+  { role: "ai" as const, text: "Should users be able to save chat history and share conversations?" },
+  { role: "user" as const, text: "Yes — and I want user accounts with Google login" },
 ];
 
 function ChatBubbleMockup() {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-10%" });
+  const inView = useInView(ref, { margin: "-10%", amount: 0.3 });
   const [visible, setVisible] = useState(0);
   const [typing, setTyping] = useState(false);
-  const started = useRef(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   useEffect(() => {
-    if (!inView || started.current) return;
-    started.current = true;
+    if (!inView) {
+      setVisible(0);
+      setTyping(false);
+      setShowSummary(false);
+      return;
+    }
 
     const timers: ReturnType<typeof setTimeout>[] = [];
     let idx = 0;
 
     const showNext = () => {
       if (idx >= chatMessages.length) {
-        timers.push(setTimeout(() => setTyping(true), 300));
+        setTyping(true);
+        timers.push(setTimeout(() => {
+          setTyping(false);
+          setShowSummary(true);
+        }, 400));
         return;
       }
       if (chatMessages[idx].role === "ai") {
@@ -61,12 +69,12 @@ function ChatBubbleMockup() {
           setTyping(false);
           idx++;
           setVisible(idx);
-          timers.push(setTimeout(showNext, 400));
-        }, 700));
+          timers.push(setTimeout(showNext, 300));
+        }, 350));
       } else {
         idx++;
         setVisible(idx);
-        timers.push(setTimeout(showNext, 500));
+        timers.push(setTimeout(showNext, 900));
       }
     };
 
@@ -108,13 +116,27 @@ function ChatBubbleMockup() {
         </motion.div>
       ))}
 
-      {typing && (
+      {typing && !showSummary && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
         >
           <TypingDots />
+        </motion.div>
+      )}
+
+      {showSummary && (
+        <motion.div
+          className="mt-1 rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease }}
+        >
+          <p className="text-[11px] font-mono text-primary/50 uppercase tracking-wider mb-1.5">Summary</p>
+          <p className="text-[12px] text-foreground/60 leading-relaxed">
+            AI study chatbot — Google auth, saved chat history, shareable conversations
+          </p>
         </motion.div>
       )}
     </div>
@@ -124,25 +146,28 @@ function ChatBubbleMockup() {
 /* ─── Template matching mockup — scans & matches ─────────── */
 
 const templateData = [
-  { name: "Next.js + Convex SaaS", match: 94, selected: true },
-  { name: "React + Supabase", match: 71, selected: false },
-  { name: "Next.js + Prisma", match: 58, selected: false },
-  { name: "Remix + Drizzle", match: 42, selected: false },
+  { name: "AI Chat + Vercel AI SDK", match: 96, selected: true },
+  { name: "SaaS Starter + Stripe", match: 62, selected: false },
+  { name: "Dashboard + Analytics", match: 45, selected: false },
+  { name: "E-commerce Storefront", match: 31, selected: false },
 ];
 
 function TemplateCardsMockup() {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-10%" });
+  const inView = useInView(ref, { margin: "-10%", amount: 0.3 });
   const [counts, setCounts] = useState([0, 0, 0, 0]);
   const [showCheck, setShowCheck] = useState(false);
-  const started = useRef(false);
 
   useEffect(() => {
-    if (!inView || started.current) return;
-    started.current = true;
+    if (!inView) {
+      setCounts([0, 0, 0, 0]);
+      setShowCheck(false);
+      return;
+    }
 
     const targets = templateData.map((t) => t.match);
     const duration = 900;
+    let rafId: number;
 
     const timer = setTimeout(() => {
       const startTime = performance.now();
@@ -152,15 +177,18 @@ function TemplateCardsMockup() {
         const eased = 1 - Math.pow(1 - progress, 3);
         setCounts(targets.map((t) => Math.round(t * eased)));
         if (progress < 1) {
-          requestAnimationFrame(tick);
+          rafId = requestAnimationFrame(tick);
         } else {
           setShowCheck(true);
         }
       };
-      requestAnimationFrame(tick);
+      rafId = requestAnimationFrame(tick);
     }, 700);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(rafId);
+    };
   }, [inView]);
 
   return (
@@ -168,7 +196,7 @@ function TemplateCardsMockup() {
       <motion.div
         className="flex items-center justify-between mb-1"
         initial={{ opacity: 0 }}
-        animate={inView ? { opacity: 1 } : {}}
+        animate={inView ? { opacity: 1 } : { opacity: 0 }}
         transition={{ duration: 0.4 }}
       >
         <span className="text-[11px] text-foreground/20 uppercase tracking-[0.15em] font-mono">
@@ -185,7 +213,7 @@ function TemplateCardsMockup() {
               : "bg-foreground/[0.02] border border-border"
           }`}
           initial={{ opacity: 0, x: 24 }}
-          animate={inView ? { opacity: 1, x: 0 } : {}}
+          animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: 24 }}
           transition={{ delay: 0.15 + i * 0.12, duration: 0.5, ease }}
         >
           <div className="flex items-center gap-2.5">
@@ -244,13 +272,14 @@ const fileData = [
 
 function FileTreeMockup() {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-10%" });
+  const inView = useInView(ref, { margin: "-10%", amount: 0.3 });
   const [visibleFiles, setVisibleFiles] = useState(0);
-  const started = useRef(false);
 
   useEffect(() => {
-    if (!inView || started.current) return;
-    started.current = true;
+    if (!inView) {
+      setVisibleFiles(0);
+      return;
+    }
 
     const timers: ReturnType<typeof setTimeout>[] = [];
     fileData.forEach((_, i) => {
@@ -274,7 +303,7 @@ function FileTreeMockup() {
         <motion.div
           className="flex items-center gap-2 text-foreground/40 py-1 text-[13px]"
           initial={{ opacity: 0, x: -12 }}
-          animate={inView ? { opacity: 1, x: 0 } : {}}
+          animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: -12 }}
           transition={{ delay: 0.1, duration: 0.4, ease }}
         >
           <Folder className="w-4 h-4" />

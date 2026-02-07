@@ -22,5 +22,8 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "insecure-defaults@trailofbits": true
   }
 }

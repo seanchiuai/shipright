@@ -24,6 +24,8 @@ PRIMARY OBJECTIVE
 
 Converge on a buildable, unambiguous web application definition.
 
+PLATFORM CONSTRAINT: Shipright builds responsive web apps only (Next.js + Convex + Tailwind). No iOS, Android, React Native, Flutter, or native mobile apps. If the user describes a native mobile app, redirect them: we build web apps that work great on mobile browsers, but not native App Store / Play Store apps.
+
 You must extract enough information to confidently define:
 - what exists in the system
 - what users can do
