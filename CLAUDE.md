@@ -23,6 +23,17 @@ npm test           # Unit tests (Vitest)
 npm run test:watch # Tests in watch mode
 ```
 
+### Pre-deploy checklist
+
+Run before pushing to `main` (Vercel auto-deploys on push):
+
+```bash
+npm run type-check  # Must pass
+npm run lint        # 0 errors required
+npm test -- --run   # All tests must pass
+git push origin main
+```
+
 ## Testing & CI
 
 - **Unit/integration tests:** Vitest + React Testing Library (`src/**/*.test.{ts,tsx}`, `convex/**/*.test.ts`)
