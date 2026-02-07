@@ -38,10 +38,16 @@ export const create = mutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
+    if (args.name.length > 200) {
+      throw new ValidationError("Project name too long (max 200 characters)");
+    }
+    if (args.name.trim().length === 0) {
+      throw new ValidationError("Project name cannot be empty");
+    }
     const user = await getAuthenticatedUser(ctx);
     return await ctx.db.insert("projects", {
       userId: user._id,
-      name: args.name,
+      name: args.name.trim(),
       status: PROJECT_STATUS.INTERVIEW,
       interviewStep: 1,
     });

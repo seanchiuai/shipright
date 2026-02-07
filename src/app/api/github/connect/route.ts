@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { isSafeRedirectPath } from "@/lib/admin";
+import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
+  const rl = rateLimit(getRateLimitKey(request, "github-connect"), {
+    limit: 10,
+    windowMs: 60_000, // 10 requests per minute
+  });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const url = new URL(request.url);
-  const returnTo = url.searchParams.get("returnTo") || "/dashboard";
+  const rawReturnTo = url.searchParams.get("returnTo") || "/dashboard";
+  const returnTo = isSafeRedirectPath(rawReturnTo) ? rawReturnTo : "/dashboard";
 
   const clientId = process.env.GITHUB_CLIENT_ID;
   if (!clientId) {

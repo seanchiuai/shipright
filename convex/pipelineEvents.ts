@@ -1,7 +1,7 @@
 import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { getAuthenticatedUser, getOwnedProject } from "./lib/auth";
+import { getAuthenticatedUser, getOwnedProject, requireAdmin } from "./lib/auth";
 
 // Pure helper for building event args (testable without ctx)
 export function buildEventArgs(params: {
@@ -52,11 +52,11 @@ export const listByProject = query({
   },
 });
 
-// Query: recent events across all projects (requires authentication)
+// Query: recent events across all projects (admin only)
 export const listRecent = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    await getAuthenticatedUser(ctx);
+    await requireAdmin(ctx);
     const limit = args.limit ?? 100;
     return await ctx.db
       .query("pipelineEvents")

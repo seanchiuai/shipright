@@ -14,6 +14,16 @@ export async function getAuthenticatedUser(ctx: QueryCtx | MutationCtx) {
   return user;
 }
 
+/** Require the authenticated user to be the admin. Uses server-only ADMIN_USER_ID env var. */
+export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
+  const user = await getAuthenticatedUser(ctx);
+  const adminClerkId = process.env.ADMIN_USER_ID;
+  if (!adminClerkId || user.clerkUserId !== adminClerkId) {
+    throw new Error("Access denied");
+  }
+  return user;
+}
+
 export async function getOwnedProject(
   ctx: QueryCtx | MutationCtx,
   projectId: Id<"projects">

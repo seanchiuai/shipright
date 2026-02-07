@@ -44,6 +44,10 @@ export const addMessage = mutation({
     isComplete: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    // Input length validation: prevent DoS via oversized messages
+    if (args.role === "user" && args.content.length > 10_000) {
+      throw new Error("Message too long (max 10,000 characters)");
+    }
     await getOwnedProject(ctx, args.projectId);
     return await ctx.db.insert("interviewMessages", {
       projectId: args.projectId,

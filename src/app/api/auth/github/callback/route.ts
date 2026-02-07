@@ -4,8 +4,18 @@ import { auth } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../../convex/_generated/api";
 import { getRequiredEnv } from "@/lib/env";
+import { isSafeRedirectPath } from "@/lib/admin";
+import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
+  const rl = rateLimit(getRateLimitKey(request, "github-callback"), {
+    limit: 15,
+    windowMs: 60_000, // 15 requests per minute
+  });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -25,7 +35,7 @@ export async function GET(request: Request) {
       const parsed = JSON.parse(
         Buffer.from(state, "base64url").toString("utf8")
       );
-      if (parsed.returnTo?.startsWith("/")) {
+      if (parsed.returnTo && isSafeRedirectPath(parsed.returnTo)) {
         returnTo = parsed.returnTo;
       }
       // CSRF check: nonce in state must match cookie
