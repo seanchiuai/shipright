@@ -31,8 +31,8 @@ export const ChoiceCard = memo(function ChoiceCard({
       className={cn(
         "group relative w-full text-left px-4 py-3 rounded-xl border transition-all duration-200",
         selected
-          ? "border-stone-800 bg-stone-800/[0.04] shadow-[0_0_0_1px_rgba(28,25,23,0.08)]"
-          : "border-stone-200 bg-white/80 hover:border-stone-400 hover:bg-white hover:shadow-sm"
+          ? "border-primary bg-primary/[0.08] shadow-[0_0_0_1px_rgba(59,130,246,0.15)]"
+          : "border-border bg-card/80 hover:border-primary/30 hover:bg-card hover:shadow-sm"
       )}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
@@ -49,8 +49,8 @@ export const ChoiceCard = memo(function ChoiceCard({
           className={cn(
             "flex-shrink-0 w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all duration-200",
             selected
-              ? "border-stone-800 bg-stone-800"
-              : "border-stone-300 group-hover:border-stone-400"
+              ? "border-primary bg-primary"
+              : "border-muted-foreground/40 group-hover:border-muted-foreground/60"
           )}
         >
           {selected && (
@@ -59,7 +59,7 @@ export const ChoiceCard = memo(function ChoiceCard({
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
             >
-              <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
+              <Check className="w-2.5 h-2.5 text-primary-foreground" strokeWidth={3} />
             </motion.div>
           )}
         </div>
@@ -71,8 +71,8 @@ export const ChoiceCard = memo(function ChoiceCard({
               className={cn(
                 "w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 transition-colors",
                 selected
-                  ? "bg-stone-800/10 text-stone-800"
-                  : "bg-stone-100 text-stone-400"
+                  ? "bg-primary/15 text-primary"
+                  : "bg-muted text-muted-foreground"
               )}
             >
               {icon}
@@ -81,13 +81,13 @@ export const ChoiceCard = memo(function ChoiceCard({
           <p
             className={cn(
               "text-[14px] font-medium tracking-[-0.01em] transition-colors",
-              selected ? "text-stone-900" : "text-stone-700"
+              selected ? "text-foreground" : "text-foreground/80"
             )}
           >
             {label}
           </p>
           {description && (
-            <p className="text-[12px] text-stone-400 mt-0.5 leading-snug">
+            <p className="text-[12px] text-muted-foreground mt-0.5 leading-snug">
               {description}
             </p>
           )}

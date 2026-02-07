@@ -78,7 +78,7 @@ function ConnectGitHubContent() {
 
   if (!isLoaded || convexUser === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background" data-theme="dark">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
@@ -90,7 +90,7 @@ function ConnectGitHubContent() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background" data-theme="dark">
       <AppNavbar />
 
       <main className="max-w-lg mx-auto px-4 py-16">
@@ -112,8 +112,8 @@ function ConnectGitHubContent() {
         {isConnected ? (
           <Card>
             <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-2">
-                <Check className="h-6 w-6 text-green-600" />
+              <div className="mx-auto w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-2">
+                <Check className="h-6 w-6 text-green-400" />
               </div>
               <CardTitle>GitHub Connected</CardTitle>
               <CardDescription>
@@ -201,7 +201,7 @@ export default function ConnectGitHubPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center bg-background" data-theme="dark">
           <div className="animate-pulse text-muted-foreground">Loading...</div>
         </div>
       }

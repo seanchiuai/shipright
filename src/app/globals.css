@@ -95,7 +95,7 @@
   --sidebar-ring: #1c1917;
 }
 
-/* Dark theme — scoped for landing page */
+/* Dark theme — app-wide */
 [data-theme="dark"] {
   --background: #06080d;
   --foreground: #e8eaed;

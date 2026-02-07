@@ -37,8 +37,8 @@ export function DashboardBackground() {
         size: Math.random() * 2 + 0.5,
         speedX: (Math.random() - 0.5) * 0.2,
         speedY: (Math.random() - 0.5) * 0.2,
-        opacity: Math.random() * 0.2 + 0.05,
-        hue: Math.random() * 20 + 30,
+        opacity: Math.random() * 0.15 + 0.05,
+        hue: Math.random() * 40 + 210,
       };
     }
 
@@ -67,7 +67,7 @@ export function DashboardBackground() {
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 70%, 60%, ${p.opacity})`;
+        ctx.fillStyle = `hsla(${p.hue}, 60%, 60%, ${p.opacity})`;
         ctx.fill();
 
         particles.slice(i + 1).forEach((p2) => {
@@ -79,7 +79,7 @@ export function DashboardBackground() {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `hsla(35, 90%, 55%, ${0.06 * (1 - dist / 80)})`;
+            ctx.strokeStyle = `hsla(220, 70%, 50%, ${0.06 * (1 - dist / 80)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -108,12 +108,12 @@ export function DashboardBackground() {
 
   return (
     <>
-      {/* Gradient background */}
+      {/* Dark gradient background */}
       <div
         className="fixed inset-0 -z-30"
         style={{
           background:
-            "linear-gradient(135deg, #faf9f7 0%, #f0ebe3 50%, #e8e0d5 100%)",
+            "linear-gradient(135deg, #06080d 0%, #0a0e1a 50%, #0c1220 100%)",
         }}
       />
 
@@ -122,7 +122,7 @@ export function DashboardBackground() {
         className="fixed inset-0 -z-20"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(240, 140, 58, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(240, 140, 58, 0.03) 1px, transparent 1px)",
+            "linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px)",
           backgroundSize: "60px 60px",
           animation: "gridMove 20s linear infinite",
         }}
@@ -137,7 +137,7 @@ export function DashboardBackground() {
           width: "500px",
           height: "500px",
           background:
-            "radial-gradient(circle, rgba(240, 140, 58, 0.12) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)",
           filter: "blur(80px)",
           animation: "float1 8s ease-in-out infinite",
         }}
@@ -150,7 +150,7 @@ export function DashboardBackground() {
           width: "400px",
           height: "400px",
           background:
-            "radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%)",
           filter: "blur(80px)",
           animation: "float2 10s ease-in-out infinite",
         }}

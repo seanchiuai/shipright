@@ -68,10 +68,10 @@ export function MagicTextarea({
     >
       <div
         className={cn(
-          "relative bg-white rounded-2xl border overflow-hidden transition-all duration-300",
+          "relative bg-card rounded-2xl border overflow-hidden transition-all duration-300",
           isFocused
-            ? "border-stone-300 shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
-            : "border-stone-200 shadow-sm"
+            ? "border-primary/40 shadow-[0_2px_12px_rgba(59,130,246,0.1)]"
+            : "border-border shadow-sm"
         )}
       >
         <textarea
@@ -86,7 +86,7 @@ export function MagicTextarea({
           disabled={disabled || loading}
           className={cn(
             "w-full bg-transparent px-5 pt-4 pb-3 pr-16 resize-none",
-            "text-[15px] leading-6 text-stone-800 placeholder:text-stone-400/70",
+            "text-[15px] leading-6 text-foreground placeholder:text-muted-foreground",
             "focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
             "tracking-[-0.01em]"
           )}
@@ -101,7 +101,7 @@ export function MagicTextarea({
                 "text-[11px] tabular-nums transition-colors",
                 value.length > maxLength * 0.9
                   ? "text-red-500"
-                  : "text-stone-300"
+                  : "text-muted-foreground/50"
               )}
             >
               {value.length}/{maxLength}
@@ -115,12 +115,12 @@ export function MagicTextarea({
             className={cn(
               "w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200",
               canSubmit
-                ? "bg-stone-500 text-white hover:bg-stone-400 shadow-sm"
-                : "bg-stone-100 text-stone-300 cursor-not-allowed"
+                ? "bg-primary text-primary-foreground hover:bg-primary/80 shadow-sm"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
             )}
           >
             {loading ? (
-              <div className="w-3.5 h-3.5 border-2 border-stone-400/30 border-t-white rounded-full animate-spin" />
+              <div className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
             ) : (
               <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
             )}
@@ -129,9 +129,9 @@ export function MagicTextarea({
       </div>
 
       <div className="flex justify-between mt-2 px-1">
-        <span className="text-[11px] text-stone-400/60 tracking-wide">
+        <span className="text-[11px] text-muted-foreground/50 tracking-wide">
           Press{" "}
-          <kbd className="px-1.5 py-0.5 rounded-md bg-stone-100 text-[10px] font-mono text-stone-400 border border-stone-200/50">
+          <kbd className="px-1.5 py-0.5 rounded-md bg-muted text-[10px] font-mono text-muted-foreground border border-border/50">
             Enter
           </kbd>{" "}
           to send

@@ -50,7 +50,7 @@ export function ProjectCard({
       {/* Glow effect on hover */}
       <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur transition-opacity duration-300" />
 
-      <div className="relative bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-6 transition-all duration-300 group-hover:border-primary/30 group-hover:shadow-[0_8px_30px_rgba(240,140,58,0.12)] group-hover:-translate-y-1">
+      <div className="relative bg-card/80 backdrop-blur-sm border border-border rounded-2xl p-6 transition-all duration-300 group-hover:border-primary/30 group-hover:shadow-[0_8px_30px_rgba(59,130,246,0.1)] group-hover:-translate-y-1">
         <div className="flex items-start justify-between mb-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center group-hover:from-primary/20 group-hover:to-purple-500/20 transition-colors">
             <Folder className="w-6 h-6 text-primary" />

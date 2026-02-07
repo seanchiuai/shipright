@@ -94,7 +94,7 @@ export default function DashboardPage() {
 
   if (!isLoaded || convexUser === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" data-theme="dark">
         <DashboardBackground />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -110,7 +110,7 @@ export default function DashboardPage() {
 
   if (!clerkUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" data-theme="dark">
         <DashboardBackground />
         <p className="text-muted-foreground">Please sign in</p>
       </div>
@@ -118,7 +118,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" data-theme="dark">
       <DashboardBackground />
 
       <AppNavbar />
@@ -152,7 +152,7 @@ export default function DashboardPage() {
             {/* Glow effect */}
             <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-purple-500/20 to-primary/20 rounded-2xl opacity-100 blur-lg transition-opacity duration-300 pointer-events-none" />
 
-            <div className="relative bg-card/90 backdrop-blur-sm border border-primary/30 rounded-2xl p-5 flex items-end gap-4 shadow-[0_4px_30px_rgba(240,140,58,0.12)] transition-all group-focus-within:border-primary group-focus-within:shadow-[0_4px_30px_rgba(240,140,58,0.15)]">
+            <div className="relative bg-card/90 backdrop-blur-sm border border-primary/30 rounded-2xl p-5 flex items-end gap-4 shadow-[0_4px_30px_rgba(59,130,246,0.1)] transition-all group-focus-within:border-primary group-focus-within:shadow-[0_4px_30px_rgba(59,130,246,0.15)]">
               <textarea
                 ref={inputRef}
                 value={appIdea}

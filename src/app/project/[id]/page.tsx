@@ -221,7 +221,7 @@ export default function ProjectDetailsPage() {
 
   if (!isLoaded || convexUser === undefined || project === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background" data-theme="dark">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
@@ -234,7 +234,7 @@ export default function ProjectDetailsPage() {
 
   if (!project) {
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-background" data-theme="dark">
         <AppNavbar />
         <main className="max-w-5xl mx-auto px-4 py-8">
           <Card className="p-8 text-center">
@@ -283,7 +283,7 @@ export default function ProjectDetailsPage() {
   const isInProgress = isMatchingInProgress || isBuildingRepo;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background" data-theme="dark">
       <AppNavbar title={project.name} />
 
       <main className="max-w-5xl mx-auto px-4 py-8">
@@ -359,13 +359,13 @@ export default function ProjectDetailsPage() {
                   renderContent={(elapsedSeconds) => (
                     <>
                       {elapsedSeconds > 60 && elapsedSeconds <= 120 && (
-                        <p className="text-xs text-amber-600 mt-1">
+                        <p className="text-xs text-amber-400 mt-1">
                           Taking longer than expected ({elapsedSeconds}s)...
                         </p>
                       )}
                       {elapsedSeconds > 120 && (
                         <div className="flex flex-col items-center gap-2 mt-2">
-                          <p className="text-xs text-amber-600">
+                          <p className="text-xs text-amber-400">
                             This is taking too long ({elapsedSeconds}s). Something may have gone wrong.
                           </p>
                           <Button
@@ -442,7 +442,7 @@ export default function ProjectDetailsPage() {
                           isDone ? "bg-green-500/10" : isActive ? "bg-primary/10" : "bg-muted"
                         }`}>
                           {isDone ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <CheckCircle2 className="h-4 w-4 text-green-400" />
                           ) : isActive ? (
                             <Loader2 className="h-4 w-4 animate-spin text-primary" />
                           ) : (
@@ -450,7 +450,7 @@ export default function ProjectDetailsPage() {
                           )}
                         </div>
                         <span className={`text-sm ${
-                          isDone ? "text-green-600" : isActive ? "text-foreground font-medium" : "text-muted-foreground"
+                          isDone ? "text-green-400" : isActive ? "text-foreground font-medium" : "text-muted-foreground"
                         }`}>
                           {step.label}
                         </span>
@@ -572,7 +572,7 @@ export default function ProjectDetailsPage() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center justify-center py-8">
                 <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
-                  <CheckCircle2 className="h-6 w-6 text-green-500" />
+                  <CheckCircle2 className="h-6 w-6 text-green-400" />
                 </div>
                 <h3 className="text-lg font-medium mb-1">Project scaffolded</h3>
                 <p className="text-muted-foreground text-center text-sm mb-6">

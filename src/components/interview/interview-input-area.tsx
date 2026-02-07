@@ -35,7 +35,7 @@ export function InterviewInputArea({
   if (phase === "summary") return null;
 
   return (
-    <div className="shrink-0 border-t border-stone-200/60 bg-white/50 backdrop-blur-xl">
+    <div className="shrink-0 border-t border-border/40 bg-background/50 backdrop-blur-xl">
       <div className="max-w-2xl mx-auto p-4 px-6">
         {/* Example idea chips for seed phase */}
         {isSeedEmpty && !currentInput && (
@@ -44,7 +44,7 @@ export function InterviewInputArea({
               <button
                 key={idea}
                 onClick={() => onInputChange(idea)}
-                className="px-3.5 py-1.5 text-[12px] rounded-full border border-stone-200 text-stone-500 hover:text-stone-700 hover:border-stone-400 hover:bg-white/80 transition-all duration-200"
+                className="px-3.5 py-1.5 text-[12px] rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-card/50 transition-all duration-200"
               >
                 {idea}
               </button>
@@ -82,7 +82,7 @@ export function InterviewInputArea({
             <button
               onClick={onFinishEarly}
               disabled={loading}
-              className="text-[12px] text-stone-400 hover:text-stone-600 transition-colors disabled:opacity-50"
+              className="text-[12px] text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
             >
               Skip conversation &rarr;
             </button>

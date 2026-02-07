@@ -83,7 +83,7 @@ export default function ProfilePage() {
 
   if (!isLoaded || convexUser === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background" data-theme="dark">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -103,7 +103,7 @@ export default function ProfilePage() {
     : clerkUser.primaryEmailAddress?.emailAddress?.[0]?.toUpperCase() || "?";
 
   return (
-    <div className="min-h-screen bg-[#faf9f7]">
+    <div className="min-h-screen bg-background" data-theme="dark">
       <AppNavbar />
 
       <main className="max-w-2xl mx-auto px-4 py-12 space-y-6">
@@ -145,7 +145,7 @@ export default function ProfilePage() {
               {isConnected && (
                 <Badge
                   variant="secondary"
-                  className="bg-green-50 text-green-700 border-green-200"
+                  className="bg-green-500/10 text-green-400 border-green-500/20"
                 >
                   <Check className="h-3 w-3 mr-1" />
                   Connected
