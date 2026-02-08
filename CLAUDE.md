@@ -121,11 +121,23 @@ Per iteration:
 
 ## Skills
 
-Implementation patterns live in `.claude/skills/`:
-- `clerk-auth/`, `convex-patterns/`, `create-skill/`, `ui-components/`
-- `interview-flow/`, `template-matching/`, `github-integration/`
-- `daytona-sandbox/`, `scaffolding-generation/`, `deployment/`, `production/`
-- `e2e-testing/`, `prompt-architect/`
+**Read the relevant skill before writing code.** Skills live in `.claude/skills/<name>/SKILL.md` (overview) and `reference.md` (code patterns).
+
+| Skill | Read when... |
+|-------|-------------|
+| `clerk-auth` | Touching auth, middleware, user sync, admin checks |
+| `convex-patterns` | Writing queries/mutations/actions, schema changes, auth helpers |
+| `ui-components` | Building UI — dark theme tokens, component org, shadcn patterns |
+| `interview-flow` | Modifying interview conversation, prompts, extraction, platform constraints |
+| `template-matching` | Changing scoring algorithm, template index, weight determination |
+| `github-integration` | GitHub OAuth, repo creation, git operations, token encryption |
+| `daytona-sandbox` | Sandbox lifecycle, credential provisioning, file operations |
+| `scaffolding-generation` | Pipeline steps, cc-template injection, Claude Code execution |
+| `deployment` | Vercel config, env vars, production URLs, OAuth redirects |
+| `production` | CI pipeline, Sentry monitoring, pre-deploy checks, troubleshooting |
+| `e2e-testing` | Browser automation, agent-browser patterns, test flow |
+| `prompt-architect` | Structuring prompts with research-backed frameworks |
+| `create-skill` | Creating new skills |
 
 ## Environment Variables
 
