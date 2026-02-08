@@ -393,13 +393,15 @@ describe("commitFiles", () => {
     vi.useRealTimers();
   });
 
-  it("happy path: text-only files", async () => {
+  it("happy path: text-only files (all go through createBlob)", async () => {
+    let blobCounter = 0;
     const getRef = vi.fn().mockResolvedValue({ data: { object: { sha: "parent-sha" } } });
     const getCommit = vi.fn().mockResolvedValue({ data: { tree: { sha: "base-tree-sha" } } });
+    const createBlob = vi.fn().mockImplementation(() => ({ data: { sha: `blob-sha-${blobCounter++}` } }));
     const createTree = vi.fn().mockResolvedValue({ data: { sha: "new-tree-sha" } });
     const createCommit = vi.fn().mockResolvedValue({ data: { sha: "commit-sha" } });
     const updateRef = vi.fn().mockResolvedValue({});
-    const octokit = createMockOctokit({ git: { getRef, getCommit, createTree, createCommit, updateRef } });
+    const octokit = createMockOctokit({ git: { getRef, getCommit, createBlob, createTree, createCommit, updateRef } });
 
     const files = [
       { path: "src/index.ts", content: "const x = 1;", isBinary: false },
@@ -412,12 +414,13 @@ describe("commitFiles", () => {
 
     expect(getRef).toHaveBeenCalledWith({ owner: "owner", repo: "repo", ref: "heads/main" });
     expect(getCommit).toHaveBeenCalledWith({ owner: "owner", repo: "repo", commit_sha: "parent-sha" });
+    expect(createBlob).toHaveBeenCalledTimes(2);
     expect(createTree).toHaveBeenCalledWith({
       owner: "owner",
       repo: "repo",
       tree: [
-        { path: "src/index.ts", mode: "100644", type: "blob", content: "const x = 1;" },
-        { path: "README.md", mode: "100644", type: "blob", content: "# Hello" },
+        { path: "src/index.ts", mode: "100644", type: "blob", sha: "blob-sha-0" },
+        { path: "README.md", mode: "100644", type: "blob", sha: "blob-sha-1" },
       ],
       base_tree: "base-tree-sha",
     });
@@ -436,10 +439,11 @@ describe("commitFiles", () => {
     });
   });
 
-  it("happy path: mixed text + binary files", async () => {
+  it("happy path: mixed text + binary files (all go through createBlob)", async () => {
+    let blobCounter = 0;
     const getRef = vi.fn().mockResolvedValue({ data: { object: { sha: "parent-sha" } } });
     const getCommit = vi.fn().mockResolvedValue({ data: { tree: { sha: "base-tree-sha" } } });
-    const createBlob = vi.fn().mockResolvedValue({ data: { sha: "binary-blob-sha" } });
+    const createBlob = vi.fn().mockImplementation(() => ({ data: { sha: `blob-sha-${blobCounter++}` } }));
     const createTree = vi.fn().mockResolvedValue({ data: { sha: "new-tree-sha" } });
     const createCommit = vi.fn().mockResolvedValue({ data: { sha: "commit-sha" } });
     const updateRef = vi.fn().mockResolvedValue({});
@@ -454,22 +458,22 @@ describe("commitFiles", () => {
     await vi.advanceTimersByTimeAsync(2000);
     await promise;
 
-    // Binary blob created
-    expect(createBlob).toHaveBeenCalledTimes(1);
-    // Tree has both text (content) and binary (sha) items
+    // All files go through createBlob
+    expect(createBlob).toHaveBeenCalledTimes(2);
+    // Tree items all use sha (no inline content)
     const treeCall = createTree.mock.calls[0][0];
     const textItem = treeCall.tree.find((t: { path: string }) => t.path === "src/index.ts");
     const binItem = treeCall.tree.find((t: { path: string }) => t.path === "logo.png");
-    expect(textItem.content).toBe("code");
-    expect(textItem.sha).toBeUndefined();
-    expect(binItem.sha).toBe("binary-blob-sha");
+    expect(textItem.sha).toBe("blob-sha-0");
+    expect(textItem.content).toBeUndefined();
+    expect(binItem.sha).toBe("blob-sha-1");
     expect(binItem.content).toBeUndefined();
   });
 
-  it("skips blob creation when no binary files", async () => {
+  it("creates blobs for text-only files too", async () => {
     const getRef = vi.fn().mockResolvedValue({ data: { object: { sha: "sha" } } });
     const getCommit = vi.fn().mockResolvedValue({ data: { tree: { sha: "tree" } } });
-    const createBlob = vi.fn();
+    const createBlob = vi.fn().mockResolvedValue({ data: { sha: "blob-sha" } });
     const createTree = vi.fn().mockResolvedValue({ data: { sha: "tree" } });
     const createCommit = vi.fn().mockResolvedValue({ data: { sha: "c" } });
     const updateRef = vi.fn().mockResolvedValue({});
@@ -480,19 +484,20 @@ describe("commitFiles", () => {
     await vi.advanceTimersByTimeAsync(2000);
     await promise;
 
-    expect(createBlob).not.toHaveBeenCalled();
+    expect(createBlob).toHaveBeenCalledTimes(1);
   });
 
   it("createTree strategy: attempts 0-2 include base_tree", async () => {
     const getRef = vi.fn().mockResolvedValue({ data: { object: { sha: "sha" } } });
     const getCommit = vi.fn().mockResolvedValue({ data: { tree: { sha: "base-tree" } } });
+    const createBlob = vi.fn().mockResolvedValue({ data: { sha: "blob-sha" } });
     const createTree = vi.fn()
       .mockRejectedValueOnce(new Error("404"))
       .mockRejectedValueOnce(new Error("404"))
       .mockResolvedValue({ data: { sha: "tree" } });
     const createCommit = vi.fn().mockResolvedValue({ data: { sha: "c" } });
     const updateRef = vi.fn().mockResolvedValue({});
-    const octokit = createMockOctokit({ git: { getRef, getCommit, createTree, createCommit, updateRef } });
+    const octokit = createMockOctokit({ git: { getRef, getCommit, createBlob, createTree, createCommit, updateRef } });
 
     const files = [{ path: "a.ts", content: "x", isBinary: false }];
     const promise = commitFiles(octokit, "owner", "repo", files, "msg");
@@ -512,6 +517,7 @@ describe("commitFiles", () => {
   it("createTree strategy: attempt 3 drops base_tree", async () => {
     const getRef = vi.fn().mockResolvedValue({ data: { object: { sha: "sha" } } });
     const getCommit = vi.fn().mockResolvedValue({ data: { tree: { sha: "base-tree" } } });
+    const createBlob = vi.fn().mockResolvedValue({ data: { sha: "blob-sha" } });
     const createTree = vi.fn()
       .mockRejectedValueOnce(new Error("404")) // attempt 0
       .mockRejectedValueOnce(new Error("404")) // attempt 1
@@ -519,7 +525,7 @@ describe("commitFiles", () => {
       .mockResolvedValue({ data: { sha: "tree" } }); // attempt 3
     const createCommit = vi.fn().mockResolvedValue({ data: { sha: "c" } });
     const updateRef = vi.fn().mockResolvedValue({});
-    const octokit = createMockOctokit({ git: { getRef, getCommit, createTree, createCommit, updateRef } });
+    const octokit = createMockOctokit({ git: { getRef, getCommit, createBlob, createTree, createCommit, updateRef } });
 
     const files = [{ path: "a.ts", content: "x", isBinary: false }];
     const promise = commitFiles(octokit, "owner", "repo", files, "msg");
@@ -537,6 +543,7 @@ describe("commitFiles", () => {
   it("createTree strategy: attempts 4-7 remain without base_tree (sticky switch)", async () => {
     const getRef = vi.fn().mockResolvedValue({ data: { object: { sha: "sha" } } });
     const getCommit = vi.fn().mockResolvedValue({ data: { tree: { sha: "base-tree" } } });
+    const createBlob = vi.fn().mockResolvedValue({ data: { sha: "blob-sha" } });
     const createTree = vi.fn()
       .mockRejectedValueOnce(new Error("fail")) // 0
       .mockRejectedValueOnce(new Error("fail")) // 1
@@ -546,7 +553,7 @@ describe("commitFiles", () => {
       .mockResolvedValue({ data: { sha: "tree" } }); // 5
     const createCommit = vi.fn().mockResolvedValue({ data: { sha: "c" } });
     const updateRef = vi.fn().mockResolvedValue({});
-    const octokit = createMockOctokit({ git: { getRef, getCommit, createTree, createCommit, updateRef } });
+    const octokit = createMockOctokit({ git: { getRef, getCommit, createBlob, createTree, createCommit, updateRef } });
 
     const files = [{ path: "a.ts", content: "x", isBinary: false }];
     const promise = commitFiles(octokit, "owner", "repo", files, "msg");
@@ -571,8 +578,9 @@ describe("commitFiles", () => {
   it("throws after 8 failed createTree attempts", async () => {
     const getRef = vi.fn().mockResolvedValue({ data: { object: { sha: "sha" } } });
     const getCommit = vi.fn().mockResolvedValue({ data: { tree: { sha: "tree" } } });
+    const createBlob = vi.fn().mockResolvedValue({ data: { sha: "blob-sha" } });
     const createTree = vi.fn().mockRejectedValue(new Error("404 Not Found"));
-    const octokit = createMockOctokit({ git: { getRef, getCommit, createTree } });
+    const octokit = createMockOctokit({ git: { getRef, getCommit, createBlob, createTree } });
 
     const files = [{ path: "a.ts", content: "x", isBinary: false }];
     const promise = commitFiles(octokit, "owner", "repo", files, "msg");
@@ -586,8 +594,9 @@ describe("commitFiles", () => {
     // Verify backoff: 3s, 6s, 12s, 15s(cap), 15s, 15s, 15s
     const getRef = vi.fn().mockResolvedValue({ data: { object: { sha: "sha" } } });
     const getCommit = vi.fn().mockResolvedValue({ data: { tree: { sha: "tree" } } });
+    const createBlob = vi.fn().mockResolvedValue({ data: { sha: "blob-sha" } });
     const createTree = vi.fn().mockRejectedValue(new Error("fail"));
-    const octokit = createMockOctokit({ git: { getRef, getCommit, createTree } });
+    const octokit = createMockOctokit({ git: { getRef, getCommit, createBlob, createTree } });
 
     const files = [{ path: "a.ts", content: "x", isBinary: false }];
     const promise = commitFiles(octokit, "owner", "repo", files, "msg");
@@ -620,13 +629,14 @@ describe("commitFiles", () => {
     await expect(promise).rejects.toThrow("commit not found");
   });
 
-  it("tree items: text files have content field, no sha", async () => {
+  it("tree items: all files use sha (no inline content)", async () => {
     const getRef = vi.fn().mockResolvedValue({ data: { object: { sha: "sha" } } });
     const getCommit = vi.fn().mockResolvedValue({ data: { tree: { sha: "tree" } } });
+    const createBlob = vi.fn().mockResolvedValue({ data: { sha: "blob-sha" } });
     const createTree = vi.fn().mockResolvedValue({ data: { sha: "t" } });
     const createCommit = vi.fn().mockResolvedValue({ data: { sha: "c" } });
     const updateRef = vi.fn().mockResolvedValue({});
-    const octokit = createMockOctokit({ git: { getRef, getCommit, createTree, createCommit, updateRef } });
+    const octokit = createMockOctokit({ git: { getRef, getCommit, createBlob, createTree, createCommit, updateRef } });
 
     const files = [{ path: "file.ts", content: "code", isBinary: false }];
     const promise = commitFiles(octokit, "owner", "repo", files, "msg");
@@ -638,9 +648,9 @@ describe("commitFiles", () => {
       path: "file.ts",
       mode: "100644",
       type: "blob",
-      content: "code",
+      sha: "blob-sha",
     });
-    expect(treeItems[0].sha).toBeUndefined();
+    expect(treeItems[0].content).toBeUndefined();
   });
 
   it("tree items: binary files have sha field, no content", async () => {

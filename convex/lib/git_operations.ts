@@ -222,40 +222,18 @@ export async function commitFiles(
   const baseTreeSha = parentCommit.tree.sha;
   console.log(`[commitFiles] Got base tree SHA: ${baseTreeSha}`);
 
-  // Use inline content for text files (no blob creation needed).
-  // Only create blobs for binary files (GitHub createTree doesn't support binary inline).
-  const binaryFiles = files.filter((f) => f.isBinary);
-  const textFiles = files.filter((f) => !f.isBinary);
-  console.log(`[commitFiles] ${textFiles.length} text files (inline), ${binaryFiles.length} binary files (blobs)`);
+  // Create blobs for ALL files first, then reference by SHA in createTree.
+  // Inline content in createTree causes 404 when payload is large (200+ files).
+  console.log(`[commitFiles] Creating blobs for ${files.length} files...`);
+  const allBlobs = await createBlobsBatched(octokit, owner, repo, files);
+  console.log(`[commitFiles] Created ${allBlobs.length} blobs`);
 
-  let binaryBlobs: BlobResult[] = [];
-  if (binaryFiles.length > 0) {
-    binaryBlobs = await createBlobsBatched(octokit, owner, repo, binaryFiles);
-    console.log(`[commitFiles] Created ${binaryBlobs.length} binary blobs`);
-  }
-
-  type TreeItem = {
-    path: string;
-    mode: "100644";
-    type: "blob";
-    content?: string;
-    sha?: string;
-  };
-
-  const treeItems: TreeItem[] = [
-    ...textFiles.map((file) => ({
-      path: file.path,
-      mode: "100644" as const,
-      type: "blob" as const,
-      content: file.content,
-    })),
-    ...binaryBlobs.map((blob) => ({
-      path: blob.path,
-      mode: "100644" as const,
-      type: "blob" as const,
-      sha: blob.sha,
-    })),
-  ];
+  const treeItems = allBlobs.map((blob) => ({
+    path: blob.path,
+    mode: "100644" as const,
+    type: "blob" as const,
+    sha: blob.sha,
+  }));
 
   // Retry createTree — GitHub's git backend can lag behind repo creation
   // Try with base_tree first, then without if it fails (creates new tree from scratch)
