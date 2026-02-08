@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:ci": "vitest run --bail=1 --no-color",
     "test:watch": "vitest",
-    "templates:sync": "npx convex run templates:sync"
+    "templates:sync": "npx convex run templates:sync",
+    "deploy:convex": "npx convex deploy --yes && npx convex run --prod templates:seed"
   },
   "overrides": {
     "fast-xml-parser": ">=5.3.4"

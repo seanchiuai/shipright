@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedUser } from "./lib/auth";
 
@@ -83,74 +83,44 @@ export const getBySlug = query({
   },
 });
 
-// Mutation: Sync templates from JSON file
-// - Inserts new templates (by slug)
-// - Updates existing templates (matches by slug, falls back to name)
-// - Does NOT delete orphaned templates
-export const sync = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await getAuthenticatedUser(ctx);
-    const stats = { added: 0, updated: 0, unchanged: 0, errors: [] as string[] };
+/** Core sync logic (shared between public and internal mutations) */
+async function syncTemplatesCore(ctx: { db: import("./_generated/server").MutationCtx["db"] }) {
+  const stats = { added: 0, updated: 0, unchanged: 0, errors: [] as string[] };
 
-    for (const template of templatesData.templates) {
-      try {
-        // Validate required fields
-        if (!template.slug || !template.name || !template.sourceUrl) {
-          stats.errors.push(`Invalid template: missing required fields (slug: ${template.slug})`);
-          continue;
-        }
+  for (const template of templatesData.templates) {
+    try {
+      if (!template.slug || !template.name || !template.sourceUrl) {
+        stats.errors.push(`Invalid template: missing required fields (slug: ${template.slug})`);
+        continue;
+      }
 
-        // Check if template exists by slug first
-        let existing = await ctx.db
-          .query("templates")
-          .withIndex("by_slug", (q) => q.eq("slug", template.slug))
-          .first();
+      let existing = await ctx.db
+        .query("templates")
+        .withIndex("by_slug", (q) => q.eq("slug", template.slug))
+        .first();
 
-        // Fallback: check by name for templates without slugs (backwards compat)
-        if (!existing) {
-          const allTemplates = await ctx.db.query("templates").collect();
-          existing = allTemplates.find((t) => t.name === template.name) || null;
-        }
+      if (!existing) {
+        const allTemplates = await ctx.db.query("templates").collect();
+        existing = allTemplates.find((t) => t.name === template.name) || null;
+      }
 
-        if (existing) {
-          // Update existing template (including adding slug if missing)
-          const hasChanges =
-            existing.slug !== template.slug ||
-            existing.name !== template.name ||
-            existing.description !== template.description ||
-            existing.sourceUrl !== template.sourceUrl ||
-            !deepEqual(existing.stack, template.stack) ||
-            !deepEqual(existing.capabilities, template.capabilities) ||
-            !deepEqual(existing.tags, template.tags) ||
-            !deepEqual(existing.integrations, template.integrations) ||
-            !deepEqual(existing.useCases, template.useCases) ||
-            existing.complexity !== template.complexity ||
-            existing.maintained !== template.maintained ||
-            existing.lastVerified !== template.lastVerified;
+      if (existing) {
+        const hasChanges =
+          existing.slug !== template.slug ||
+          existing.name !== template.name ||
+          existing.description !== template.description ||
+          existing.sourceUrl !== template.sourceUrl ||
+          !deepEqual(existing.stack, template.stack) ||
+          !deepEqual(existing.capabilities, template.capabilities) ||
+          !deepEqual(existing.tags, template.tags) ||
+          !deepEqual(existing.integrations, template.integrations) ||
+          !deepEqual(existing.useCases, template.useCases) ||
+          existing.complexity !== template.complexity ||
+          existing.maintained !== template.maintained ||
+          existing.lastVerified !== template.lastVerified;
 
-          if (hasChanges) {
-            await ctx.db.patch(existing._id, {
-              slug: template.slug,
-              name: template.name,
-              description: template.description,
-              sourceUrl: template.sourceUrl,
-              stack: template.stack,
-              capabilities: template.capabilities,
-              tags: template.tags,
-              integrations: template.integrations,
-              useCases: template.useCases,
-              complexity: template.complexity as "starter" | "intermediate" | "advanced" | undefined,
-              maintained: template.maintained,
-              lastVerified: template.lastVerified,
-            });
-            stats.updated++;
-          } else {
-            stats.unchanged++;
-          }
-        } else {
-          // Insert new template
-          await ctx.db.insert("templates", {
+        if (hasChanges) {
+          await ctx.db.patch(existing._id, {
             slug: template.slug,
             name: template.name,
             description: template.description,
@@ -164,18 +134,56 @@ export const sync = mutation({
             maintained: template.maintained,
             lastVerified: template.lastVerified,
           });
-          stats.added++;
+          stats.updated++;
+        } else {
+          stats.unchanged++;
         }
-      } catch (error) {
-        stats.errors.push(`Error processing ${template.slug}: ${error}`);
+      } else {
+        await ctx.db.insert("templates", {
+          slug: template.slug,
+          name: template.name,
+          description: template.description,
+          sourceUrl: template.sourceUrl,
+          stack: template.stack,
+          capabilities: template.capabilities,
+          tags: template.tags,
+          integrations: template.integrations,
+          useCases: template.useCases,
+          complexity: template.complexity as "starter" | "intermediate" | "advanced" | undefined,
+          maintained: template.maintained,
+          lastVerified: template.lastVerified,
+        });
+        stats.added++;
       }
+    } catch (error) {
+      stats.errors.push(`Error processing ${template.slug}: ${error}`);
     }
+  }
 
-    return {
-      message: `Sync complete: ${stats.added} added, ${stats.updated} updated, ${stats.unchanged} unchanged`,
-      ...stats,
-      total: templatesData.templates.length,
-    };
+  return {
+    message: `Sync complete: ${stats.added} added, ${stats.updated} updated, ${stats.unchanged} unchanged`,
+    ...stats,
+    total: templatesData.templates.length,
+  };
+}
+
+// Mutation: Sync templates from JSON file (public, requires auth)
+// - Inserts new templates (by slug)
+// - Updates existing templates (matches by slug, falls back to name)
+// - Does NOT delete orphaned templates
+export const sync = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await getAuthenticatedUser(ctx);
+    return syncTemplatesCore(ctx);
+  },
+});
+
+// Internal mutation: Sync templates without auth (for CLI/post-deploy seeding)
+export const seed = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    return syncTemplatesCore(ctx);
   },
 });
 
