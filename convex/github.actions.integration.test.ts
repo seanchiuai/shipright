@@ -58,10 +58,14 @@ vi.mock("octokit", () => ({
   },
 }));
 
-vi.mock("../lib/encryption", () => ({
-  encryptToken: encryptTokenMock,
-  decryptToken: decryptTokenMock,
-}));
+vi.mock("../lib/encryption", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../lib/encryption")>();
+  return {
+    ...actual,
+    encryptToken: encryptTokenMock,
+    decryptToken: decryptTokenMock,
+  };
+});
 
 vi.mock("./lib/sentry", () => ({ reportToSentry: reportToSentryMock }));
 

@@ -10,6 +10,7 @@ import {
   FinalCTA,
   Footer,
 } from "@/components/landing";
+import { DashboardBackground } from "@/components/dashboard/dashboard-background";
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useUser();
@@ -31,6 +32,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <DashboardBackground />
       <Header />
       <main>
         <HeroSection />

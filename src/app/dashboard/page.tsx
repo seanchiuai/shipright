@@ -135,10 +135,6 @@ export default function DashboardPage() {
             What do you want to{" "}
             <em className="text-primary not-italic">build</em>?
           </h1>
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-            Describe your app idea and we&apos;ll help you turn it into a GitHub
-            repo.
-          </p>
         </motion.div>
 
         {/* Input section */}

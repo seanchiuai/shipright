@@ -26,7 +26,7 @@ export function decryptToken(encryptedToken: string): string {
     const key = Buffer.from(process.env.ENCRYPTION_KEY!, "hex");
     const [ivHex, authTagHex, encrypted] = encryptedToken.split(":");
 
-    if (!ivHex || !authTagHex || !encrypted) {
+    if (!ivHex || !authTagHex || encrypted === undefined) {
       throw new Error("malformed token");
     }
 
