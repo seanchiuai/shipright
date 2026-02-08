@@ -1,7 +1,7 @@
 "use node";
 
 import { action } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { generateText, stepCountIs } from "ai";
 import { z } from "zod";
 import { api, internal } from "./_generated/api";
@@ -12,6 +12,7 @@ import {
 import { getVertexProvider } from "./lib/vertex";
 import { parseJsonResponse } from "./lib/json";
 import { formatLogEntry } from "./lib/logger";
+import { reportToSentry } from "./lib/sentry";
 
 // --- Exported helpers for testing ---
 
@@ -84,10 +85,10 @@ export const continueConversation = action({
   },
   handler: async (ctx, args) => {
     console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "started", exchangeCount: args.exchangeCount ?? 0 }));
-    const messages = buildConversationMessages(args.appIdea, args.history, args.exchangeCount);
 
-    let text: string;
     try {
+      const messages = buildConversationMessages(args.appIdea, args.history, args.exchangeCount);
+
       const vertex = getVertexProvider();
       const result = await generateText({
         model: vertex("gemini-2.5-flash"),
@@ -140,44 +141,46 @@ export const continueConversation = action({
         },
         stopWhen: stepCountIs(2),
       });
-      text = result.text;
+      const text = result.text;
+
+      let parsed: {
+        content: string;
+        questionType?: "text" | "choice" | "multiselect" | null;
+        options?: string[] | null;
+        isComplete?: boolean;
+      };
+
+      try {
+        parsed = parseJsonResponse(text) as typeof parsed;
+      } catch {
+        parsed = { content: text.trim(), questionType: null };
+      }
+
+      // Guard: don't save empty AI responses (can happen when tool use consumes all steps)
+      if (!parsed.content || parsed.content.trim().length === 0) {
+        console.warn(`[continueConversation] Empty AI response for project ${args.projectId}, not saving to DB`);
+        return { content: "", questionType: null, options: null, isComplete: false };
+      }
+
+      console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "completed", isComplete: !!parsed.isComplete }));
+
+      // Persist AI message
+      await ctx.runMutation(internal.interviews.addMessageInternal, {
+        projectId: args.projectId,
+        role: "assistant",
+        content: parsed.content,
+        ...(parsed.questionType ? { questionType: parsed.questionType as "text" | "choice" | "multiselect" } : {}),
+        ...(parsed.options ? { options: parsed.options } : {}),
+        ...(parsed.isComplete ? { isComplete: true } : {}),
+      });
+
+      return { content: parsed.content, questionType: parsed.questionType ?? null, options: parsed.options ?? null, isComplete: !!parsed.isComplete };
     } catch (e) {
-      console.error(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "failed", error: String(e) }));
-      throw new Error("AI service temporarily unavailable. Please try again in a moment.");
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "failed", error: msg }));
+      await reportToSentry({ message: `continueConversation failed: ${msg}`, context: { projectId: args.projectId, exchangeCount: args.exchangeCount } });
+      throw new ConvexError("AI service temporarily unavailable. Please try again in a moment.");
     }
-
-    let parsed: {
-      content: string;
-      questionType?: "text" | "choice" | "multiselect" | null;
-      options?: string[] | null;
-      isComplete?: boolean;
-    };
-
-    try {
-      parsed = parseJsonResponse(text) as typeof parsed;
-    } catch {
-      parsed = { content: text.trim(), questionType: null };
-    }
-
-    // Guard: don't save empty AI responses (can happen when tool use consumes all steps)
-    if (!parsed.content || parsed.content.trim().length === 0) {
-      console.warn(`[continueConversation] Empty AI response for project ${args.projectId}, not saving to DB`);
-      return { content: "", questionType: null, options: null, isComplete: false };
-    }
-
-    console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "completed", isComplete: !!parsed.isComplete }));
-
-    // Persist AI message
-    await ctx.runMutation(internal.interviews.addMessageInternal, {
-      projectId: args.projectId,
-      role: "assistant",
-      content: parsed.content,
-      ...(parsed.questionType ? { questionType: parsed.questionType as "text" | "choice" | "multiselect" } : {}),
-      ...(parsed.options ? { options: parsed.options } : {}),
-      ...(parsed.isComplete ? { isComplete: true } : {}),
-    });
-
-    return { content: parsed.content, questionType: parsed.questionType ?? null, options: parsed.options ?? null, isComplete: !!parsed.isComplete };
   },
 });
 
@@ -188,52 +191,53 @@ export const extractRequirements = action({
   handler: async (ctx, args) => {
     console.log(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "started" }));
 
-    const project = await ctx.runQuery(internal.projects.getById, {
-      projectId: args.projectId,
-    });
-
-    if (!project?.appIdea) {
-      throw new Error("Project has no app idea — please describe your app first.");
-    }
-
-    const messages = await ctx.runQuery(internal.interviews.getMessagesInternal, {
-      projectId: args.projectId,
-    });
-
-    if (!messages || messages.length === 0) {
-      throw new Error("No interview messages found. Please answer at least one question first.");
-    }
-
-    const prompt = buildRequirementsPrompt(project.appIdea, messages);
-
-    let text: string;
     try {
+      const project = await ctx.runQuery(internal.projects.getById, {
+        projectId: args.projectId,
+      });
+
+      if (!project?.appIdea) {
+        throw new ConvexError("Project has no app idea — please describe your app first.");
+      }
+
+      const messages = await ctx.runQuery(internal.interviews.getMessagesInternal, {
+        projectId: args.projectId,
+      });
+
+      if (!messages || messages.length === 0) {
+        throw new ConvexError("No interview messages found. Please answer at least one question first.");
+      }
+
+      const prompt = buildRequirementsPrompt(project.appIdea, messages);
+
       const vertex = getVertexProvider();
       const result = await generateText({
         model: vertex("gemini-2.5-flash"),
         system: REQUIREMENTS_SYSTEM_PROMPT,
         prompt,
       });
-      text = result.text;
+
+      let requirements;
+      try {
+        requirements = parseJsonResponse(result.text);
+      } catch (e) {
+        console.error(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "parse_failed", error: String(e), rawText: result.text.slice(0, 500) }));
+        throw new ConvexError("Failed to process AI response. Please try again.");
+      }
+
+      await ctx.runMutation(api.projects.updateRequirements, {
+        projectId: args.projectId,
+        requirements,
+      });
+
+      console.log(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "completed" }));
+      return { requirements };
     } catch (e) {
-      console.error(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "failed", error: String(e) }));
-      throw new Error("AI service temporarily unavailable. Please try again in a moment.");
+      if (e instanceof ConvexError) throw e;
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "failed", error: msg }));
+      await reportToSentry({ message: `extractRequirements failed: ${msg}`, context: { projectId: args.projectId } });
+      throw new ConvexError("AI service temporarily unavailable. Please try again in a moment.");
     }
-
-    let requirements;
-    try {
-      requirements = parseJsonResponse(text);
-    } catch (e) {
-      console.error(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "parse_failed", error: String(e), rawText: text.slice(0, 500) }));
-      throw new Error("Failed to process AI response. Please try again.");
-    }
-
-    await ctx.runMutation(api.projects.updateRequirements, {
-      projectId: args.projectId,
-      requirements,
-    });
-
-    console.log(formatLogEntry({ action: "extractRequirements", projectId: args.projectId, step: "requirements", status: "completed" }));
-    return { requirements };
   },
 });

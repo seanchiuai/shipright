@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useAction } from "convex/react";
+import { ConvexError } from "convex/values";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useParams, useRouter } from "next/navigation";
@@ -50,7 +51,14 @@ export default function InterviewPage() {
   const submittingRef = useRef(false);
 
   const showError = useCallback((e: unknown, fallback = "Something went wrong. Please try again.") => {
-    const msg = e instanceof Error ? e.message : fallback;
+    let msg: string;
+    if (e instanceof ConvexError) {
+      msg = typeof (e as ConvexError<string>).data === "string" ? (e as ConvexError<string>).data : fallback;
+    } else if (e instanceof Error) {
+      msg = e.message;
+    } else {
+      msg = fallback;
+    }
     const clean = msg.replace(/^Uncaught Error:\s*/i, "").replace(/^Error:\s*/i, "");
     setError(clean);
     toast.error(clean);
