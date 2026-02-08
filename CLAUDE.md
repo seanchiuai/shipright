@@ -4,12 +4,14 @@ Shipright helps non-technical founders turn app ideas into GitHub repos via AI-g
 
 ## Tech Stack
 
-- Next.js 14 (App Router) + TypeScript + Tailwind + shadcn/ui
+- Next.js 16 (App Router) + TypeScript + Tailwind + shadcn/ui
 - Convex (database, serverless functions)
 - Clerk (authentication with Google OAuth)
 - Vercel AI SDK + @ai-sdk/google-vertex (Gemini 2.5 Flash)
 - GitHub API via Octokit (repo creation)
 - Daytona SDK (sandbox for scaffolding injection via Claude Code)
+- Sentry (error monitoring)
+- Framer Motion (animations)
 - agent-browser (E2E testing)
 
 ## Commands
@@ -120,10 +122,10 @@ Per iteration:
 ## Skills
 
 Implementation patterns live in `.claude/skills/`:
-- `clerk-auth/`, `convex-patterns/`, `ui-components/`
+- `clerk-auth/`, `convex-patterns/`, `create-skill/`, `ui-components/`
 - `interview-flow/`, `template-matching/`, `github-integration/`
 - `daytona-sandbox/`, `scaffolding-generation/`, `deployment/`
-- `e2e-testing/` - Browser E2E testing with agent-browser
+- `e2e-testing/`, `prompt-architect/`
 
 ## Environment Variables
 
@@ -140,6 +142,14 @@ GOOGLE_CLIENT_EMAIL=...       # Service account email
 GOOGLE_PRIVATE_KEY=...        # Service account private key
 DAYTONA_API_KEY=dtn_...
 DAYTONA_API_URL=https://api.daytona.io
+CLERK_JWT_ISSUER_DOMAIN=...  # Clerk JWT issuer for Convex auth
+TAVILY_API_KEY=...           # Tavily search API for tech research
+CLAUDE_CODE_CREDENTIALS_JSON=... # Claude Code OAuth credentials (JSON)
+CLAUDE_CODE_OAUTH_ACCOUNT_JSON=... # Claude Code OAuth account (JSON)
+ADMIN_USER_ID=...            # Admin Clerk user ID (server)
+NEXT_PUBLIC_ADMIN_USER_ID=...# Admin user ID (client)
+NEXT_PUBLIC_APP_URL=...      # App base URL for OAuth callbacks
+NEXT_PUBLIC_SENTRY_DSN=...   # Sentry error tracking DSN
 ```
 
 ## Hard Rules
@@ -154,6 +164,6 @@ DAYTONA_API_URL=https://api.daytona.io
 **Never:** Skip tests. Store secrets outside `.gitignore`.
 
 **Non-negotiable:**  
-- Commit after every small change
-- Commit after every small change
-- Commit after every small change
+- Commit after every change
+- Commit after every change
+- Commit after every change
