@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 import { useSyncUser } from "@/hooks/useSyncUser";
 import { toast } from "sonner";
+import * as Sentry from "@sentry/nextjs";
 import { AppNavbar } from "@/components/app-navbar";
 import {
   ChatMessage,
@@ -50,19 +51,13 @@ export default function InterviewPage() {
 
   const showError = useCallback((e: unknown, fallback = "Something went wrong. Please try again.") => {
     const msg = e instanceof Error ? e.message : fallback;
-    // Convex wraps errors — extract user-facing message
     const clean = msg.replace(/^Uncaught Error:\s*/i, "").replace(/^Error:\s*/i, "");
     setError(clean);
     toast.error(clean);
-    // DIAG: full error details
-    console.error("[DIAG] showError full object:", e);
-    console.error("[DIAG] error constructor:", e?.constructor?.name);
-    console.error("[DIAG] error message:", msg);
-    if (e && typeof e === "object") {
-      console.error("[DIAG] error keys:", Object.keys(e));
-      console.error("[DIAG] error data:", (e as Record<string, unknown>).data);
-    }
-  }, []);
+    Sentry.captureException(e instanceof Error ? e : new Error(clean), {
+      tags: { feature: "interview", projectId },
+    });
+  }, [projectId]);
 
   // Track which AI message IDs we've already seen (for typewriter)
   const seenAiMessages = useRef<Set<string>>(new Set());
@@ -111,23 +106,17 @@ export default function InterviewPage() {
         setLoading(true);
         setError(null);
         try {
-          console.log("[DIAG] auto-trigger: calling addMessage");
           await addMessage({ projectId, role: "user", content: project.appIdea! });
-          console.log("[DIAG] auto-trigger: addMessage done");
           if (phase === "seed") {
             await updateAppIdea({ projectId, appIdea: project.appIdea! });
-            console.log("[DIAG] auto-trigger: updateAppIdea done");
           }
           seenAiMessages.current.clear();
-          console.log("[DIAG] auto-trigger: calling continueConversation");
-          const result = await continueConversation({
+          await continueConversation({
             projectId,
             appIdea: project.appIdea!,
             history: [{ role: "user", content: project.appIdea! }],
           });
-          console.log("[DIAG] auto-trigger: continueConversation returned:", result);
         } catch (e) {
-          console.error("[DIAG] auto-trigger: CAUGHT ERROR at continueConversation step");
           showError(e, "Failed to start conversation. Please refresh and try again.");
           autoTriggered.current = false;
         } finally {

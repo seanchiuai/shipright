@@ -30,6 +30,7 @@ import {
   Code2,
   GitBranch,
 } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
 import { ElapsedTimer } from "@/components/elapsed-timer";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -91,6 +92,7 @@ export default function ProjectDetailsPage() {
         try {
           await matchTemplate({ projectId });
         } catch (e) {
+          Sentry.captureException(e, { tags: { flow: "repo_creation" }, extra: { step: "matchTemplate", projectId } });
           setError(e instanceof Error ? e.message : "Failed to match template");
         } finally {
           setMatching(false);
@@ -131,6 +133,7 @@ export default function ProjectDetailsPage() {
         });
       } catch (e) {
         // Error is persisted in DB by the action (status -> repo_failed).
+        Sentry.captureException(e, { tags: { flow: "repo_creation" }, extra: { step: "cloneTemplate", projectId } });
         const message = e instanceof Error ? e.message : "Repository creation failed";
         if (message.includes("401") || message.includes("Bad credentials") || message.includes("reconnect your GitHub")) {
           router.push(`/connect-github?returnTo=/project/${projectId}`);
@@ -161,6 +164,7 @@ export default function ProjectDetailsPage() {
       try {
         await runScaffolding({ projectId });
       } catch (e) {
+        Sentry.captureException(e, { tags: { flow: "repo_creation" }, extra: { step: "runScaffolding", projectId } });
         const message = e instanceof Error ? e.message : "Scaffolding failed";
         setError(message);
         scaffoldingAttempted.current = false;
@@ -175,6 +179,7 @@ export default function ProjectDetailsPage() {
       await submitTechChoicesAction({ projectId, choices: techChoices });
       await resumeAfterChoices({ projectId });
     } catch (e) {
+      Sentry.captureException(e, { tags: { flow: "repo_creation" }, extra: { step: "submitTechChoices", projectId } });
       setError(e instanceof Error ? e.message : "Failed to continue");
     }
   }
@@ -184,6 +189,7 @@ export default function ProjectDetailsPage() {
       setError(null);
       await retryRepo({ projectId });
     } catch (e) {
+      Sentry.captureException(e, { tags: { flow: "repo_creation" }, extra: { step: "retryRepo", projectId } });
       setError(e instanceof Error ? e.message : "Retry failed");
     }
   }
@@ -194,6 +200,7 @@ export default function ProjectDetailsPage() {
       setError(null);
       await restartRepo({ projectId });
     } catch (e) {
+      Sentry.captureException(e, { tags: { flow: "repo_creation" }, extra: { step: "restartRepo", projectId } });
       setError(e instanceof Error ? e.message : "Failed to restart");
     }
   }
@@ -205,6 +212,7 @@ export default function ProjectDetailsPage() {
       setError(null);
       await recreateRepo({ projectId });
     } catch (e) {
+      Sentry.captureException(e, { tags: { flow: "repo_creation" }, extra: { step: "recreateRepo", projectId } });
       setError(e instanceof Error ? e.message : "Failed to recreate repo");
     }
   }
@@ -215,6 +223,7 @@ export default function ProjectDetailsPage() {
       await resetInterview({ projectId });
       router.push(`/interview/${projectId}`);
     } catch (e) {
+      Sentry.captureException(e, { tags: { flow: "repo_creation" }, extra: { step: "resetInterview", projectId } });
       setError(e instanceof Error ? e.message : "Failed to reset");
     }
   }
@@ -552,6 +561,7 @@ export default function ProjectDetailsPage() {
                       try {
                         await runScaffolding({ projectId });
                       } catch (e) {
+                        Sentry.captureException(e, { tags: { flow: "repo_creation" }, extra: { step: "retryScaffolding", projectId } });
                         setError(e instanceof Error ? e.message : "Retry failed");
                         scaffoldingAttempted.current = false;
                       }

@@ -83,8 +83,6 @@ export const continueConversation = action({
     exchangeCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const _reqId = Math.random().toString(36).slice(2, 8);
-    console.log(`[DIAG:${_reqId}] continueConversation HANDLER ENTERED project=${args.projectId}`);
     console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "started", exchangeCount: args.exchangeCount ?? 0 }));
     const messages = buildConversationMessages(args.appIdea, args.history, args.exchangeCount);
 
@@ -179,10 +177,7 @@ export const continueConversation = action({
       ...(parsed.isComplete ? { isComplete: true } : {}),
     });
 
-    // DIAG: log return value to detect serialization issues
-    const returnVal = { content: parsed.content, questionType: parsed.questionType ?? null, options: parsed.options ?? null, isComplete: !!parsed.isComplete };
-    console.log(`[DIAG:${_reqId}] RETURNING: ${JSON.stringify(returnVal).slice(0, 500)}`);
-    return returnVal;
+    return { content: parsed.content, questionType: parsed.questionType ?? null, options: parsed.options ?? null, isComplete: !!parsed.isComplete };
   },
 });
 

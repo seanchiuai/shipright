@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
+import * as Sentry from "@sentry/nextjs";
 import { api } from "../../../../../../convex/_generated/api";
 import { getRequiredEnv } from "@/lib/env";
 import { isSafeRedirectPath } from "@/lib/admin";
@@ -63,6 +64,7 @@ export async function GET(request: Request) {
     await convex.action(api.github.exchangeGitHubCode, { code });
   } catch (error) {
     console.error("GitHub OAuth exchange failed:", error);
+    Sentry.captureException(error, { tags: { flow: "github_oauth" }, extra: { step: "exchangeGitHubCode" } });
     return NextResponse.redirect(`${appUrl}/connect-github?error=exchange_failed`);
   }
 

@@ -40,13 +40,20 @@ export const exchangeGitHubCode = action({
 
     if (data.error) {
       console.log(`[github.exchangeGitHubCode] failed error=${data.error}`);
+      await reportToSentry({ message: `GitHub OAuth exchange failed: ${data.error_description}`, context: { errorCode: data.error } });
       throw new ExternalServiceError("github", `OAuth error: ${data.error_description}`, { errorCode: data.error });
     }
 
-    const encryptedToken = encryptToken(data.access_token);
-    await ctx.runMutation(api.users.saveGitHubToken, {
-      encryptedToken,
-    });
+    try {
+      const encryptedToken = encryptToken(data.access_token);
+      await ctx.runMutation(api.users.saveGitHubToken, {
+        encryptedToken,
+      });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      await reportToSentry({ message: `GitHub token save failed: ${msg}`, context: { step: "saveGitHubToken" } });
+      throw error;
+    }
 
     console.log(`[github.exchangeGitHubCode] success`);
     return { success: true };
@@ -75,6 +82,7 @@ export const validateToken = action({
     } catch (error: unknown) {
       if (error instanceof TokenDecryptionError) {
         console.log(`[github.validateToken] result=token_corrupted`);
+        await reportToSentry({ message: "GitHub token decryption failed (corrupted)", context: { step: "validateToken" } });
         return { valid: false, reason: "expired" };
       }
       const status = (error as { status?: number }).status;
@@ -82,6 +90,8 @@ export const validateToken = action({
         console.log(`[github.validateToken] result=expired`);
         return { valid: false, reason: "expired" };
       }
+      const msg = error instanceof Error ? error.message : String(error);
+      await reportToSentry({ message: `GitHub token validation failed: ${msg}`, context: { step: "validateToken", status } });
       throw error;
     }
   },
