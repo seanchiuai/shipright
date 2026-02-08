@@ -54,7 +54,14 @@ export default function InterviewPage() {
     const clean = msg.replace(/^Uncaught Error:\s*/i, "").replace(/^Error:\s*/i, "");
     setError(clean);
     toast.error(clean);
-    console.error(e);
+    // DIAG: full error details
+    console.error("[DIAG] showError full object:", e);
+    console.error("[DIAG] error constructor:", e?.constructor?.name);
+    console.error("[DIAG] error message:", msg);
+    if (e && typeof e === "object") {
+      console.error("[DIAG] error keys:", Object.keys(e));
+      console.error("[DIAG] error data:", (e as Record<string, unknown>).data);
+    }
   }, []);
 
   // Track which AI message IDs we've already seen (for typewriter)
@@ -104,17 +111,23 @@ export default function InterviewPage() {
         setLoading(true);
         setError(null);
         try {
+          console.log("[DIAG] auto-trigger: calling addMessage");
           await addMessage({ projectId, role: "user", content: project.appIdea! });
+          console.log("[DIAG] auto-trigger: addMessage done");
           if (phase === "seed") {
             await updateAppIdea({ projectId, appIdea: project.appIdea! });
+            console.log("[DIAG] auto-trigger: updateAppIdea done");
           }
           seenAiMessages.current.clear();
-          await continueConversation({
+          console.log("[DIAG] auto-trigger: calling continueConversation");
+          const result = await continueConversation({
             projectId,
             appIdea: project.appIdea!,
             history: [{ role: "user", content: project.appIdea! }],
           });
+          console.log("[DIAG] auto-trigger: continueConversation returned:", result);
         } catch (e) {
+          console.error("[DIAG] auto-trigger: CAUGHT ERROR at continueConversation step");
           showError(e, "Failed to start conversation. Please refresh and try again.");
           autoTriggered.current = false;
         } finally {
