@@ -37,7 +37,7 @@ export function DashboardBackground() {
         size: Math.random() * 2 + 0.5,
         speedX: (Math.random() - 0.5) * 0.2,
         speedY: (Math.random() - 0.5) * 0.2,
-        opacity: Math.random() * 0.15 + 0.03,
+        opacity: Math.random() * 0.3 + 0.1,
         hue: Math.random() * 40 + 210,
       };
     }
@@ -67,7 +67,7 @@ export function DashboardBackground() {
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `hsla(${p.hue}, 60%, 60%, ${p.opacity})`;
+        ctx.fillStyle = `hsla(${p.hue}, 70%, 70%, ${p.opacity})`;
         ctx.fill();
 
         particles.slice(i + 1).forEach((p2) => {
@@ -79,7 +79,7 @@ export function DashboardBackground() {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `hsla(220, 70%, 50%, ${0.04 * (1 - dist / 80)})`;
+            ctx.strokeStyle = `hsla(220, 70%, 60%, ${0.12 * (1 - dist / 80)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
