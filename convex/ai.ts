@@ -164,7 +164,7 @@ export const continueConversation = action({
     // Guard: don't save empty AI responses (can happen when tool use consumes all steps)
     if (!parsed.content || parsed.content.trim().length === 0) {
       console.warn(`[continueConversation] Empty AI response for project ${args.projectId}, not saving to DB`);
-      return { content: "", questionType: null };
+      return { content: "", questionType: null, options: null, isComplete: false };
     }
 
     console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "completed", isComplete: !!parsed.isComplete }));
