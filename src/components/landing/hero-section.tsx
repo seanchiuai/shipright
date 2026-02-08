@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowRight } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useMutation, useAction } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useSyncUser } from "@/hooks/useSyncUser";
 
@@ -27,7 +27,6 @@ export function HeroSection() {
 
   const createProject = useMutation(api.projects.create);
   const updateAppIdea = useMutation(api.projects.updateAppIdea);
-  const generateQuestions = useAction(api.ai.generateInterviewQuestions);
 
   useEffect(() => {
     let placeholderIndex = 0;
@@ -100,12 +99,6 @@ export function HeroSection() {
       });
 
       await updateAppIdea({ projectId, appIdea: appIdea.trim() });
-
-      await generateQuestions({
-        projectId,
-        appIdea: appIdea.trim(),
-        round: 1,
-      });
 
       router.push(`/interview/${projectId}`);
     } catch (error) {

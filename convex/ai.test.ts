@@ -1,33 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
-  buildQuestionPrompt,
   buildConversationMessages,
-  cleanQuestionResult,
   buildRequirementsPrompt,
 } from "./ai";
-
-describe("buildQuestionPrompt", () => {
-  it("builds a round 1 prompt with app idea", () => {
-    const prompt = buildQuestionPrompt("a todo app", 1);
-    expect(prompt).toContain('The user wants to build: "a todo app"');
-    expect(prompt).toContain("This is round 1");
-    expect(prompt).toContain("Generate the interview questions");
-  });
-
-  it("includes previous rounds when provided", () => {
-    const prompt = buildQuestionPrompt("a todo app", 2, [
-      { questions: [{ id: "q1", question: "Who?" }], answers: { q1: "devs" } },
-    ]);
-    expect(prompt).toContain("Round 1:");
-    expect(prompt).toContain("This is round 2");
-    expect(prompt).not.toContain("This is round 1");
-  });
-
-  it("handles empty previousRounds as round 1", () => {
-    const prompt = buildQuestionPrompt("a todo app", 1, []);
-    expect(prompt).toContain("This is round 1");
-  });
-});
 
 describe("buildConversationMessages", () => {
   it("builds messages with app idea prefix + history", () => {
@@ -102,75 +77,6 @@ describe("buildConversationMessages", () => {
       { role: "user", content: "hello" },
     ]);
     expect(msgs.every((m) => !m.content.includes("Wrap it up"))).toBe(true);
-  });
-});
-
-describe("cleanQuestionResult", () => {
-  const validResult = {
-    preamble: "Let's build your app",
-    questions: [
-      { id: "q1", question: "Who is this for?", type: "text" },
-      { id: "q2", question: "Pick a stack", type: "choice", options: ["A", "B"] },
-      { id: "q3", question: "Required?", type: "text", required: true },
-    ],
-  };
-
-  it("strips unknown fields from questions", () => {
-    const input = {
-      preamble: "hi",
-      questions: [
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { id: "q1", question: "test", type: "text", extraField: "junk", another: 42 } as any,
-      ],
-    };
-    const result = cleanQuestionResult(input);
-    expect(result.questions[0]).toEqual({ id: "q1", question: "test", type: "text" });
-    expect(result.questions[0]).not.toHaveProperty("extraField");
-  });
-
-  it("preserves optional fields when present", () => {
-    const result = cleanQuestionResult(validResult);
-    expect(result.questions[1].options).toEqual(["A", "B"]);
-    expect(result.questions[2].required).toBe(true);
-  });
-
-  it("throws on missing preamble", () => {
-    expect(() =>
-      cleanQuestionResult({ preamble: "", questions: [{ id: "q1", question: "x", type: "text" }] })
-    ).toThrow("missing preamble or questions");
-  });
-
-  it("throws on empty questions array", () => {
-    expect(() =>
-      cleanQuestionResult({ preamble: "hello", questions: [] })
-    ).toThrow("missing preamble or questions");
-  });
-
-  it("throws on question missing id", () => {
-    expect(() =>
-      cleanQuestionResult({
-        preamble: "hello",
-        questions: [{ id: "", question: "x", type: "text" }],
-      })
-    ).toThrow("Question missing required fields");
-  });
-
-  it("throws on question missing question text", () => {
-    expect(() =>
-      cleanQuestionResult({
-        preamble: "hello",
-        questions: [{ id: "q1", question: "", type: "text" }],
-      })
-    ).toThrow("Question missing required fields");
-  });
-
-  it("throws on question missing type", () => {
-    expect(() =>
-      cleanQuestionResult({
-        preamble: "hello",
-        questions: [{ id: "q1", question: "x", type: "" }],
-      })
-    ).toThrow("Question missing required fields");
   });
 });
 

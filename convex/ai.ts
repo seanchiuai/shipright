@@ -6,7 +6,6 @@ import { generateText, stepCountIs } from "ai";
 import { z } from "zod";
 import { api, internal } from "./_generated/api";
 import {
-  QUESTION_SYSTEM_PROMPT,
   REQUIREMENTS_SYSTEM_PROMPT,
   CONVERSATION_SYSTEM_PROMPT,
 } from "../prompts";
@@ -15,30 +14,6 @@ import { parseJsonResponse } from "./lib/json";
 import { formatLogEntry } from "./lib/logger";
 
 // --- Exported helpers for testing ---
-
-export function buildQuestionPrompt(
-  appIdea: string,
-  round: number,
-  previousRounds?: Array<{ questions: unknown[]; answers: unknown }>,
-): string {
-  let prompt = `The user wants to build: "${appIdea}"`;
-
-  if (previousRounds && previousRounds.length > 0) {
-    prompt += "\n\nPrevious interview rounds:\n";
-    for (let i = 0; i < previousRounds.length; i++) {
-      const round = previousRounds[i];
-      prompt += `\nRound ${i + 1}:\n`;
-      prompt += `Questions: ${JSON.stringify(round.questions)}\n`;
-      prompt += `Answers: ${JSON.stringify(round.answers)}\n`;
-    }
-    prompt += `\nThis is round ${round}. Build on previous answers and extract information about areas not yet covered.`;
-  } else {
-    prompt += "\n\nThis is round 1. In the preamble, restate their idea in concrete buildable terms and ask for confirmation.";
-  }
-
-  prompt += "\n\nGenerate the interview questions with a contextual preamble.";
-  return prompt;
-}
 
 export function buildConversationMessages(
   appIdea: string,
@@ -75,39 +50,6 @@ export function buildConversationMessages(
   return messages;
 }
 
-export function cleanQuestionResult(result: {
-  preamble: string;
-  questions: Array<{
-    id: string;
-    question: string;
-    type: string;
-    options?: string[];
-    required?: boolean;
-  }>;
-}) {
-  if (!result.preamble || !result.questions || result.questions.length === 0) {
-    throw new Error("AI response missing preamble or questions");
-  }
-
-  const cleanQuestions = result.questions.map((q) => {
-    if (!q.id || !q.question || !q.type) {
-      throw new Error(`Question missing required fields: ${JSON.stringify(q)}`);
-    }
-    return {
-      id: q.id,
-      question: q.question,
-      type: q.type,
-      ...(q.options ? { options: q.options } : {}),
-      ...(q.required !== undefined ? { required: q.required } : {}),
-    };
-  });
-
-  return {
-    preamble: result.preamble,
-    questions: cleanQuestions,
-  };
-}
-
 export function buildRequirementsPrompt(
   appIdea: string,
   messages: Array<{ role: string; content: string }>,
@@ -129,61 +71,6 @@ export function buildRequirementsPrompt(
   prompt += "\n\nExtract structured requirements from this interview.";
   return prompt;
 }
-
-export const generateInterviewQuestions = action({
-  args: {
-    projectId: v.id("projects"),
-    appIdea: v.string(),
-    round: v.number(),
-    previousRounds: v.optional(
-      v.array(
-        v.object({
-          questions: v.array(v.any()),
-          answers: v.any(),
-        })
-      )
-    ),
-  },
-  handler: async (ctx, args) => {
-    console.log(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "started", round: args.round }));
-    const prompt = buildQuestionPrompt(args.appIdea, args.round, args.previousRounds);
-
-    let text: string;
-    try {
-      const vertex = getVertexProvider();
-      const result = await generateText({
-        model: vertex("gemini-2.5-flash"),
-        system: QUESTION_SYSTEM_PROMPT,
-        prompt,
-      });
-      text = result.text;
-    } catch (e) {
-      console.error(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "failed", error: String(e) }));
-      throw new Error("AI service temporarily unavailable. Please try again in a moment.");
-    }
-
-    let result;
-    try {
-      result = parseJsonResponse(text) as {
-        preamble: string;
-        questions: Array<{
-          id: string;
-          question: string;
-          type: string;
-          options?: string[];
-          required?: boolean;
-        }>;
-      };
-    } catch (e) {
-      console.error(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "parse_failed", error: String(e) }));
-      throw new Error("Failed to process AI response. Please try again.");
-    }
-
-    const cleaned = cleanQuestionResult(result);
-    console.log(formatLogEntry({ action: "generateInterviewQuestions", projectId: args.projectId, step: "interview", status: "completed", questionCount: cleaned.questions.length }));
-    return cleaned;
-  },
-});
 
 export const continueConversation = action({
   args: {
