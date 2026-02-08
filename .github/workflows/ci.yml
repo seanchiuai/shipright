@@ -21,3 +21,5 @@ jobs:
 
       - name: Production checks
         run: npm run production-check
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
