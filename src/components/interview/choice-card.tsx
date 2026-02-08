@@ -31,8 +31,8 @@ export const ChoiceCard = memo(function ChoiceCard({
       className={cn(
         "group relative w-full text-left px-4 py-3 rounded-xl border transition-all duration-200",
         selected
-          ? "border-primary bg-primary/[0.08] shadow-[0_0_0_1px_rgba(59,130,246,0.15)]"
-          : "border-border bg-card/80 hover:border-primary/30 hover:bg-card hover:shadow-sm"
+          ? "border-primary bg-primary/10 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]"
+          : "border-border bg-card/80 hover:border-primary/40 hover:bg-card hover:shadow-sm"
       )}
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
@@ -59,7 +59,7 @@ export const ChoiceCard = memo(function ChoiceCard({
               animate={{ scale: 1 }}
               transition={{ type: "spring", stiffness: 500, damping: 25 }}
             >
-              <Check className="w-2.5 h-2.5 text-primary-foreground" strokeWidth={3} />
+              <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
             </motion.div>
           )}
         </div>
@@ -71,7 +71,7 @@ export const ChoiceCard = memo(function ChoiceCard({
               className={cn(
                 "w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 transition-colors",
                 selected
-                  ? "bg-primary/15 text-primary"
+                  ? "bg-primary/20 text-primary"
                   : "bg-muted text-muted-foreground"
               )}
             >

@@ -70,8 +70,8 @@ export function MagicTextarea({
         className={cn(
           "relative bg-card rounded-2xl border overflow-hidden transition-all duration-300",
           isFocused
-            ? "border-primary/40 shadow-[0_2px_12px_rgba(59,130,246,0.1)]"
-            : "border-border shadow-sm"
+            ? "border-border shadow-[0_2px_12px_rgba(59,130,246,0.08)]"
+            : "border-border/60 shadow-sm"
         )}
       >
         <textarea
@@ -120,7 +120,7 @@ export function MagicTextarea({
             )}
           >
             {loading ? (
-              <div className="w-3.5 h-3.5 border-2 border-muted-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              <div className="w-3.5 h-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
             ) : (
               <ArrowUp className="w-4 h-4" strokeWidth={2.5} />
             )}
@@ -129,7 +129,7 @@ export function MagicTextarea({
       </div>
 
       <div className="flex justify-between mt-2 px-1">
-        <span className="text-[11px] text-muted-foreground/50 tracking-wide">
+        <span className="text-[11px] text-muted-foreground/60 tracking-wide">
           Press{" "}
           <kbd className="px-1.5 py-0.5 rounded-md bg-muted text-[10px] font-mono text-muted-foreground border border-border/50">
             Enter

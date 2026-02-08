@@ -83,7 +83,7 @@ export default function ProfilePage() {
 
   if (!isLoaded || convexUser === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background" data-theme="dark">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -103,7 +103,7 @@ export default function ProfilePage() {
     : clerkUser.primaryEmailAddress?.emailAddress?.[0]?.toUpperCase() || "?";
 
   return (
-    <div className="min-h-screen bg-background" data-theme="dark">
+    <div className="min-h-screen bg-background">
       <AppNavbar />
 
       <main className="max-w-2xl mx-auto px-4 py-12 space-y-6">

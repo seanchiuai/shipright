@@ -54,49 +54,7 @@
   --font-serif: "Iowan Old Style", "Palatino Linotype", "Times New Roman", serif;
   --font-mono: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
 
-  /* Warm editorial palette — app default */
-  --background: #faf8f5;
-  --foreground: #1c1917;
-  --card: #ffffff;
-  --card-foreground: #1c1917;
-  --popover: #ffffff;
-  --popover-foreground: #1c1917;
-  --primary: #1c1917;
-  --primary-foreground: #faf8f5;
-  --secondary: #f3ede4;
-  --secondary-foreground: #1c1917;
-  --muted: #f3ede4;
-  --muted-foreground: #78716c;
-  --accent: #e8dfd3;
-  --accent-foreground: #1c1917;
-  --destructive: #dc2626;
-  --border: #e2ddd5;
-  --input: #e2ddd5;
-  --ring: #1c1917;
-
-  /* Amber accent family */
-  --amber: #d97706;
-  --amber-light: #fbbf24;
-  --amber-dark: #b45309;
-
-  /* Chart colors — warm palette */
-  --chart-1: #1c1917;
-  --chart-2: #d97706;
-  --chart-3: #059669;
-  --chart-4: #f59e0b;
-  --chart-5: #ea580c;
-  --sidebar: #faf8f5;
-  --sidebar-foreground: #1c1917;
-  --sidebar-primary: #1c1917;
-  --sidebar-primary-foreground: #faf8f5;
-  --sidebar-accent: #f3ede4;
-  --sidebar-accent-foreground: #1c1917;
-  --sidebar-border: #e2ddd5;
-  --sidebar-ring: #1c1917;
-}
-
-/* Dark theme — app-wide */
-[data-theme="dark"] {
+  /* Dark palette — always dark */
   --background: #06080d;
   --foreground: #e8eaed;
   --card: #080b14;
@@ -127,6 +85,15 @@
   --chart-3: #f59e0b;
   --chart-4: #8b5cf6;
   --chart-5: #ef4444;
+
+  --sidebar: #080b14;
+  --sidebar-foreground: #e8eaed;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #e8eaed;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-ring: #3b82f6;
 }
 
 @layer base {
@@ -159,40 +126,6 @@
     display: none;
   }
 }
-
-/* Aurora background animations */
-@keyframes aurora-drift-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(8%, 12%) scale(1.1); }
-  50% { transform: translate(-5%, 6%) scale(0.95); }
-  75% { transform: translate(3%, -8%) scale(1.05); }
-}
-
-@keyframes aurora-drift-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(-12%, -5%) scale(1.08); }
-  50% { transform: translate(6%, 10%) scale(0.92); }
-  75% { transform: translate(-3%, 15%) scale(1.12); }
-}
-
-@keyframes aurora-drift-3 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(10%, -10%) scale(1.15); }
-  50% { transform: translate(-8%, -5%) scale(0.9); }
-  75% { transform: translate(5%, 8%) scale(1.05); }
-}
-
-@keyframes aurora-drift-4 {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  25% { transform: translate(-40%, -55%) scale(1.2); }
-  50% { transform: translate(-55%, -45%) scale(0.85); }
-  75% { transform: translate(-45%, -50%) scale(1.1); }
-}
-
-.aurora-blob-1 { animation: aurora-drift-1 20s ease-in-out infinite; }
-.aurora-blob-2 { animation: aurora-drift-2 25s ease-in-out infinite; }
-.aurora-blob-3 { animation: aurora-drift-3 22s ease-in-out infinite; }
-.aurora-blob-4 { animation: aurora-drift-4 18s ease-in-out infinite; }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

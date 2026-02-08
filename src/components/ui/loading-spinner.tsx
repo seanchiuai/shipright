@@ -22,7 +22,7 @@ export function LoadingSpinner({
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className={cn(dotSize, "rounded-full bg-stone-400 animate-pulse")}
+            className={cn(dotSize, "rounded-full bg-muted-foreground animate-pulse")}
             style={{
               animationDelay: `${i * 200}ms`,
               animationDuration: "1.4s",
@@ -37,7 +37,7 @@ export function LoadingSpinner({
     <div
       className={cn(
         sizeMap[size],
-        "border-2 border-stone-300 border-t-stone-700 rounded-full animate-spin",
+        "border-2 border-border border-t-foreground rounded-full animate-spin",
         className
       )}
     />

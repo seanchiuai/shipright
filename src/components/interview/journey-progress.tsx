@@ -23,11 +23,11 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
   return (
     <div className="relative">
       {/* Background track */}
-      <div className="absolute top-5 left-0 right-0 h-px bg-stone-200" />
+      <div className="absolute top-5 left-0 right-0 h-px bg-border" />
 
       {/* Progress fill */}
       <motion.div
-        className="absolute top-5 left-0 h-px bg-stone-800"
+        className="absolute top-5 left-0 h-px bg-primary"
         initial={{ width: "0%" }}
         animate={{ width: `${(journeyStep / (steps.length - 1)) * 100}%` }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -47,10 +47,10 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
                 className={cn(
                   "relative w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300",
                   isComplete
-                    ? "bg-stone-800 text-white"
+                    ? "bg-primary text-primary-foreground"
                     : isActive
-                      ? "bg-white border-[1.5px] border-stone-800 text-stone-800 shadow-sm"
-                      : "bg-white border-[1.5px] border-stone-200 text-stone-400"
+                      ? "bg-card border-[1.5px] border-primary text-primary shadow-sm"
+                      : "bg-card border-[1.5px] border-border text-muted-foreground"
                 )}
                 animate={
                   isActive
@@ -74,7 +74,7 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
                 {/* Active glow ring */}
                 {isActive && (
                   <motion.div
-                    className="absolute inset-0 rounded-full border border-stone-400"
+                    className="absolute inset-0 rounded-full border border-primary/50"
                     initial={{ opacity: 0, scale: 1 }}
                     animate={{ opacity: [0, 0.3, 0], scale: [1, 1.4, 1.4] }}
                     transition={{ repeat: Infinity, duration: 2.5 }}
@@ -86,7 +86,7 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
               <span
                 className={cn(
                   "mt-2 text-[11px] font-medium tracking-wide transition-colors",
-                  isActive ? "text-stone-800" : isComplete ? "text-stone-700" : "text-stone-400"
+                  isActive ? "text-foreground" : isComplete ? "text-foreground/80" : "text-muted-foreground"
                 )}
               >
                 {step.label}
@@ -100,7 +100,7 @@ export function JourneyProgress({ currentStep, currentRound = 1, totalRounds = 3
                       key={i}
                       className={cn(
                         "w-1.5 h-1.5 rounded-full transition-colors",
-                        i < currentRound ? "bg-stone-800" : "bg-stone-200"
+                        i < currentRound ? "bg-primary" : "bg-border"
                       )}
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}

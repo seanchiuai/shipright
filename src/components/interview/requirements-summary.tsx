@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
 import { Requirements } from "@/lib/types";
-import { toast } from "sonner";
 
 export function RequirementsSummary({
   requirements,
@@ -30,78 +29,50 @@ export function RequirementsSummary({
   };
 
   const saveEdit = async (field: string) => {
-    try {
-      const updated = { ...requirements };
-      if (field === "appName") updated.appName = editValue;
-      await onUpdateRequirements(updated);
-      setEditingField(null);
-    } catch {
-      toast.error("Failed to save changes");
-    }
+    const updated = { ...requirements };
+    if (field === "appName") updated.appName = editValue;
+    await onUpdateRequirements(updated);
+    setEditingField(null);
   };
 
   const saveUserEdit = async (index: number, type: string, coreNeed: string) => {
-    try {
-      const updated = { ...requirements, secondaryUsers: [...requirements.secondaryUsers] };
-      updated.secondaryUsers[index] = { type, coreNeed };
-      await onUpdateRequirements(updated);
-      setEditingField(null);
-    } catch {
-      toast.error("Failed to save user role");
-    }
+    const updated = { ...requirements, secondaryUsers: [...requirements.secondaryUsers] };
+    updated.secondaryUsers[index] = { type, coreNeed };
+    await onUpdateRequirements(updated);
+    setEditingField(null);
   };
 
   const addSecondaryUser = async () => {
-    try {
-      const updated = {
-        ...requirements,
-        secondaryUsers: [...requirements.secondaryUsers, { type: "New User", coreNeed: "" }],
-      };
-      await onUpdateRequirements(updated);
-    } catch {
-      toast.error("Failed to add user role");
-    }
+    const updated = {
+      ...requirements,
+      secondaryUsers: [...requirements.secondaryUsers, { type: "New User", coreNeed: "" }],
+    };
+    await onUpdateRequirements(updated);
   };
 
   const removeSecondaryUser = async (index: number) => {
-    try {
-      const updated = { ...requirements, secondaryUsers: requirements.secondaryUsers.filter((_, i) => i !== index) };
-      await onUpdateRequirements(updated);
-    } catch {
-      toast.error("Failed to remove user role");
-    }
+    const updated = { ...requirements, secondaryUsers: requirements.secondaryUsers.filter((_, i) => i !== index) };
+    await onUpdateRequirements(updated);
   };
 
   const saveFeatureEdit = async (index: number, value: string) => {
-    try {
-      const updated = { ...requirements, keyFeatures: [...requirements.keyFeatures] };
-      updated.keyFeatures[index] = value;
-      await onUpdateRequirements(updated);
-      setEditingField(null);
-    } catch {
-      toast.error("Failed to save feature");
-    }
+    const updated = { ...requirements, keyFeatures: [...requirements.keyFeatures] };
+    updated.keyFeatures[index] = value;
+    await onUpdateRequirements(updated);
+    setEditingField(null);
   };
 
   const addFeature = async () => {
-    try {
-      const updated = {
-        ...requirements,
-        keyFeatures: [...requirements.keyFeatures, "New feature"],
-      };
-      await onUpdateRequirements(updated);
-    } catch {
-      toast.error("Failed to add feature");
-    }
+    const updated = {
+      ...requirements,
+      keyFeatures: [...requirements.keyFeatures, "New feature"],
+    };
+    await onUpdateRequirements(updated);
   };
 
   const removeFeature = async (index: number) => {
-    try {
-      const updated = { ...requirements, keyFeatures: requirements.keyFeatures.filter((_, i) => i !== index) };
-      await onUpdateRequirements(updated);
-    } catch {
-      toast.error("Failed to remove feature");
-    }
+    const updated = { ...requirements, keyFeatures: requirements.keyFeatures.filter((_, i) => i !== index) };
+    await onUpdateRequirements(updated);
   };
 
   return (
@@ -141,7 +112,7 @@ export function RequirementsSummary({
           {editingField !== "appName" && (
             <button
               onClick={() => startEdit("appName", requirements.appName)}
-              className="mt-1 p-1.5 rounded-lg text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+              className="mt-1 p-1.5 rounded-lg text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
             </button>
@@ -164,7 +135,7 @@ export function RequirementsSummary({
       {/* Users */}
       <div className="pb-6 mb-6 border-b border-border/50">
         <p className="text-[12px] font-medium text-muted-foreground mb-3">Built for</p>
-        <p className="text-[15px] text-foreground/90 leading-relaxed">
+        <p className="text-[15px] text-foreground leading-relaxed">
           <span className="font-medium">{requirements.primaryUser.type}</span>
           {requirements.primaryUser.coreNeed && (
             <span className="text-muted-foreground"> — {requirements.primaryUser.coreNeed}</span>
@@ -216,13 +187,13 @@ export function RequirementsSummary({
                     <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => { setEditingField(`user-${i}`); setEditValue(u.type); }}
-                        className="p-1 rounded text-muted-foreground/40 hover:text-muted-foreground"
+                        className="p-1 rounded text-muted-foreground/50 hover:text-muted-foreground"
                       >
                         <Pencil className="w-3 h-3" />
                       </button>
                       <button
                         onClick={() => removeSecondaryUser(i)}
-                        className="p-1 rounded text-muted-foreground/40 hover:text-red-400"
+                        className="p-1 rounded text-muted-foreground/50 hover:text-red-400"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -273,19 +244,19 @@ export function RequirementsSummary({
                 </div>
               ) : (
                 <>
-                  <span className="flex-1 px-3 py-1.5 text-[13px] rounded-xl bg-muted/50 text-foreground/80 font-medium border border-border/50">
+                  <span className="flex-1 px-3 py-1.5 text-[13px] rounded-xl bg-muted text-foreground/80 font-medium border border-border/50">
                     {f}
                   </span>
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => { setEditingField(`feature-${i}`); setEditValue(f); }}
-                      className="p-1 rounded text-muted-foreground/40 hover:text-muted-foreground"
+                      className="p-1 rounded text-muted-foreground/50 hover:text-muted-foreground"
                     >
                       <Pencil className="w-3 h-3" />
                     </button>
                     <button
                       onClick={() => removeFeature(i)}
-                      className="p-1 rounded text-muted-foreground/40 hover:text-red-400"
+                      className="p-1 rounded text-muted-foreground/50 hover:text-red-400"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>

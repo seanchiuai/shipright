@@ -37,7 +37,7 @@ export function DashboardBackground() {
         size: Math.random() * 2 + 0.5,
         speedX: (Math.random() - 0.5) * 0.2,
         speedY: (Math.random() - 0.5) * 0.2,
-        opacity: Math.random() * 0.15 + 0.05,
+        opacity: Math.random() * 0.15 + 0.03,
         hue: Math.random() * 40 + 210,
       };
     }
@@ -79,7 +79,7 @@ export function DashboardBackground() {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `hsla(220, 70%, 50%, ${0.06 * (1 - dist / 80)})`;
+            ctx.strokeStyle = `hsla(220, 70%, 50%, ${0.04 * (1 - dist / 80)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -108,12 +108,12 @@ export function DashboardBackground() {
 
   return (
     <>
-      {/* Dark gradient background */}
+      {/* Gradient background */}
       <div
         className="fixed inset-0 -z-30"
         style={{
           background:
-            "linear-gradient(135deg, #06080d 0%, #0a0e1a 50%, #0c1220 100%)",
+            "linear-gradient(135deg, #06080d 0%, #0a0f1a 50%, #0d1117 100%)",
         }}
       />
 
@@ -137,7 +137,7 @@ export function DashboardBackground() {
           width: "500px",
           height: "500px",
           background:
-            "radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%)",
           filter: "blur(80px)",
           animation: "float1 8s ease-in-out infinite",
         }}
@@ -150,7 +150,7 @@ export function DashboardBackground() {
           width: "400px",
           height: "400px",
           background:
-            "radial-gradient(circle, rgba(139, 92, 246, 0.08) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(139, 92, 246, 0.06) 0%, transparent 70%)",
           filter: "blur(80px)",
           animation: "float2 10s ease-in-out infinite",
         }}

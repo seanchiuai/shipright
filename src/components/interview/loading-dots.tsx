@@ -12,7 +12,7 @@ export function LoadingDots() {
       transition={{ duration: 0.3 }}
     >
       <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shadow-sm">
-        <Image src="/logo.png" alt="ShipRight" width={20} height={20} className="w-4 h-4 object-contain" />
+        <Image src="/logo.png" alt="ShipRight" width={20} height={20} className="w-4 h-4 object-contain brightness-0 invert" />
       </div>
       <div className="flex gap-1.5 items-center pt-2">
         {[0, 1, 2].map((i) => (
