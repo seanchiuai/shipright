@@ -124,7 +124,7 @@ Per iteration:
 Implementation patterns live in `.claude/skills/`:
 - `clerk-auth/`, `convex-patterns/`, `create-skill/`, `ui-components/`
 - `interview-flow/`, `template-matching/`, `github-integration/`
-- `daytona-sandbox/`, `scaffolding-generation/`, `deployment/`
+- `daytona-sandbox/`, `scaffolding-generation/`, `deployment/`, `production/`
 - `e2e-testing/`, `prompt-architect/`
 
 ## Environment Variables
