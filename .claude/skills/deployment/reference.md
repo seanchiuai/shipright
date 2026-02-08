@@ -108,6 +108,13 @@ vercel --prod
 | `GITHUB_CLIENT_ID` | Vercel | GitHub OAuth |
 | `GITHUB_CLIENT_SECRET` | Vercel | GitHub OAuth |
 | `DAYTONA_API_KEY` | **Convex** | Daytona sandbox |
+| `TAVILY_API_KEY` | **Convex** | Web search for interview |
+| `NEXT_PUBLIC_SENTRY_DSN` | Vercel + **Convex** | Error monitoring |
+| `SENTRY_ORG` | Vercel | Source map uploads |
+| `SENTRY_PROJECT` | Vercel | Source map uploads |
+| `SENTRY_AUTH_TOKEN` | Vercel | Source map uploads |
+| `ADMIN_USER_ID` | **Convex** | Admin authorization (server) |
+| `NEXT_PUBLIC_ADMIN_USER_ID` | Vercel | Admin UI gating (client) |
 
 **Important**: Some vars go in Convex, not Vercel. Convex actions run on Convex servers, so API keys for external services must be set there.
 

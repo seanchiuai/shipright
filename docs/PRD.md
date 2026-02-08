@@ -231,7 +231,7 @@ Shipright MVP is a web application that helps non-technical founders build apps 
 - [ ] Clerk authentication works in production
 - [ ] GitHub OAuth works in production
 - [ ] Full flow tested end-to-end in production
-- [ ] Error monitoring in place (Vercel logs, Convex dashboard)
+- [x] Error monitoring in place (Sentry client/server/edge/Convex + Vercel logs)
 
 ---
 

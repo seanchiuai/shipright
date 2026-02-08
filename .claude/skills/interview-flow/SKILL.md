@@ -29,6 +29,10 @@ The interview uses a message-based conversational model (not batched rounds):
 - Hard cap at 6 user exchanges
 - User can finish early via "I've shared enough" link
 
+## Platform Constraint
+
+**Shipright builds web apps only.** No iOS, Android, or native mobile apps. If a user asks for native mobile, the AI redirects: "We build responsive web apps that work great on mobile browsers, but not native App Store / Play Store apps."
+
 ## Classification Flow
 
 The AI covers these (adapting to context, skipping what's obvious):
@@ -36,7 +40,6 @@ The AI covers these (adapting to context, skipping what's obvious):
 - Who's it for?
 - Core action users take
 - Does money change hands?
-- Mobile, web, or both?
 - Dealbreakers or must-haves
 
 ## Using Vercel AI SDK with Vertex AI
@@ -97,7 +100,7 @@ See [reference.md](reference.md) for complete `Requirements` interface.
 - `RequirementsSummary` - Editable requirements display (summary phase)
 - `InterviewInputArea` - Bottom input area with example chips, text input, finish early
 - `JourneyProgress` - 4-step progress indicator (Idea → Questions → Review → Build)
-- `InterviewBackground` - Warm gradient background with subtle animations
+- `InterviewBackground` - Dark gradient background with subtle animations
 - Typewriter only on unseen AI messages (tracks via `useRef`)
 
 ## Reference Files

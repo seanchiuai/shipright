@@ -55,6 +55,14 @@ Shipright uses **JWT verification** for secure Clerk + Convex integration:
 
 See [convex-patterns skill](../convex-patterns/reference.md) for user sync patterns.
 
+## Admin Authorization
+
+Two-layer admin check (server + client):
+
+- **Server** (`convex/lib/auth.ts`): `requireAdmin(ctx)` — verifies JWT identity matches `ADMIN_USER_ID` env var. Used for admin-only mutations/queries.
+- **Client** (`src/lib/admin.ts`): `isAdmin(clerkUserId)` — checks `NEXT_PUBLIC_ADMIN_USER_ID` for UI gating only. Not a security boundary.
+- **Safe redirects** (`src/lib/admin.ts`): `isSafeRedirectPath(path)` — prevents open redirect attacks.
+
 ## Reference Files
 
 - [reference.md](reference.md) - Complete code examples, middleware setup

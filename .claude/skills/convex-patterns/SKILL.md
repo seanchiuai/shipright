@@ -59,7 +59,7 @@ See [reference.md](reference.md) for complete schema with tables:
 
 ## Shared Backend Helpers (convex/lib/)
 
-- `convex/lib/auth.ts` - `getAuthenticatedUser(ctx)`, `getOwnedProject(ctx, projectId)` — JWT-based auth + ownership checks
+- `convex/lib/auth.ts` - `getAuthenticatedUser(ctx)`, `requireAdmin(ctx)`, `getOwnedProject(ctx, projectId)` — JWT-based auth + ownership + admin checks
 - `convex/lib/cascade.ts` - `deleteProjectData(ctx, projectId)` — deletes messages
 - `convex/lib/vertex.ts` - `getVertexProvider()` — shared Vertex AI provider config
 - `convex/lib/constants.ts` - `PROJECT_STATUS`, `INTERVIEW_PHASE`, `MESSAGE_ROLE` enums

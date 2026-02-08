@@ -6,7 +6,7 @@
 - [ ] Deploy to Vercel
 - [ ] Configure production environment variables
 - [ ] Test full flow end-to-end in production
-- [ ] Set up error monitoring
+- [x] Set up error monitoring (Sentry — client/server/edge/Convex)
 
 ## Complete
 

@@ -39,19 +39,36 @@ components/
 │   ├── choice-card.tsx         # Choice selection UI
 │   ├── magic-textarea.tsx      # Animated text input
 │   ├── journey-progress.tsx    # Progress indicator
-│   └── interview-background.tsx # Warm paper background with subtle glows
+│   ├── loading-dots.tsx        # Bouncing dots for AI loading
+│   ├── requirements-summary.tsx # Editable requirements (summary phase)
+│   ├── interview-input-area.tsx # Bottom input area
+│   └── interview-background.tsx # Dark gradient background with animations
+├── dashboard/                  # Dashboard-specific
+│   ├── project-card.tsx        # Project card with hover glow + context menu
+│   ├── status-badge.tsx        # Color-coded status with pulse animation
+│   ├── dashboard-background.tsx # Dark gradient + particles + grid
+│   ├── stagger-container.tsx   # Framer-motion stagger animations
+│   ├── empty-state.tsx         # Empty dashboard state
+│   └── loading-skeleton.tsx    # Dashboard loading skeleton
+├── landing/                    # Landing page
+│   ├── hero-section.tsx        # Hero with CTA
+│   ├── aurora-background.tsx   # Aurora light effect
+│   ├── scroll-explainer.tsx    # Scroll-based animated explainer
+│   └── index.ts               # Barrel exports
 └── app-navbar.tsx              # Global navbar with auth and navigation
 
 app/
 ├── page.tsx                    # Landing page
 ├── layout.tsx                  # Root layout
-├── globals.css                 # Global styles and design tokens
+├── globals.css                 # Global styles and design tokens (dark theme)
 ├── dashboard/
-│   └── page.tsx                # Dashboard (contains inline ProjectCard component)
+│   └── page.tsx                # Dashboard (uses extracted components)
 ├── interview/
 │   └── [id]/page.tsx           # Interview flow
 ├── project/
 │   └── [id]/page.tsx           # Project detail page
+├── connect-github/
+│   └── page.tsx                # GitHub OAuth connection
 └── profile/
     └── page.tsx                # Profile management with GitHub connection
 ```
@@ -375,50 +392,63 @@ export function AppNavbar({ title }: { title?: string }) {
 
 ### Project Card (Dashboard)
 
-Project cards are defined inline in `/src/app/dashboard/page.tsx`. Key features:
-- **Animated gradient background** with particles and floating orbs
-- **Status badges** with glow effects (amber, purple, blue, green)
-- **Hover effects** with gradient glow and translate animation
+Extracted component at `src/components/dashboard/project-card.tsx`:
+- **Glow hover effect** — gradient border (`from-primary/20 to-purple-500/20`) appears on hover
+- **Status badges** with glow effects via `StatusBadge` component
+- **Context menu** — rename/delete via `DropdownMenu` (visible on hover)
 - **GitHub repo link** when available
 - **Template name** display with Package icon
-- Uses framer-motion for stagger animations
+- Uses framer-motion `staggerItem` variants
 
-Example usage from dashboard:
 ```tsx
+import { ProjectCard } from "@/components/dashboard/project-card";
+
 <ProjectCard
   project={{
     _id: "...",
     name: "My App",
     status: "matched",
+    scaffoldingStatus: undefined,
+    appIdea: "A marketplace for...",
     githubRepoUrl: "https://github.com/...",
     templateName: "Next.js + Convex",
     _creationTime: Date.now()
   }}
   onClick={() => router.push(`/project/${project._id}`)}
+  onRename={() => handleRename(project._id)}
+  onDelete={() => handleDelete(project._id)}
 />
+```
+
+### Status Badge
+
+Extracted component at `src/components/dashboard/status-badge.tsx`:
+- Color-coded by status: amber (interview), purple (matching), blue (creating repo), indigo (scaffolding), green (complete), red (failed)
+- Animated pulse dot + glow shadow
+- Handles `scaffoldingStatus === "scaffolding_failed"` → shows as failed
+
+```tsx
+import { StatusBadge } from "@/components/dashboard/status-badge";
+
+<StatusBadge status={project.status} scaffoldingStatus={project.scaffoldingStatus} />
 ```
 
 ### Dashboard Animated Background
 
-The dashboard features a sophisticated animated background system defined inline in `/src/app/dashboard/page.tsx`:
+The dashboard uses a dedicated `DashboardBackground` component (`src/components/dashboard/dashboard-background.tsx`):
 
 ```tsx
-// Key features:
-// - Gradient base with warm tones (#faf9f7 → #f0ebe3 → #e8e0d5)
-// - Animated grid overlay with amber accents (60px x 60px)
-// - Two floating gradient orbs with blur filters
-// - Particle canvas with connected lines (proximity < 80px)
-// - All animations use requestAnimationFrame for performance
+import { DashboardBackground } from "@/components/dashboard/dashboard-background";
 
-<DashboardBackground />  // Component with canvas particle system
+<DashboardBackground />
 
-// Fixed layering:
-// -z-30: Gradient base
-// -z-20: Animated grid
-// -z-10: Orbs and particle canvas
+// Layers (fixed positioning):
+// -z-30: Gradient base (#06080d → #0a0f1a → #0d1117)
+// -z-20: Animated grid overlay with blue accents (60px × 60px)
+// -z-10: Gradient orbs (blue + purple) + particle canvas
 ```
 
-The component handles window resize, particle initialization, and cleanup via useEffect hooks. Particles use HSL colors in the amber range (hue: 30-50) with low opacity for subtlety.
+Particles use HSL colors in the blue range (hue: 210-250) with low opacity. Connected lines drawn when proximity < 80px. All animations use requestAnimationFrame with cleanup.
 
 ### Profile Page Components
 
@@ -483,9 +513,10 @@ The project detail page (`/src/app/project/[id]/page.tsx`) shows:
 ## Design Principles
 
 ### Core Palette
-- **Warm Editorial Palette** - Cream backgrounds (`#faf8f5`), warm borders (`#e2ddd5`), dark foreground (`#1c1917`)
-- **Amber Accents** - Primary accent (`#d97706`), light (`#fbbf24`), dark (`#b45309`)
-- **Stone Color System** - Interview UI uses `stone-*` Tailwind classes (stone-50 through stone-900)
+- **Dark Theme** — Background `#06080d`, card `#080b14`, foreground `#e8eaed`
+- **Blue Accents** — Primary `#3b82f6`, light `#60a5fa`, dark `#2563eb`
+- **Status Colors** — Amber (in-progress), purple (matching), blue (creating), green (complete), red (failed)
+- **Subtle Borders** — `rgba(255, 255, 255, 0.06)` for borders/inputs
 
 ### Typography
 - **Font Families** - `font-serif` (Instrument Serif) for headings, `font-sans` (Instrument Sans) for body
