@@ -9,6 +9,8 @@
  */
 
 import type * as ai from "../ai.js";
+import type * as blueprint from "../blueprint.js";
+import type * as blueprintFns from "../blueprintFns.js";
 import type * as github from "../github.js";
 import type * as http from "../http.js";
 import type * as interviews from "../interviews.js";
@@ -39,6 +41,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
+  blueprint: typeof blueprint;
+  blueprintFns: typeof blueprintFns;
   github: typeof github;
   http: typeof http;
   interviews: typeof interviews;

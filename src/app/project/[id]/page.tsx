@@ -67,8 +67,8 @@ function sanitizeErrorMessage(raw: string): string {
 // --- Blueprint Viewer ---
 
 function BlueprintViewer({ projectId, projectName }: { projectId: Id<"projects">; projectName: string }) {
-  const blueprint = useQuery(api.blueprint.getByProject, { projectId });
-  const [activeSection, setActiveSection] = useState<BlueprintSectionKey>("executiveSummary");
+  const blueprint = useQuery(api.blueprintFns.getByProject, { projectId });
+  const [userSelectedSection, setUserSelectedSection] = useState<BlueprintSectionKey | null>(null);
 
   const availableSections = useMemo(() => {
     const set = new Set<string>();
@@ -81,13 +81,16 @@ function BlueprintViewer({ projectId, projectName }: { projectId: Id<"projects">
     return set;
   }, [blueprint]);
 
-  // Auto-select first available section
-  useEffect(() => {
-    if (availableSections.size > 0 && !availableSections.has(activeSection)) {
-      const first = BLUEPRINT_SECTIONS.find((s) => availableSections.has(s.key));
-      if (first) setActiveSection(first.key);
+  // Derive active section: user selection if valid, otherwise first available
+  const activeSection: BlueprintSectionKey = useMemo(() => {
+    if (userSelectedSection && availableSections.has(userSelectedSection)) {
+      return userSelectedSection;
     }
-  }, [availableSections, activeSection]);
+    const first = BLUEPRINT_SECTIONS.find((s) => availableSections.has(s.key));
+    return first?.key ?? "executiveSummary";
+  }, [userSelectedSection, availableSections]);
+
+  const setActiveSection = setUserSelectedSection;
 
   const handleExportMarkdown = useCallback(() => {
     if (!blueprint) return;

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
-import { Requirements } from "@/lib/types";
+import { Requirements, Feature } from "@/lib/types";
 
 export function RequirementsSummary({
   requirements,
@@ -55,9 +55,17 @@ export function RequirementsSummary({
     await onUpdateRequirements(updated);
   };
 
+  const getFeatureName = (f: Feature): string => typeof f === "string" ? f : f.name;
+
   const saveFeatureEdit = async (index: number, value: string) => {
     const updated = { ...requirements, keyFeatures: [...requirements.keyFeatures] };
-    updated.keyFeatures[index] = value;
+    const existing = updated.keyFeatures[index];
+    // Preserve Feature object structure if editing a Feature, otherwise create new Feature
+    if (typeof existing === "string") {
+      updated.keyFeatures[index] = { name: value, description: "", priority: "nice-to-have" } as Feature;
+    } else {
+      updated.keyFeatures[index] = { ...existing, name: value };
+    }
     await onUpdateRequirements(updated);
     setEditingField(null);
   };
@@ -65,7 +73,7 @@ export function RequirementsSummary({
   const addFeature = async () => {
     const updated = {
       ...requirements,
-      keyFeatures: [...requirements.keyFeatures, "New feature"],
+      keyFeatures: [...requirements.keyFeatures, { name: "New feature", description: "", priority: "nice-to-have" } as Feature],
     };
     await onUpdateRequirements(updated);
   };
@@ -245,11 +253,11 @@ export function RequirementsSummary({
               ) : (
                 <>
                   <span className="flex-1 px-3 py-1.5 text-[13px] rounded-xl bg-muted text-foreground/80 font-medium border border-border/50">
-                    {f}
+                    {getFeatureName(f)}
                   </span>
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={() => { setEditingField(`feature-${i}`); setEditValue(f); }}
+                      onClick={() => { setEditingField(`feature-${i}`); setEditValue(getFeatureName(f)); }}
                       className="p-1 rounded text-muted-foreground/50 hover:text-muted-foreground"
                     >
                       <Pencil className="w-3 h-3" />

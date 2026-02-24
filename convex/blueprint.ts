@@ -1,8 +1,9 @@
 "use node";
 
-import { action, query, internalMutation } from "./_generated/server";
+import { action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { getVertexProvider } from "./lib/vertex";
@@ -22,91 +23,6 @@ import {
   DEFAULT_WEIGHTS,
 } from "./matching";
 
-// --- Mutations ---
-
-export const create = internalMutation({
-  args: {
-    projectId: v.id("projects"),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("blueprints", {
-      projectId: args.projectId,
-      status: "generating",
-    });
-  },
-});
-
-export const saveAllSections = internalMutation({
-  args: {
-    blueprintId: v.id("blueprints"),
-    projectId: v.id("projects"),
-    sections: v.object({
-      executiveSummary: v.optional(v.string()),
-      userPersonas: v.optional(v.string()),
-      featureBreakdown: v.optional(v.string()),
-      userFlows: v.optional(v.string()),
-      dataModel: v.optional(v.string()),
-      techStackRecommendations: v.optional(v.string()),
-      monetizationStrategy: v.optional(v.string()),
-      mvpScope: v.optional(v.string()),
-      architectureOverview: v.optional(v.string()),
-      designDirection: v.optional(v.string()),
-    }),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.blueprintId, {
-      ...args.sections,
-      status: "ready",
-    });
-    await ctx.db.patch(args.projectId, {
-      status: "blueprint_ready",
-      blueprintId: args.blueprintId,
-    });
-  },
-});
-
-export const markFailed = internalMutation({
-  args: {
-    blueprintId: v.id("blueprints"),
-    projectId: v.id("projects"),
-    error: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.blueprintId, {
-      status: "failed",
-      generationError: args.error,
-    });
-    await ctx.db.patch(args.projectId, {
-      status: "blueprint_failed",
-    });
-  },
-});
-
-export const cacheMarkdown = internalMutation({
-  args: {
-    blueprintId: v.id("blueprints"),
-    markdown: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.blueprintId, { markdownExport: args.markdown });
-  },
-});
-
-// --- Queries ---
-
-export const getByProject = query({
-  args: { projectId: v.id("projects") },
-  handler: async (ctx, args) => {
-    return await ctx.db
-      .query("blueprints")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .order("desc")
-      .first();
-  },
-});
-
-// --- Actions ---
-
 const blueprintSchema = z.object({
   executiveSummary: z.string(),
   userPersonas: z.string(),
@@ -124,9 +40,9 @@ export const generate = action({
   args: {
     projectId: v.id("projects"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ blueprintId: string; status: string; error?: string }> => {
     const pid = args.projectId;
-    console.log(formatLogEntry({ action: "blueprint.generate", projectId: pid, status: "started" }));
+    console.log(formatLogEntry({ action: "blueprint.generate", projectId: pid, step: "blueprint", status: "started" }));
 
     // 1. Get project and requirements
     const project = await ctx.runQuery(internal.projects.getById, { projectId: pid });
@@ -143,7 +59,7 @@ export const generate = action({
     }
 
     // 2. Create blueprint record
-    const blueprintId = await ctx.runMutation(internal.blueprint.create, { projectId: pid });
+    const blueprintId = await ctx.runMutation(internal.blueprintFns.create, { projectId: pid }) as Id<"blueprints">;
 
     // 3. Update project status
     await ctx.runMutation(internal.projects.updateStatusInternal, {
@@ -157,7 +73,6 @@ export const generate = action({
       try {
         const templates = await ctx.runQuery(internal.templates.listInternal, {});
         if (templates.length > 0) {
-          // Score templates and find best match
           let bestTemplate = templates[0];
           let bestScore = 0;
 
@@ -217,20 +132,20 @@ Generate all 10 blueprint sections based on these requirements. Be specific to T
       });
 
       // 7. Save sections
-      await ctx.runMutation(internal.blueprint.saveAllSections, {
+      await ctx.runMutation(internal.blueprintFns.saveAllSections, {
         blueprintId,
         projectId: pid,
         sections,
       });
 
-      console.log(formatLogEntry({ action: "blueprint.generate", projectId: pid, status: "completed" }));
+      console.log(formatLogEntry({ action: "blueprint.generate", projectId: pid, step: "blueprint", status: "completed" }));
       return { blueprintId, status: "ready" };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error(formatLogEntry({ action: "blueprint.generate", projectId: pid, status: "failed", error: msg }));
+      console.error(formatLogEntry({ action: "blueprint.generate", projectId: pid, step: "blueprint", status: "failed", error: msg }));
       await reportToSentry({ message: `Blueprint generation failed: ${msg}`, context: { projectId: pid } });
 
-      await ctx.runMutation(internal.blueprint.markFailed, {
+      await ctx.runMutation(internal.blueprintFns.markFailed, {
         blueprintId,
         projectId: pid,
         error: msg,

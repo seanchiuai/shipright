@@ -53,23 +53,33 @@ describe("buildConversationMessages", () => {
     expect(msgs.every((m) => m.content.trim().length > 0)).toBe(true);
   });
 
-  it("adds wrap-up nudge at exchangeCount >= 6", () => {
+  it("adds soft nudge at exchangeCount >= 10", () => {
     const msgs = buildConversationMessages(
       "a todo app",
       [{ role: "user", content: "hello" }],
-      6,
+      10,
+    );
+    const last = msgs[msgs.length - 1];
+    expect(last.content).toContain("Consider wrapping up");
+  });
+
+  it("adds hard wrap-up nudge at exchangeCount >= 15", () => {
+    const msgs = buildConversationMessages(
+      "a todo app",
+      [{ role: "user", content: "hello" }],
+      15,
     );
     const last = msgs[msgs.length - 1];
     expect(last.content).toContain("Wrap it up");
   });
 
-  it("does not add nudge at exchangeCount < 6", () => {
+  it("does not add nudge at exchangeCount < 10", () => {
     const msgs = buildConversationMessages(
       "a todo app",
       [{ role: "user", content: "hello" }],
-      5,
+      9,
     );
-    expect(msgs.every((m) => !m.content.includes("Wrap it up"))).toBe(true);
+    expect(msgs.every((m) => !m.content.includes("Wrap it up") && !m.content.includes("Consider wrapping up"))).toBe(true);
   });
 
   it("does not add nudge when exchangeCount omitted", () => {
