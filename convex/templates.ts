@@ -1,4 +1,4 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedUser } from "./lib/auth";
 
@@ -58,6 +58,14 @@ export type TemplateCapabilities = {
 
 // Query: List all templates
 export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("templates").collect();
+  },
+});
+
+// Internal: List templates without auth (for blueprint generation)
+export const listInternal = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("templates").collect();

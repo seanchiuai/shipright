@@ -33,6 +33,16 @@ export const getById = internalQuery({
   },
 });
 
+export const updateStatusInternal = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    status: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.projectId, { status: args.status as "generating_blueprint" | "blueprint_ready" | "blueprint_failed" });
+  },
+});
+
 export const create = mutation({
   args: {
     name: v.string(),
