@@ -15,9 +15,11 @@ import { AppNavbar } from "@/components/app-navbar";
 import {
   ChatMessage,
   ChoiceGrid,
+  ComparisonGrid,
   AIConversation,
   LoadingDots,
-  RequirementsSummary,
+  BlueprintPreview,
+  SectionProgress,
   InterviewInputArea,
 } from "@/components/interview";
 import { Requirements } from "@/lib/types";
@@ -39,7 +41,6 @@ export default function InterviewPage() {
   const continueConversation = useAction(api.ai.continueConversation);
   const extractRequirements = useAction(api.ai.extractRequirements);
   const updateInterviewPhase = useMutation(api.projects.updateInterviewPhase);
-  const updateRequirements = useMutation(api.projects.updateRequirements);
   const updateStatus = useMutation(api.projects.updateStatus);
 
   // State
@@ -77,6 +78,23 @@ export default function InterviewPage() {
   const isComplete = useMemo(() => messages?.some((m) => m.isComplete), [messages]);
   const lastAiMsg = useMemo(() => messages?.filter((m) => m.role === "assistant").at(-1), [messages]);
   const requirements = project?.requirements as Requirements | undefined;
+
+  // Get section progress from latest AI message
+  const latestSectionProgress = useMemo(() => {
+    const aiMessages = messages?.filter((m) => m.role === "assistant") || [];
+    for (let i = aiMessages.length - 1; i >= 0; i--) {
+      if (aiMessages[i].sectionProgress) return aiMessages[i].sectionProgress as Record<string, string>;
+    }
+    return null;
+  }, [messages]);
+
+  const latestCurrentSection = useMemo(() => {
+    const aiMessages = messages?.filter((m) => m.role === "assistant") || [];
+    for (let i = aiMessages.length - 1; i >= 0; i--) {
+      if (aiMessages[i].currentSection) return aiMessages[i].currentSection;
+    }
+    return null;
+  }, [messages]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -254,30 +272,18 @@ export default function InterviewPage() {
     }
   }, [projectId, loading, project?.appIdea, clearIsComplete, updateInterviewPhase, continueConversation, showError]);
 
-  const handleConfirm = useCallback(async () => {
+  const handleGenerateBlueprint = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      await updateStatus({ projectId, status: "matching" });
-      if (!convexUser?.githubToken) {
-        router.push(`/connect-github?returnTo=/project/${projectId}`);
-      } else {
-        router.push(`/project/${projectId}`);
-      }
+      await updateStatus({ projectId, status: "generating_blueprint" });
+      router.push(`/project/${projectId}`);
     } catch (e) {
-      showError(e, "Failed to confirm requirements. Please try again.");
+      showError(e, "Failed to start blueprint generation. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [projectId, updateStatus, router, convexUser?.githubToken, showError]);
-
-  const handleUpdateRequirements = useCallback(async (updated: Requirements) => {
-    try {
-      await updateRequirements({ projectId, requirements: updated });
-    } catch (e) {
-      showError(e, "Failed to save changes. Please try again.");
-    }
-  }, [projectId, updateRequirements, showError]);
+  }, [projectId, updateStatus, router, showError]);
 
   // Loading state
   if (!isLoaded || convexUser === undefined || project === undefined) {
@@ -327,6 +333,14 @@ export default function InterviewPage() {
 
       <AppNavbar title={project?.name} />
 
+      {/* Section progress bar */}
+      {phase === "conversation" && !isComplete && (
+        <SectionProgress
+          currentSection={latestCurrentSection}
+          sectionProgress={latestSectionProgress as Record<string, "complete" | "partial" | "not_started"> | null}
+        />
+      )}
+
       {/* Chat area */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto" ref={scrollRef}>
@@ -352,7 +366,7 @@ export default function InterviewPage() {
                     delay={isAI ? 0.2 : 0}
                     userImageUrl={!isAI ? clerkUser.imageUrl : undefined}
                   >
-                    {/* Show choice options inline for the last AI message */}
+                    {/* Choice/multiselect options */}
                     {isAI &&
                       msg._id === lastAiMsg?._id &&
                       !isComplete &&
@@ -398,6 +412,32 @@ export default function InterviewPage() {
                           )}
                         </motion.div>
                       )}
+
+                    {/* Comparison cards (rich choice with descriptions) */}
+                    {isAI &&
+                      msg._id === lastAiMsg?._id &&
+                      !isComplete &&
+                      msg.questionType === "comparison" &&
+                      msg.options &&
+                      msg.optionDescriptions &&
+                      isTypewriterDone && (
+                        <motion.div
+                          className="mt-5 space-y-2"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.3, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+                        >
+                          <ComparisonGrid
+                            options={msg.options}
+                            descriptions={msg.optionDescriptions}
+                            selected=""
+                            onChange={(val) => handleAnswer(val)}
+                          />
+                          <p className="pt-1.5 text-[11px] text-muted-foreground italic">
+                            Or describe your own approach below
+                          </p>
+                        </motion.div>
+                      )}
                   </ChatMessage>
                 );
               })}
@@ -423,14 +463,13 @@ export default function InterviewPage() {
             {/* Loading indicator */}
             {loading && <LoadingDots />}
 
-            {/* Requirements summary */}
+            {/* Blueprint preview (replaces old RequirementsSummary) */}
             {phase === "summary" && requirements && (
-              <RequirementsSummary
+              <BlueprintPreview
                 requirements={requirements}
                 loading={loading}
-                onConfirm={handleConfirm}
+                onGenerate={handleGenerateBlueprint}
                 onContinueConversation={handleContinueConversation}
-                onUpdateRequirements={handleUpdateRequirements}
               />
             )}
           </AIConversation>
