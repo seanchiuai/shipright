@@ -57,7 +57,7 @@ export const create = mutation({
 export const updateStatus = mutation({
   args: {
     projectId: v.id("projects"),
-    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete"), v.literal("repo_failed")),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete"), v.literal("repo_failed"), v.literal("generating_blueprint"), v.literal("blueprint_ready"), v.literal("blueprint_failed")),
   },
   handler: async (ctx, args) => {
     await getOwnedProject(ctx, args.projectId);

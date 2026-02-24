@@ -36,15 +36,20 @@ export type Requirements = {
   tagline: string;
   appType: string;
   problemStatement: string;
-  primaryUser: { type: string; coreNeed: string };
-  secondaryUsers: Array<{ type: string; coreNeed: string }>;
+  primaryUser: { type: string; coreNeed: string; accessLevel?: string; onboardingPath?: string };
+  secondaryUsers: Array<{ type: string; coreNeed: string; accessLevel?: string; onboardingPath?: string }>;
   coreAction: string;
   hasPayments: boolean;
   paymentContext: string | null;
   platform: string;
-  keyFeatures: string[];
-  constraints: { timeline: string | null; mustHave: string[]; mustNotHave: string[] };
+  keyFeatures: Array<string | { name: string; description: string; priority: string; relatedWorkflow?: string }>;
+  constraints: { timeline: string | null; mustHave: string[]; mustNotHave: string[]; mvpScope?: string; futureFeatures?: string[] };
   devAgentNotes: string;
+  workflows?: Array<{ name: string; actor: string; steps: string[]; priority: string }>;
+  contentTypes?: Array<{ name: string; createdBy: string; visibility: string; fields?: string[] }>;
+  monetization?: { type: string; description: string; tiers?: string[] };
+  designPreferences?: { style: string; inspirationApps?: string[]; colorPreference?: string; notes?: string };
+  integrations?: Array<{ name: string; purpose: string; priority: string }>;
 };
 
 export type Template = {
@@ -88,13 +93,14 @@ export const DEFAULT_WEIGHTS: Weights = {
 
 export function requirementsSummary(req: Requirements): string {
   const users = [req.primaryUser.type, ...req.secondaryUsers.map((u) => u.type)].join(", ");
+  const featureNames = req.keyFeatures.map((f) => typeof f === "string" ? f : f.name).join(", ");
   return `App: ${req.appName} (${req.appType})
 Problem: ${req.problemStatement}
 Users: ${users}
 Core Action: ${req.coreAction}
 Platform: ${req.platform}
 Payments: ${req.hasPayments ? (req.paymentContext || "Yes") : "No"}
-Key Features: ${req.keyFeatures.join(", ")}${req.constraints.mustHave.length > 0 ? `\nMust Have: ${req.constraints.mustHave.join(", ")}` : ""}${req.constraints.mustNotHave.length > 0 ? `\nMust Not Have: ${req.constraints.mustNotHave.join(", ")}` : ""}`;
+Key Features: ${featureNames}${req.constraints.mustHave.length > 0 ? `\nMust Have: ${req.constraints.mustHave.join(", ")}` : ""}${req.constraints.mustNotHave.length > 0 ? `\nMust Not Have: ${req.constraints.mustNotHave.join(", ")}` : ""}`;
 }
 
 async function determineWeights(requirements: Requirements): Promise<Weights> {
@@ -178,6 +184,13 @@ export function scorePayments(
   return 100;
 }
 
+/** Normalize keyFeatures to string[] for scoring (handles both old string[] and new Feature[] formats) */
+function getFeatureStrings(requirements: Requirements): string[] {
+  return requirements.keyFeatures.map((f) =>
+    typeof f === "string" ? f : f.name + " " + f.description
+  );
+}
+
 export function scoreFeatures(
   requirements: Requirements,
   tmplFeatures: TemplateCapabilities["features"]
@@ -196,9 +209,10 @@ export function scoreFeatures(
     gpt: "ai",
   };
 
+  const featureStrings = getFeatureStrings(requirements);
   let checked = 0;
   let matches = 0;
-  for (const feature of requirements.keyFeatures) {
+  for (const feature of featureStrings) {
     const lower = feature.toLowerCase();
     for (const [keyword, capability] of Object.entries(featureKeywords)) {
       if (lower.includes(keyword)) {
@@ -235,7 +249,8 @@ export function identifyGaps(
     gaps.push("Payment processing");
   }
 
-  for (const feature of requirements.keyFeatures) {
+  const featureStrings = getFeatureStrings(requirements);
+  for (const feature of featureStrings) {
     const lower = feature.toLowerCase();
     if ((lower.includes("upload") || lower.includes("file") || lower.includes("image")) && !caps.features.fileUploads) {
       gaps.push("File uploads");

@@ -19,4 +19,13 @@ export async function deleteProjectData(ctx: MutationCtx, projectId: Id<"project
   for (const event of events) {
     await ctx.db.delete(event._id);
   }
+
+  // Delete blueprints
+  const blueprints = await ctx.db
+    .query("blueprints")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .collect();
+  for (const bp of blueprints) {
+    await ctx.db.delete(bp._id);
+  }
 }

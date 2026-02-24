@@ -15,7 +15,7 @@ export default defineSchema({
   projects: defineTable({
     userId: v.id("users"),
     name: v.string(),
-    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete"), v.literal("repo_failed")),
+    status: v.union(v.literal("interview"), v.literal("matching"), v.literal("matched"), v.literal("building"), v.literal("scaffolding"), v.literal("complete"), v.literal("repo_failed"), v.literal("generating_blueprint"), v.literal("blueprint_ready"), v.literal("blueprint_failed")),
     interviewStep: v.optional(v.number()), // 1, 2, or 3
     interviewRound: v.optional(v.number()), // For step 2: 1-3
     appIdea: v.optional(v.string()), // Step 1 input
@@ -47,20 +47,42 @@ export default defineSchema({
     repoReady: v.optional(v.boolean()),
     repoError: v.optional(v.string()),
     repoRetryCount: v.optional(v.number()),
+    blueprintId: v.optional(v.id("blueprints")),
   }).index("by_user", ["userId"]),
 
   interviewMessages: defineTable({
     projectId: v.id("projects"),
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
-    questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"))),
+    questionType: v.optional(v.union(v.literal("text"), v.literal("choice"), v.literal("multiselect"), v.literal("comparison"))),
     options: v.optional(v.array(v.string())),
+    optionDescriptions: v.optional(v.array(v.string())),
+    currentSection: v.optional(v.string()),
+    sectionProgress: v.optional(v.any()),
     isComplete: v.optional(v.boolean()),
     timestamp: v.number(),
   })
     .index("by_project", ["projectId"])
     .index("by_project_timestamp", ["projectId", "timestamp"]),
 
+
+  blueprints: defineTable({
+    projectId: v.id("projects"),
+    status: v.union(v.literal("generating"), v.literal("ready"), v.literal("failed")),
+    generationError: v.optional(v.string()),
+    executiveSummary: v.optional(v.string()),
+    userPersonas: v.optional(v.string()),
+    featureBreakdown: v.optional(v.string()),
+    userFlows: v.optional(v.string()),
+    dataModel: v.optional(v.string()),
+    techStackRecommendations: v.optional(v.string()),
+    monetizationStrategy: v.optional(v.string()),
+    mvpScope: v.optional(v.string()),
+    architectureOverview: v.optional(v.string()),
+    designDirection: v.optional(v.string()),
+    markdownExport: v.optional(v.string()),
+    isPublic: v.optional(v.boolean()),
+  }).index("by_project", ["projectId"]),
 
   templates: defineTable({
     slug: v.optional(v.string()), // Unique identifier for sync (optional for backwards compat)

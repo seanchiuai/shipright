@@ -6,6 +6,9 @@ export const PROJECT_STATUS = {
   SCAFFOLDING: "scaffolding",
   COMPLETE: "complete",
   REPO_FAILED: "repo_failed",
+  GENERATING_BLUEPRINT: "generating_blueprint",
+  BLUEPRINT_READY: "blueprint_ready",
+  BLUEPRINT_FAILED: "blueprint_failed",
 } as const;
 
 export type ProjectStatus = (typeof PROJECT_STATUS)[keyof typeof PROJECT_STATUS];
