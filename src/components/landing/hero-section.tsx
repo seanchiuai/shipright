@@ -135,14 +135,14 @@ export function HeroSection() {
       <div className="max-w-4xl mx-auto px-6 text-center w-full relative z-10">
         {/* Headline */}
         <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl leading-[1.08] tracking-tight mb-4 text-foreground">
-          The foundation vibe
+          Turn your app idea into
           <br />
-          coding <em className="italic text-primary">needs</em>
+          a real <em className="italic text-primary">blueprint</em>
         </h1>
 
         {/* Subhead */}
         <p className="text-lg md:text-xl text-muted-foreground max-w-lg mx-auto mb-8 leading-relaxed">
-          A production-ready codebase with built-in AI context.
+          AI-guided interview. Comprehensive product spec. Ready to build.
         </p>
 
         {/* Input */}
@@ -185,7 +185,7 @@ export function HeroSection() {
                     <div className="w-4 h-4 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
                   ) : (
                     <>
-                      Start building
+                      Get my blueprint
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
@@ -195,7 +195,7 @@ export function HeroSection() {
           </div>
 
           <p className="text-xs text-foreground/20 mt-4">
-            You own every line of code.
+            No code required. Just describe your idea.
           </p>
         </div>
       </div>

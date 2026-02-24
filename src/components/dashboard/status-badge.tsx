@@ -47,6 +47,24 @@ export function StatusBadge({ status, scaffoldingStatus }: { status: string; sca
       bg: "bg-red-500/10",
       glow: "shadow-[0_0_12px_rgba(239,68,68,0.15)]",
     },
+    [PROJECT_STATUS.GENERATING_BLUEPRINT]: {
+      label: "Generating",
+      color: "text-blue-400",
+      bg: "bg-blue-500/10",
+      glow: "shadow-[0_0_12px_rgba(59,130,246,0.15)]",
+    },
+    [PROJECT_STATUS.BLUEPRINT_READY]: {
+      label: "Blueprint Ready",
+      color: "text-green-400",
+      bg: "bg-green-500/10",
+      glow: "shadow-[0_0_12px_rgba(34,197,94,0.15)]",
+    },
+    [PROJECT_STATUS.BLUEPRINT_FAILED]: {
+      label: "Failed",
+      color: "text-red-400",
+      bg: "bg-red-500/10",
+      glow: "shadow-[0_0_12px_rgba(239,68,68,0.15)]",
+    },
   };
 
   const effectiveStatus = scaffoldingStatus === "scaffolding_failed" ? PROJECT_STATUS.REPO_FAILED : status;

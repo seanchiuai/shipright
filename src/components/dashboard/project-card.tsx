@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
+  FileText,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -103,7 +104,12 @@ export function ProjectCard({
         )}
 
         <div className="flex items-center justify-between pt-4 border-t border-border/50">
-          {project.githubRepoUrl ? (
+          {project.status === "blueprint_ready" ? (
+            <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors">
+              <FileText className="w-4 h-4" />
+              View Blueprint
+            </span>
+          ) : project.githubRepoUrl ? (
             <a
               href={project.githubRepoUrl}
               target="_blank"
@@ -117,6 +123,8 @@ export function ProjectCard({
           ) : (
             <span className="text-sm text-muted-foreground">
               {project.status === "interview" ? "Continue interview" :
+               project.status === "generating_blueprint" ? "Generating blueprint..." :
+               project.status === "blueprint_failed" ? "View details" :
                project.scaffoldingStatus === "scaffolding_failed" || project.status === "repo_failed" ? "View details" :
                project.status === "scaffolding" || project.status === "building" ? "In progress..." :
                "View project"}
