@@ -41,10 +41,15 @@ export function buildConversationMessages(
   ];
 
   const count = exchangeCount ?? 0;
-  if (count >= 6) {
+  if (count >= 15) {
     messages.push({
       role: "user" as const,
-      content: "[SYSTEM] You've asked enough questions. Wrap it up now and set isComplete: true — unless this app is genuinely complex and you still have critical unknowns.",
+      content: "[SYSTEM] You've asked many questions. Wrap it up now and set isComplete: true — unless you have critical unknowns in core sections (vision, users, workflows, scope).",
+    });
+  } else if (count >= 10) {
+    messages.push({
+      role: "user" as const,
+      content: "[SYSTEM] You've covered a lot of ground. Consider wrapping up soon if the core sections (vision, users, workflows, scope) have good coverage. Set isComplete: true when ready.",
     });
   }
 
@@ -145,8 +150,11 @@ export const continueConversation = action({
 
       let parsed: {
         content: string;
-        questionType?: "text" | "choice" | "multiselect" | null;
+        questionType?: "text" | "choice" | "multiselect" | "comparison" | null;
         options?: string[] | null;
+        optionDescriptions?: string[] | null;
+        currentSection?: string | null;
+        sectionProgress?: Record<string, string> | null;
         isComplete?: boolean;
       };
 
@@ -159,7 +167,7 @@ export const continueConversation = action({
       // Guard: don't save empty AI responses (can happen when tool use consumes all steps)
       if (!parsed.content || parsed.content.trim().length === 0) {
         console.warn(`[continueConversation] Empty AI response for project ${args.projectId}, not saving to DB`);
-        return { content: "", questionType: null, options: null, isComplete: false };
+        return { content: "", questionType: null, options: null, optionDescriptions: null, currentSection: null, sectionProgress: null, isComplete: false };
       }
 
       console.log(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "completed", isComplete: !!parsed.isComplete }));
@@ -169,12 +177,23 @@ export const continueConversation = action({
         projectId: args.projectId,
         role: "assistant",
         content: parsed.content,
-        ...(parsed.questionType ? { questionType: parsed.questionType as "text" | "choice" | "multiselect" } : {}),
+        ...(parsed.questionType ? { questionType: parsed.questionType as "text" | "choice" | "multiselect" | "comparison" } : {}),
         ...(parsed.options ? { options: parsed.options } : {}),
+        ...(parsed.optionDescriptions ? { optionDescriptions: parsed.optionDescriptions } : {}),
+        ...(parsed.currentSection ? { currentSection: parsed.currentSection } : {}),
+        ...(parsed.sectionProgress ? { sectionProgress: parsed.sectionProgress } : {}),
         ...(parsed.isComplete ? { isComplete: true } : {}),
       });
 
-      return { content: parsed.content, questionType: parsed.questionType ?? null, options: parsed.options ?? null, isComplete: !!parsed.isComplete };
+      return {
+        content: parsed.content,
+        questionType: parsed.questionType ?? null,
+        options: parsed.options ?? null,
+        optionDescriptions: parsed.optionDescriptions ?? null,
+        currentSection: parsed.currentSection ?? null,
+        sectionProgress: parsed.sectionProgress ?? null,
+        isComplete: !!parsed.isComplete,
+      };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(formatLogEntry({ action: "continueConversation", projectId: args.projectId, step: "interview", status: "failed", error: msg }));
