@@ -1,4 +1,5 @@
 "use node";
+// [DEACTIVATED] Pipeline v1 — GitHub/Daytona/scaffolding flow. Kept for backward compat.
 
 import { action } from "./_generated/server";
 import { v } from "convex/values";

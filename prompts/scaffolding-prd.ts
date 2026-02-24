@@ -1,3 +1,5 @@
+// [DEACTIVATED] Pipeline v1 — GitHub/Daytona/scaffolding flow. Kept for backward compat.
+
 export const PRD_GENERATION_PROMPT = `You are a product manager converting interview requirements into a formal PRD document for an AI-assisted development workflow.
 
 Given a structured requirements object, produce a PRD in markdown with these sections:

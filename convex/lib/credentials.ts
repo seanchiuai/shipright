@@ -1,3 +1,5 @@
+// [DEACTIVATED] Pipeline v1 — GitHub/Daytona/scaffolding flow. Kept for backward compat.
+
 /**
  * Unified Credential Manager
  *

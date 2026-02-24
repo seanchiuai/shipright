@@ -1,3 +1,5 @@
+// [DEACTIVATED] Pipeline v1 — GitHub/Daytona/scaffolding flow. Kept for backward compat.
+
 export const TECH_STACK_RESEARCH_PROMPT = `You are a technical architect choosing libraries and integrations for a web application.
 
 Given:

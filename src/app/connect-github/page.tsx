@@ -1,4 +1,5 @@
 "use client";
+// [DEACTIVATED] Pipeline v1 — GitHub/Daytona/scaffolding flow. Kept for backward compat.
 
 import { useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
