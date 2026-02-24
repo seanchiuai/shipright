@@ -376,6 +376,10 @@ export const executeSandbox = action({
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "validate_project", status: "started" }));
       const project = await ctx.runQuery(internal.projects.getById, { projectId: args.projectId });
       if (!project) throw new NotFoundError("Project", args.projectId);
+      const activeSandboxes = await ctx.runQuery(internal.projects.countActiveSandboxes, { userId: project.userId });
+      if (activeSandboxes >= 2) {
+        throw new PipelineError("sandbox_setup", "Too many active sandboxes. Please wait for current builds to complete.");
+      }
       if (!project.githubRepoFullName) throw new PipelineError("sandbox_setup", "No GitHub repo linked to project");
       if (!project.prdMarkdown) throw new PipelineError("sandbox_setup", "PRD not generated");
       console.log(formatLogEntry({ action: "executeSandbox", projectId: pid, step: "validate_project", status: "completed", repo: project.githubRepoFullName, template: project.templateName || "unknown" }));

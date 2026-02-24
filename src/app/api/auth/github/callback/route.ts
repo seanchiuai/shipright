@@ -63,7 +63,6 @@ export async function GET(request: Request) {
   try {
     await convex.action(api.github.exchangeGitHubCode, { code });
   } catch (error) {
-    console.error("GitHub OAuth exchange failed:", error);
     Sentry.captureException(error, { tags: { flow: "github_oauth" }, extra: { step: "exchangeGitHubCode" } });
     return NextResponse.redirect(`${appUrl}/connect-github?error=exchange_failed`);
   }

@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { useSyncUser } from "@/hooks/useSyncUser";
+import * as Sentry from "@sentry/nextjs";
 import { ArrowUp } from "lucide-react";
 import { AppNavbar } from "@/components/app-navbar";
 import {
@@ -69,7 +70,7 @@ export default function DashboardPage() {
       // Navigate immediately — interview page handles AI generation
       router.push(`/interview/${projectId}`);
     } catch (error) {
-      console.error("Failed to create project:", error);
+      Sentry.captureException(error, { tags: { flow: "project_creation" }, extra: { step: "dashboard" } });
       setCreating(false);
     }
   }

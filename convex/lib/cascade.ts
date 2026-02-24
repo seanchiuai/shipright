@@ -11,4 +11,12 @@ export async function deleteProjectData(ctx: MutationCtx, projectId: Id<"project
     await ctx.db.delete(msg._id);
   }
 
+  // Delete pipeline events
+  const events = await ctx.db
+    .query("pipelineEvents")
+    .withIndex("by_project", (q) => q.eq("projectId", projectId))
+    .collect();
+  for (const event of events) {
+    await ctx.db.delete(event._id);
+  }
 }

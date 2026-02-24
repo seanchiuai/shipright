@@ -391,6 +391,19 @@ export const recreateRepo = mutation({
   },
 });
 
+export const countActiveSandboxes = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const projects = await ctx.db
+      .query("projects")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+    return projects.filter(p =>
+      p.scaffoldingStatus === "preparing_sandbox" || p.scaffoldingStatus === "running_sandbox"
+    ).length;
+  },
+});
+
 export const setMatchedTemplate = internalMutation({
   args: {
     projectId: v.id("projects"),

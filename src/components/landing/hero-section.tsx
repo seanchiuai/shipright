@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import * as Sentry from "@sentry/nextjs";
 import { useSyncUser } from "@/hooks/useSyncUser";
 
 const placeholders = [
@@ -102,7 +103,7 @@ export function HeroSection() {
 
       router.push(`/interview/${projectId}`);
     } catch (error) {
-      console.error("Failed to create project:", error);
+      Sentry.captureException(error, { tags: { flow: "project_creation" }, extra: { step: "hero_section" } });
       setIsSubmitting(false);
     }
   };
