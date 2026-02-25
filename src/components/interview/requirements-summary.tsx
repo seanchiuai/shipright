@@ -55,7 +55,7 @@ export function RequirementsSummary({
     await onUpdateRequirements(updated);
   };
 
-  const getFeatureName = (f: Feature): string => typeof f === "string" ? f : f.name;
+  const getFeatureName = (f: Feature | string): string => typeof f === "string" ? f : f.name;
 
   const saveFeatureEdit = async (index: number, value: string) => {
     const updated = { ...requirements, keyFeatures: [...requirements.keyFeatures] };

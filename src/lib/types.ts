@@ -64,8 +64,8 @@ export type Requirements = {
   hasPayments: boolean;
   paymentContext: string | null;
   platform: string;
-  // Expanded from string[] to Feature[]
-  keyFeatures: Feature[];
+  // Feature[] for new data, string[] for legacy — always use getFeatureName() helper
+  keyFeatures: (Feature | string)[];
   constraints: {
     timeline: string | null;
     mustHave: string[];
@@ -102,4 +102,5 @@ export type Blueprint = {
   architectureOverview?: string;
   designDirection?: string;
   markdownExport?: string;
+  isPublic?: boolean;
 };

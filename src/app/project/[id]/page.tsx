@@ -116,15 +116,17 @@ function BlueprintViewer({ projectId, projectName }: { projectId: Id<"projects">
 
   return (
     <div>
-      {/* Mobile tabs */}
-      <BlueprintNav
-        activeSection={activeSection}
-        onSelect={setActiveSection}
-        availableSections={availableSections}
-      />
+      {/* Mobile tabs (hidden on desktop since BlueprintNav renders both variants internally) */}
+      <div className="lg:hidden">
+        <BlueprintNav
+          activeSection={activeSection}
+          onSelect={setActiveSection}
+          availableSections={availableSections}
+        />
+      </div>
 
       <div className="flex gap-8 mt-6">
-        {/* Desktop sidebar — rendered inside BlueprintNav for desktop */}
+        {/* Desktop sidebar */}
         <div className="hidden lg:block">
           <BlueprintNav
             activeSection={activeSection}
