@@ -23,12 +23,26 @@ Don't create a skill when:
 ```
 .claude/skills/
 └── <skill-name>/
-    └── SKILL.md
+    ├── SKILL.md           # Required: overview, when to use
+    └── reference.md       # Highly recommended: code examples
 ```
 
 - Use lowercase with hyphens for directory names
-- One `SKILL.md` file per skill
+- `SKILL.md` is required - overview and key concepts
+- `reference.md` is highly recommended - keeps code examples separate and scannable
 - Name should describe the domain or workflow
+
+### Why reference.md is Recommended
+
+Separating overview from code examples:
+- Keeps `SKILL.md` concise and readable
+- Makes code patterns easy to find and copy
+- Scales better as the skill grows
+- Agents can read just what they need
+
+Only skip `reference.md` when:
+- The skill is purely conceptual (no code)
+- You have fewer than 3 short code snippets
 
 ## File Format
 
@@ -131,6 +145,53 @@ description: {{One sentence description}}
 ## Related Files
 
 - `{{path/to/file}}` - {{description}}
+```
+
+## reference.md Template
+
+If your skill needs detailed code examples, create `reference.md`:
+
+```markdown
+# {{Skill Name}} Reference
+
+Detailed code examples and patterns.
+
+## {{Pattern Category}}
+
+### {{Pattern Name}}
+
+{{When to use this pattern.}}
+
+\`\`\`{{language}}
+{{code example}}
+\`\`\`
+
+## API Examples
+
+### {{Endpoint/Function}}
+
+\`\`\`{{language}}
+{{request/response or usage example}}
+\`\`\`
+
+## Schema / Types
+
+\`\`\`typescript
+{{type definitions}}
+\`\`\`
+
+## Configuration
+
+\`\`\`{{format}}
+{{config example}}
+\`\`\`
+```
+
+Link to it from SKILL.md:
+```markdown
+## Reference Files
+
+- [reference.md](reference.md) - Code examples and patterns
 ```
 
 ## Referencing Skills

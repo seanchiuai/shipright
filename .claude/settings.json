@@ -1,16 +1,5 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/show-phase-context.sh",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -22,8 +11,5 @@
         ]
       }
     ]
-  },
-  "enabledPlugins": {
-    "insecure-defaults@trailofbits": true
   }
 }

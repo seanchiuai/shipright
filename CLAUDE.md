@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Shipright helps non-technical founders turn app ideas into GitHub repos via AI-guided interview → template matching → scaffolding injection → repo generation.
+Shipright helps non-technical founders turn app ideas into structured product blueprints via deep AI-guided interview → blueprint generation.
 
 ## Tech Stack
 
@@ -8,8 +8,6 @@ Shipright helps non-technical founders turn app ideas into GitHub repos via AI-g
 - Convex (database, serverless functions)
 - Clerk (authentication with Google OAuth)
 - Vercel AI SDK + @ai-sdk/google-vertex (Gemini 2.5 Flash)
-- GitHub API via Octokit (repo creation)
-- Daytona SDK (sandbox for scaffolding injection via Claude Code)
 - Sentry (error monitoring)
 - Framer Motion (animations)
 - agent-browser (E2E testing)
@@ -33,6 +31,7 @@ Run before pushing to `main` (Vercel auto-deploys on push):
 npm run type-check  # Must pass
 npm run lint        # 0 errors required
 npm test -- --run   # All tests must pass
+npx convex deploy --yes  # Deploy Convex functions to prod
 git push origin main
 ```
 
@@ -40,103 +39,86 @@ git push origin main
 
 - **Unit/integration tests:** Vitest + React Testing Library (`src/**/*.test.{ts,tsx}`, `convex/**/*.test.ts`)
 - **E2E tests:** agent-browser (local only)
-- **CI:** GitHub Actions on push/PR to `main` — runs type-check, lint, unit tests
+- **CI:** GitHub Actions on push/PR to `main` — runs type-check, lint, unit tests, auto-deploys Convex
 
 See `docs/testing.md` for details.
 
-## Development Phases
-
-| Phase | Focus | User Stories |
-|-------|-------|--------------|
-| 1 | UI + Auth | US-001, US-002, US-013 |
-| 2 | Interview Flow | US-003, US-004, US-005 |
-| 3 | Template Matching | US-006, US-007, US-014 |
-| 4 | GitHub Repo | US-008, US-009 |
-| 5 | Scaffolding Injection | US-010, US-011, US-012, US-012b, US-012c |
-| 6 | Production Deploy | US-015 |
-
-**Current phase:** `docs/development-progress.yaml` (Do not edit without user permisssion or confirmation)
-
-## Pipeline (Phases 3-5)
+## Pipeline
 
 ```
-Interview → Template Matching (base stack only)
-  → GitHub Repo (clone template)
-  → Generate PRD from requirements (Convex/Gemini)
-  → Research tech stack integrations (Convex/Gemini, user approval if ambiguous)
-  → Daytona sandbox: inject cc-template files + Claude Code fills {{PLACEHOLDER}}s
-  → Commit scaffolding to repo → Done
+Interview (deep, 10-18 questions across 7 sections)
+  → Requirements extraction (expanded: personas, workflows, content types, monetization, design)
+  → Blueprint generation (Gemini 2.5 Flash generateObject, 10 structured sections)
+  → Blueprint viewer (sidebar nav, section renderer, markdown export)
 ```
 
-**cc-template repo** (`github.com/seanchiuai/cc-template`): Contains Claude Code dev methodology files — .claude/ (settings, hooks, commands, skills), template-CLAUDE.md, TASKS.md, docs/PRD.md, docs/design.md, prompts/. These are injected into the user's repo, then Claude Code customizes the {{PLACEHOLDER}} template files.
+### Interview sections (adaptive depth)
+1. Vision & Problem — who, what frustration
+2. Users & Personas — types, access levels
+3. Core Workflows — main actions, step-by-step
+4. Content & Data — what people create/upload, privacy
+5. Monetization — how it makes money
+6. Look & Feel — design inspiration, style
+7. Scope & Priorities — MVP boundaries, integrations
 
-**Template matching decides base stack only.** Integrations (Stripe, SendGrid, etc.) are researched separately after matching.
+### Blueprint sections (generated)
+Executive Summary, User Personas, Features, User Flows, Data Model, Tech Stack, Monetization, MVP Scope, Architecture, Design Direction
 
-## Architecture Principles (Learned from Failures)
+### Key files
+- `prompts/interview-conversation.ts` — 7-section deep interview prompt
+- `prompts/requirements-extraction.ts` — expanded extraction schema
+- `prompts/blueprint-generation.ts` — 10-section blueprint prompt
+- `convex/ai.ts` — interview continuation, requirements extraction
+- `convex/blueprint.ts` — blueprint generation action
+- `convex/blueprintFns.ts` — blueprint CRUD mutations/queries
+- `convex/matching.ts` — template scoring (reused for tech stack context in blueprints)
+- `src/app/interview/[id]/page.tsx` — interview UI with section progress
+- `src/app/project/[id]/page.tsx` — blueprint viewer + legacy project view
+- `src/components/blueprint/` — nav, section renderer, loading, export
+- `src/components/interview/` — section progress, comparison cards, blueprint preview
+- `src/lib/types.ts` — Requirements, Blueprint, Feature, UserPersona, Workflow types
+- `src/lib/blueprint-markdown.ts` — markdown export helper
 
-### Distributed Systems Mindset
-We integrate Convex + Daytona + GitHub + Claude Code. Treat as distributed system, not monolith:
-- **Assume failure** — retry with backoff, circuit breakers, idempotency
-- **Explicit state** — pipeline state machine, not scattered fields
-- **No shared timeouts** — use `scheduler.runAfter()` for long operations
+## Database Schema (Convex)
 
-### Auth in Sandboxes
-- Write credentials to filesystem (`~/.claude/.credentials.json`), not env vars
-- OAuth tokens ≠ API keys — Anthropic API rejects OAuth tokens via `ANTHROPIC_API_KEY`
-- Git push needs `~/.git-credentials` + `credential.helper store`
+- `users` — Clerk-synced user profiles
+- `projects` — statuses: `interview`, `matching`, `matched`, `building`, `scaffolding`, `complete`, `repo_failed`, `generating_blueprint`, `blueprint_ready`, `blueprint_failed`
+- `interviewMessages` — conversation history with questionType, currentSection, sectionProgress
+- `blueprints` — 10 text sections + status (generating/ready/failed) + markdownExport
+- `templates` — base stack templates for scoring/context
 
-### Async Execution
+## Architecture Principles
+
+### Convex Patterns
 - `ctx.runAction()` shares parent's 10-min budget — avoid nesting
 - `scheduler.runAfter()` gets own budget — use for long operations
 - Scheduled actions have NO auth context — store userId, use internal queries
-- Complex shell commands break — write launcher scripts to filesystem
+- Use `ConvexError` for user-facing messages (regular Error messages are hidden by Convex)
 
 ### Error Philosophy
-- Use structured error types with user-friendly messages
+- Structured error types with user-friendly messages
 - Error handlers must never throw (cascading failures)
 - Log rich context for debugging, show simple messages to users
+- Report to Sentry server-side in catch blocks
 
-## Ralph Loop Workflow
+## Deactivated Pipeline v1
 
-Each phase runs as one Ralph loop. Prompts live in `prompts/`. Run `/ralph-loop:help` before creating new prompts.
+The following are **deactivated** (marked `[DEACTIVATED]`) but kept for backward compat with existing projects:
+- `convex/github.ts` — GitHub repo creation via Octokit
+- `convex/scaffolding.ts` — Daytona sandbox + Claude Code scaffolding
+- `convex/lib/credentials.ts` — sandbox credential management
+- `prompts/scaffolding-prd.ts`, `prompts/scaffolding-tech-stack.ts`
+- `src/app/connect-github/page.tsx` — GitHub OAuth flow
 
-Per iteration:
-
-**Read:**
-1. `docs/PRD.md` → Acceptance criteria for phase's user stories
-2. `.claude/skills/*/SKILL.md` → Overview, when to use
-3. `.claude/skills/*/reference.md` → Code patterns, API examples
-4. `docs/design.md` → UI specs (if building UI)
-5. frontend-design skill → UI aesthetics
-
-**Build → Test → Commit:**
-- Build feature
-- Test with agent-browser (mandatory)
-- Commit only if tests pass
-
-**After phase complete:**
-1. Check off `[x]` in PRD.md acceptance criteria
-2. Move tasks to "Complete" in TASKS.md
-3. Human confirms → Update `development-progress.yaml`
+Legacy projects with `complete`/`repo_failed` status still render correctly in the project page.
 
 ## Skills
 
-**Read the relevant skill before writing code.** Skills live in `.claude/skills/<name>/SKILL.md` (overview) and `reference.md` (code patterns).
+Skills live in `.claude/skills/<name>/SKILL.md`.
 
 | Skill | Read when... |
 |-------|-------------|
-| `clerk-auth` | Touching auth, middleware, user sync, admin checks |
-| `convex-patterns` | Writing queries/mutations/actions, schema changes, auth helpers |
-| `ui-components` | Building UI — dark theme tokens, component org, shadcn patterns |
-| `interview-flow` | Modifying interview conversation, prompts, extraction, platform constraints |
-| `template-matching` | Changing scoring algorithm, template index, weight determination |
-| `github-integration` | GitHub OAuth, repo creation, git operations, token encryption |
-| `daytona-sandbox` | Sandbox lifecycle, credential provisioning, file operations |
-| `scaffolding-generation` | Pipeline steps, cc-template injection, Claude Code execution |
-| `deployment` | Vercel config, env vars, production URLs, OAuth redirects |
-| `production` | CI pipeline, Sentry monitoring, pre-deploy checks, troubleshooting |
-| `e2e-testing` | Browser automation, agent-browser patterns, test flow |
-| `prompt-architect` | Structuring prompts with research-backed frameworks |
+| `agent-browser` | Browser automation, E2E testing, web scraping |
 | `create-skill` | Creating new skills |
 
 ## Environment Variables
@@ -146,36 +128,36 @@ CONVEX_DEPLOYMENT=...
 NEXT_PUBLIC_CONVEX_URL=...
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
 CLERK_SECRET_KEY=sk_...
-GITHUB_CLIENT_ID=...
-GITHUB_CLIENT_SECRET=...
 GOOGLE_VERTEX_PROJECT=...     # GCP project ID
 GOOGLE_VERTEX_LOCATION=us-central1
 GOOGLE_CLIENT_EMAIL=...       # Service account email
 GOOGLE_PRIVATE_KEY=...        # Service account private key
-DAYTONA_API_KEY=dtn_...
-DAYTONA_API_URL=https://api.daytona.io
 CLERK_JWT_ISSUER_DOMAIN=...  # Clerk JWT issuer for Convex auth
-TAVILY_API_KEY=...           # Tavily search API for tech research
-CLAUDE_CODE_CREDENTIALS_JSON=... # Claude Code OAuth credentials (JSON)
-CLAUDE_CODE_OAUTH_ACCOUNT_JSON=... # Claude Code OAuth account (JSON)
 ADMIN_USER_ID=...            # Admin Clerk user ID (server)
 NEXT_PUBLIC_ADMIN_USER_ID=...# Admin user ID (client)
 NEXT_PUBLIC_APP_URL=...      # App base URL for OAuth callbacks
 NEXT_PUBLIC_SENTRY_DSN=...   # Sentry error tracking DSN
+# Deactivated pipeline v1 (still needed for legacy projects):
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+DAYTONA_API_KEY=dtn_...
+DAYTONA_API_URL=https://api.daytona.io
+TAVILY_API_KEY=...
+CLAUDE_CODE_CREDENTIALS_JSON=...
+CLAUDE_CODE_OAUTH_ACCOUNT_JSON=...
 ```
 
 ## Hard Rules
 
 **Always:**
 - Test every change before committing
-- commit after every small change autonomously
+- Commit after every small change autonomously
 - Sacrifice grammar for conciseness
 - Follow vercel react best practices
-- Only work on current phase
 
 **Never:** Skip tests. Store secrets outside `.gitignore`.
 
-**Non-negotiable:**  
+**Non-negotiable:**
 - Commit after every change
 - Commit after every change
 - Commit after every change

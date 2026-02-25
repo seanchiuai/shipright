@@ -1,189 +1,162 @@
 ---
-description: Update CLAUDE.md when major codebase changes occur
-argument-hint: [section or "all"]
+description: Automatically update CLAUDE.md file based on recent code changes
 ---
 
-# Command: Update CLAUDE.md
+# Command: update-CLAUDE.md
 
-Sync CLAUDE.md with current codebase state. **Only update sections with actual discrepancies** - don't rewrite for the sake of rewriting.
+## Current Claude.md State
+@CLAUDE.md
 
-## Usage
+## Git Analysis
 
-```bash
-/update-CLAUDE              # Check all sections, update as needed
-/update-CLAUDE tech-stack   # Update Tech Stack section only
-/update-CLAUDE phases       # Update Development Phases section only
-/update-CLAUDE skills       # Update Skills section only
-/update-CLAUDE all          # Full sync of all sections
-```
+### Current Repository Status
+!`git status --porcelain`
 
-## CLAUDE.md Structure
+### Recent Changes (Last 10 commits)
+!`git log --oneline -10`
 
-The file has two types of content:
+### Detailed Recent Changes
+!`git log --since="1 week ago" --pretty=format:"%h - %an, %ar : %s" --stat`
 
-### Constant Sections (rarely change)
+### Recent Diff Analysis
+!`git diff HEAD~5 --name-only | head -20`
 
-These sections should NOT be modified unless the project fundamentally changes:
+### Detailed Diff of Key Changes
+!`git diff HEAD~5 -- "*.js" "*.ts" "*.jsx" "*.tsx" "*.py" "*.md" "*.json" | head -200`
 
-1. **Header + Description** - Project purpose (line 1-3)
-2. **Commands** - npm/npx commands
-3. **Ralph Loop Workflow** - Development process
-4. **Environment Variables** - Env var names (not values)
-5. **Boundaries** - Development rules
+### New Files Added
+!`git diff --name-status HEAD~10 | grep "^A" | head -15`
 
-### Variable Sections (update when codebase changes)
+### Deleted Files
+!`git diff --name-status HEAD~10 | grep "^D" | head -10`
 
-1. **Tech Stack** - Update when:
-   - New framework/library added to package.json
-   - Major dependency replaced (e.g., switched from Anthropic to Vertex)
-   - New integration added (auth, DB, etc.)
+### Modified Core Files
+!`git diff --name-status HEAD~10 | grep "^M" | grep -E "(package\.json|README|config|main|index|app)" | head -10`
 
-2. **Development Phases** - Update when:
-   - Phase structure changes
-   - User story mapping changes
-   - Note: Don't update "current phase" - that's in `development-progress.yaml`
+## Project Structure Changes
+!`find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | head -10`
 
-3. **Skills list** - Update when:
-   - New skill directory added to `.claude/skills/`
-   - Skill removed or renamed
+## Configuration Changes
+!`git diff HEAD~10 -- package.json tsconfig.json webpack.config.js next.config.js .env* docker* | head -100`
 
-## Update Process
+## API/Route Changes  
+!`git diff HEAD~10 -- "**/routes/**" "**/api/**" "**/controllers/**" | head -150`
 
-### Step 1: Gather Current State
+## Database/Model Changes
+!`git diff HEAD~10 -- "**/models/**" "**/schemas/**" "**/migrations/**" | head -100`
 
-```bash
-# Check package.json for dependencies
-cat package.json | jq '.dependencies, .devDependencies'
+## Your Task
 
-# List current skills
-ls .claude/skills/
+Based on the current CLAUDE.md content and all the git analysis above, create an updated CLAUDE.md file that:
 
-# Check for new env vars in use
-grep -r "process.env" --include="*.ts" --include="*.tsx" | grep -v node_modules
-```
+## 1. Preserves Important Existing Content
+- Keep the core project description and architecture
+- Maintain important setup instructions
+- Preserve key architectural decisions and patterns
+- Keep essential development workflow information
 
-### Step 2: Compare Against CLAUDE.md
+## 2. Integrates Recent Changes
+Analyze the git diff and logs to identify:
+- **New Features**: What new functionality was added?
+- **API Changes**: New endpoints, modified routes, updated parameters
+- **Configuration Updates**: Changes to build tools, dependencies, environment variables
+- **File Structure Changes**: New directories, moved files, deleted components
+- **Database Changes**: New models, schema updates, migrations
+- **Bug Fixes**: Important fixes that affect how the system works
+- **Refactoring**: Significant code reorganization or architectural changes
 
-For each variable section:
-1. Read current CLAUDE.md section
-2. Compare against codebase reality
-3. Identify discrepancies only
+## 3. Updates Key Sections
+Intelligently update these CLAUDE.md sections:
 
-### Step 3: Update Only Discrepancies
+### Project Overview
+- Update description if scope changed
+- Note new technologies or frameworks added
+- Update version information
 
-**Tech Stack updates:**
-- Add new items at end of list
-- Remove items no longer in package.json
-- Update descriptions if technology changed (e.g., "Anthropic" → "Vertex AI")
+### Architecture
+- Document new architectural patterns
+- Note significant structural changes
+- Update component relationships
 
-**Skills list updates:**
-- Alphabetize skill directories
-- Add new directories found
-- Remove directories no longer present
+### Setup Instructions  
+- Add new environment variables
+- Update installation steps if dependencies changed
+- Note new configuration requirements
 
-**Do NOT change:**
-- Formatting/indentation
-- Section ordering
-- Wording of constant sections
-- Line breaks or spacing
+### API Documentation
+- Add new endpoints discovered in routes
+- Update existing endpoint documentation
+- Note authentication or parameter changes
 
-## Validation Checks
+### Development Workflow
+- Update based on new scripts in package.json
+- Note new development tools or processes
+- Update testing procedures if changed
 
-Before updating, verify:
+### Recent Changes Section
+Add a "Recent Updates" section with:
+- Summary of major changes from git analysis
+- New features and their impact
+- Important bug fixes
+- Breaking changes developers should know about
 
-### Tech Stack
-```
-For each item in CLAUDE.md Tech Stack:
-  - Is it still in package.json?
-  - Is the description accurate?
-  - Is it still being used (imports exist)?
-```
+### File Structure
+- Update directory explanations for new folders
+- Note relocated or reorganized files
+- Document new important files
 
-### Skills
-```
-For each skill listed:
-  - Does .claude/skills/<name>/ exist?
-  - Does it have SKILL.md?
-```
+## 4. Smart Content Management
+- **Don't duplicate**: Avoid repeating information already well-documented
+- **Prioritize relevance**: Focus on changes that affect how developers work with the code
+- **Keep it concise**: Summarize rather than listing every small change
+- **Maintain structure**: Follow existing CLAUDE.md organization
+- **Add timestamps**: Note when major updates were made
+- **Grammar**: Sacrifise grammar for the sake of conciseness
 
-### Environment Variables
-```
-For each env var listed:
-  - Is it referenced in code or .env.local.example?
-  - Is description accurate?
-```
 
-## Output Format
+## 5. Output Format
+Provide the complete updated CLAUDE.md content, organized as:
 
 ```markdown
-## CLAUDE.md Sync Report
+# Project Name
 
-### Tech Stack
-- ✓ Next.js 14 - verified
-- ✓ Convex - verified
-- ⚠️ Updated: "Anthropic SDK" → "Vercel AI SDK + @ai-sdk/google-vertex"
-- 🆕 Added: "agent-browser (E2E testing)"
+## Overview
+[Updated project description]
 
-### Skills
-- ✓ 9 skills verified
-- ✓ All directories exist
+## Architecture
+[Updated architecture information]
 
-### Environment Variables
-- ✓ All vars documented
-- 🆕 Added: GOOGLE_VERTEX_PROJECT, GOOGLE_CLIENT_EMAIL
+## Setup & Installation
+[Updated setup instructions]
 
-### Changes Made
-- Updated Tech Stack line 10
-- Added 2 env vars
+## Development Workflow
+[Updated development processes]
 
-✅ CLAUDE.md updated (or "No changes needed")
+## API Documentation
+[Updated API information]
+
+## File Structure
+[Updated directory explanations]
+
+## Recent Updates (Updated: YYYY-MM-DD)
+[Summary of recent changes]
+
+## Rules
+- **TS:** Strict, no `any`, `@/*` imports
+- **React:** Functional, `"use client"`, Convex hooks, <200 LOC
+- **Style:** Tailwind, mobile-first
+- **Security:** OWASP Top 10, row-level filter, secrets in `.env.local`
+- **Quality:** >80% coverage, lint clean, build pass
+- **Pre-commit:** Build + tests + lint, >80% coverage, no vulnerabilities
+[More rules]
+
+## Crucial Notes (ALWAYS CHECK)
+- No backwards compatibility
+- Sacrifice grammar for conciseness
+- **MANDATORY:** Commit after every change
+- Update `/docs/CHANGELOG.md` after commits/pulls
+- Update plan files (if any)
+- UI first → functionality. Modular code.
+- Keep CLAUDE.md as short as possible.
+[More important notes]
 ```
-
-## Example: Detecting Tech Stack Changes
-
-**package.json has:**
-```json
-{
-  "@ai-sdk/google-vertex": "^1.0.0",
-  "@clerk/nextjs": "^5.0.0",
-  "convex": "^1.0.0"
-}
-```
-
-**CLAUDE.md says:**
-```
-- Anthropic SDK (Claude API)
-- Clerk (authentication)
-```
-
-**Action:**
-- Update "Anthropic SDK" → "Vercel AI SDK + @ai-sdk/google-vertex (Gemini)"
-- Keep "Clerk" unchanged
-
-## What NOT to Update
-
-1. **Current phase reference** - Points to `development-progress.yaml`
-2. **Specific file paths in examples** - Unless files moved
-3. **The Boundaries section** - These are project rules
-4. **Ralph Loop Workflow** - This is process, not state
-
-## When to Run
-
-**Run after:**
-- Adding/removing major dependencies
-- Adding new skill directories
-- Changing authentication or database provider
-- Major refactoring that changes architecture
-
-**Don't run:**
-- After every commit
-- For minor dependency updates
-- When only adding features (not changing stack)
-
-## Related Files
-
-- `CLAUDE.md` - Main project instructions
-- `package.json` - Dependencies source of truth
-- `.claude/skills/` - Skills directories
-- `.env.local.example` - Environment variable template
-- `docs/development-progress.yaml` - Current phase (don't duplicate here)
